@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/Agenda_Demo.html" }
+  ]
+}
