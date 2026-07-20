@@ -244,16 +244,52 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 </head>
 <body>
 
+<!-- ═══════════════════════════════════════════
+     PANTALLA DE LOGIN (email + password + MFA)
+     Se muestra sola hasta que haya sesión válida.
+     ═══════════════════════════════════════════ -->
+<div id="login-screen" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0B1628,#1B3A6B);">
+  <div style="background:#fff;border-radius:14px;padding:36px 32px;width:100%;max-width:360px;box-shadow:0 10px 40px rgba(0,0,0,0.35);">
+    <div style="text-align:center;margin-bottom:22px;">
+      <div style="font-size:26px;">📅</div>
+      <div style="font-weight:700;font-size:16px;color:var(--gray-800);margin-top:4px;">Agenda Mediconsulting</div>
+      <div style="font-size:11.5px;color:var(--gray-400);margin-top:2px;">Inicia sesión para continuar</div>
+    </div>
+
+    <div id="login-step-password">
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:11.5px;font-weight:600;color:var(--gray-600);margin-bottom:4px;">Correo</label>
+        <input type="email" id="login-email" placeholder="tu@correo.com" style="width:100%;padding:10px;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:11.5px;font-weight:600;color:var(--gray-600);margin-bottom:4px;">Contraseña</label>
+        <input type="password" id="login-password" placeholder="••••••••" style="width:100%;padding:10px;">
+      </div>
+      <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="intentarLogin()">Entrar</button>
+    </div>
+
+    <div id="login-step-mfa" style="display:none;">
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:11.5px;font-weight:600;color:var(--gray-600);margin-bottom:4px;">Código de tu app autenticadora</label>
+        <input type="text" id="login-mfa-code" placeholder="123456" style="width:100%;padding:10px;letter-spacing:2px;text-align:center;">
+      </div>
+      <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="verificarMfa()">Verificar</button>
+    </div>
+
+    <div id="login-error" style="color:var(--danger);font-size:12px;margin-top:12px;text-align:center;"></div>
+  </div>
+</div>
+
+<div id="app-root" style="display:none;">
+
 <div class="header">
   <div>
     <div class="header-title"><span class="icon">📅</span> Agenda</div>
-    <div class="header-sub">Demo de flujo de citas — perfiles genéricos</div>
+    <div class="header-sub" id="header-sub-sesion">—</div>
   </div>
   <div class="header-right">
-    <select id="sesion-actual" onchange="cambiarSesion()" style="font-weight:700;border:1px solid var(--gold-border);color:var(--gray-800);"></select>
     <button class="btn btn-outline" style="font-size:11px;padding:6px 12px;" onclick="activarNotificacionesPush()">🔔 Activar notificaciones</button>
-    <span class="demo-pill">⚠ Modo demo — datos de prueba, sin guardar en la nube todavía</span>
-    <button class="btn btn-outline" style="font-size:11px;padding:6px 12px;" onclick="reiniciarDatos()">🔄 Reiniciar datos de prueba</button>
+    <button class="btn btn-outline" style="font-size:11px;padding:6px 12px;" onclick="cerrarSesionApp()">🚪 Cerrar sesión</button>
   </div>
 </div>
 
@@ -596,15 +632,104 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   </div>
 </div>
 
+</div><!-- cierre de #app-root -->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js" integrity="sha384-OUW9euuUyxyHcAhTqbhI+Iyb8LMssXt/cpz0yXhs9UWG2/R/uaWdakx/4cfww7Vb" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging-compat.js"></script>
 <script>
 // ═══════════════════════════════════════════
+// CONEXIÓN A SUPABASE (backend real)
+// ═══════════════════════════════════════════
+const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null; // { id, rol, nombre }
+let mfaFactorIdPendiente = null;
+let mfaChallengeIdPendiente = null;
+
+function mostrarErrorLogin(msg){
+  document.getElementById('login-error').textContent = msg || '';
+}
+
+async function intentarLogin(){
+  mostrarErrorLogin('');
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if(!email || !password){ mostrarErrorLogin('Escribe tu correo y contraseña.'); return; }
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ mostrarErrorLogin('Correo o contraseña incorrectos.'); return; }
+
+  // ¿El usuario necesita verificar un segundo factor (MFA)?
+  const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+  if(aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2'){
+    const { data: factors } = await sb.auth.mfa.listFactors();
+    const factor = (factors.totp || []).find(f=>f.status==='verified');
+    if(!factor){ mostrarErrorLogin('Tu cuenta requiere MFA pero no tiene un factor configurado. Contacta a Mediconsulting.'); return; }
+    const { data: challenge, error: errChallenge } = await sb.auth.mfa.challenge({ factorId: factor.id });
+    if(errChallenge){ mostrarErrorLogin('No se pudo iniciar la verificación MFA.'); return; }
+    mfaFactorIdPendiente = factor.id;
+    mfaChallengeIdPendiente = challenge.id;
+    document.getElementById('login-step-password').style.display = 'none';
+    document.getElementById('login-step-mfa').style.display = 'block';
+    return;
+  }
+
+  await completarLoginYArrancarApp();
+}
+
+async function verificarMfa(){
+  mostrarErrorLogin('');
+  const code = document.getElementById('login-mfa-code').value.trim();
+  if(!code){ mostrarErrorLogin('Escribe el código de tu app autenticadora.'); return; }
+  const { error } = await sb.auth.mfa.verify({
+    factorId: mfaFactorIdPendiente,
+    challengeId: mfaChallengeIdPendiente,
+    code
+  });
+  if(error){ mostrarErrorLogin('Código incorrecto o expirado.'); return; }
+  await completarLoginYArrancarApp();
+}
+
+async function completarLoginYArrancarApp(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(!session){ mostrarErrorLogin('No se pudo iniciar sesión.'); return; }
+
+  const { data: perfil, error: errPerfil } = await sb
+    .from('perfiles')
+    .select('rol,nombre,activo')
+    .eq('user_id', session.user.id)
+    .single();
+
+  if(errPerfil || !perfil){
+    mostrarErrorLogin('Tu cuenta no tiene un perfil asignado en Mediconsulting. Contacta a Dani.');
+    await sb.auth.signOut();
+    return;
+  }
+  if(perfil.activo === false){
+    mostrarErrorLogin('Tu cuenta está desactivada. Contacta a Mediconsulting.');
+    await sb.auth.signOut();
+    return;
+  }
+
+  currentUser = { id: session.user.id, rol: perfil.rol, nombre: perfil.nombre };
+  await iniciarAppDespuesDeLogin();
+}
+
+async function cerrarSesionApp(){
+  if(!confirm('¿Cerrar sesión?')) return;
+  await sb.auth.signOut();
+  location.reload();
+}
+
+// ═══════════════════════════════════════════
 // Datos de perfiles genéricos (placeholder — se conectará a los perfiles reales)
 // ═══════════════════════════════════════════
-const DOCTORAS = ['Dra. Fulana A','Dra. Fulana B','Dra. Fulana C'];
+let DOCTORAS = []; // se llena al iniciar sesión, desde la tabla perfiles (rol='doctora')
 
 // Escapa HTML para evitar XSS en campos de texto libre
 function esc(s){
@@ -617,96 +742,125 @@ const ESTADO_LABEL = {agendado:'Agendado',confirmada:'Confirmada',llego:'Llegó'
 const ESTADO_ICON = {agendado:'📅',confirmada:'✓',llego:'🚶',curso:'▶',final:'🛍'};
 
 // ═══════════════════════════════════════════
-// Persistencia temporal (localStorage) — se migrará a OneDrive con
-// el mismo patrón de fusión por ID + tombstones que ya usamos en
-// QUAD387/MARE cuando se integre a la base real.
+// PERSISTENCIA REAL — Supabase (Postgres + RLS).
+// Los arreglos en memoria (citas, bloqueos, gestiones, horariosDoctoras)
+// siguen existiendo para no tocar el resto de la lógica de negocio;
+// la diferencia es que ahora se sincronizan con la base de datos real
+// en vez de con localStorage.
 // ═══════════════════════════════════════════
-let citas = JSON.parse(localStorage.getItem('agenda_demo_citas')||'null');
-if(!citas){
-  // Datos de ejemplo para poder probar el flujo de inmediato
-  const hoy = new Date().toISOString().split('T')[0];
-  const diasAtras = n => { const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString().split('T')[0]; };
-  citas = [
-    // Lucía López Pincay: historial sólido — 5 visitas a lo largo de varios meses, con distintos servicios/doctoras
-    {id:1,fecha:hoy,hora:'12:00',doctora:'Dra. Fulana A',paciente:'Lucía López Pincay',tel:'5536706570',email:'lucia.demo@example.com',servicio:'Consulta subsecuente',precio:500,descuentoPct:0,cortesia:false,estado:'final',cancelada:false,notas:'',pagado:true,montoPagado:500,medioPago:'Tarjeta'},
-    {id:101,fecha:diasAtras(35),hora:'11:00',doctora:'Dra. Fulana A',paciente:'Lucía López Pincay',tel:'5536706570',email:'lucia.demo@example.com',servicio:'Estudios: Ultrasonido',precio:700,descuentoPct:0,cortesia:false,estado:'final',cancelada:false,notas:'',pagado:true,montoPagado:700,medioPago:'Efectivo'},
-    {id:102,fecha:diasAtras(70),hora:'10:30',doctora:'Dra. Fulana B',paciente:'Lucía López Pincay',tel:'5536706570',email:'lucia.demo@example.com',servicio:'Consulta subsecuente',precio:500,descuentoPct:0,cortesia:false,estado:'final',cancelada:false,notas:'',pagado:true,montoPagado:500,medioPago:'Transferencia'},
-    {id:103,fecha:diasAtras(140),hora:'12:15',doctora:'Dra. Fulana A',paciente:'Lucía López Pincay',tel:'5536706570',email:'lucia.demo@example.com',servicio:'Consulta de primera vez',precio:800,descuentoPct:0,cortesia:false,estado:'final',cancelada:false,notas:'',pagado:true,montoPagado:800,medioPago:'Tarjeta'},
-    {id:104,fecha:diasAtras(200),hora:'09:45',doctora:'Dra. Fulana A',paciente:'Lucía López Pincay',tel:'5536706570',email:'lucia.demo@example.com',servicio:'Estudios: Papanicolau',precio:600,descuentoPct:10,cortesia:false,estado:'final',cancelada:false,notas:'',pagado:true,montoPagado:540,medioPago:'Efectivo'},
-
-    {id:2,fecha:hoy,hora:'12:30',doctora:'Dra. Fulana A',paciente:'Federico López Pincay',tel:'5536706570',email:'federico.demo@example.com',servicio:'Consulta subsecuente',precio:500,descuentoPct:10,cortesia:false,estado:'final',cancelada:false,notas:'',pagado:true,montoPagado:450,medioPago:'Transferencia'},
-    {id:3,fecha:hoy,hora:'13:00',doctora:'Dra. Fulana B',paciente:'Sara García Celestino',tel:'5554130062',email:'sara.demo@example.com',servicio:'Consulta de primera vez',precio:800,descuentoPct:0,cortesia:false,estado:'final',cancelada:false,notas:'',pagado:true,montoPagado:800,medioPago:'Efectivo'},
-    {id:4,fecha:hoy,hora:'13:45',doctora:'Dra. Fulana C',paciente:'María Fares Álvarez',tel:'5554075316',email:'maria.demo@example.com',servicio:'Estudios: Papanicolau',precio:600,descuentoPct:0,cortesia:false,estado:'llego',cancelada:false,notas:'',pagado:false,montoPagado:0,medioPago:''},
-    {id:5,fecha:hoy,hora:'16:00',doctora:'Dra. Fulana B',paciente:'Ana Torres Medina',tel:'5511223344',email:'ana.demo@example.com',servicio:'Consulta subsecuente',precio:500,descuentoPct:0,cortesia:true,estado:'final',cancelada:false,notas:'Paciente pidió recordatorio 1h antes',pagado:true,montoPagado:0,medioPago:'Cortesía'},
-    {id:6,fecha:hoy,hora:'14:15',doctora:'Dra. Fulana B',paciente:'Rodrigo Gómez',tel:'5522334455',email:'rodrigo.demo@example.com',servicio:'Consulta subsecuente',precio:500,descuentoPct:0,cortesia:false,estado:'curso',cancelada:false,notas:'',pagado:false,montoPagado:0,medioPago:''},
-    {id:7,fecha:hoy,hora:'15:00',doctora:'Dra. Fulana B',paciente:'Irma Peña',tel:'5533445566',email:'irma.demo@example.com',servicio:'Consulta de primera vez',precio:900,descuentoPct:0,cortesia:false,estado:'final',cancelada:false,notas:'',pagado:true,montoPagado:900,medioPago:'Tarjeta'},
-    {id:8,fecha:hoy,hora:'17:00',doctora:'Dra. Fulana A',paciente:'Elizabeth Medina',tel:'5544556677',email:'',servicio:'Consulta subsecuente',precio:0,descuentoPct:0,cortesia:false,estado:'agendado',cancelada:false,notas:'Pendiente de llamar para confirmar',pagado:false,montoPagado:0,medioPago:''},
-    {id:9,fecha:hoy,hora:'17:30',doctora:'Dra. Fulana C',paciente:'Jesús Medina',tel:'5555667788',email:'',servicio:'Consulta subsecuente',precio:0,descuentoPct:0,cortesia:false,estado:'agendado',cancelada:false,notas:'',pagado:false,montoPagado:0,medioPago:''},
-
-    // Pacientes inactivos — para poder ver el PRM funcionando de inmediato
-    {id:201,fecha:diasAtras(95),hora:'11:30',doctora:'Dra. Fulana B',paciente:'Roberto Salinas Cruz',tel:'5566778899',email:'roberto.demo@example.com',servicio:'Consulta de primera vez',precio:800,descuentoPct:0,cortesia:false,estado:'final',cancelada:false,notas:'',pagado:true,montoPagado:800,medioPago:'Efectivo'},
-    {id:202,fecha:diasAtras(75),hora:'16:30',doctora:'Dra. Fulana C',paciente:'Carmen Villarreal Soto',tel:'5577889900',email:'carmen.demo@example.com',servicio:'Estudios: Ultrasonido',precio:700,descuentoPct:0,cortesia:false,estado:'final',cancelada:false,notas:'',pagado:true,montoPagado:700,medioPago:'Tarjeta'},
-    {id:203,fecha:diasAtras(130),hora:'10:00',doctora:'Dra. Fulana A',paciente:'Guillermo Ponce Rivas',tel:'5588990011',email:'',servicio:'Consulta subsecuente',precio:500,descuentoPct:0,cortesia:false,estado:'final',cancelada:false,notas:'',pagado:true,montoPagado:500,medioPago:'Efectivo'},
-  ];
-  guardarLocal();
-}
-function guardarLocal(){ localStorage.setItem('agenda_demo_citas', JSON.stringify(citas)); }
+let citas = [];
+let bloqueos = [];
+let gestiones = [];
+const HORARIO_DEFECTO = {inicio:'09:00', fin:'19:00', dias:[1,2,3,4,5,6]}; // 0=Dom..6=Sáb
+let horariosDoctoras = {};
+function horarioDe(doctora){ return horariosDoctoras[doctora] || HORARIO_DEFECTO; }
 // Citas activas — excluye las que están en la papelera (deleted:true)
 function activeCitas(){ return citas.filter(c=>!c.deleted); }
 
-// ═══════════════════════════════════════════
-// HORARIOS LABORALES POR DOCTORA — para calcular espacios disponibles y
-// evitar empalmes. Editable por doctora; si una no tiene horario propio
-// configurado, se usa el horario por defecto (9:00–19:00, Lun–Sáb).
-// ═══════════════════════════════════════════
-const HORARIO_DEFECTO = {inicio:'09:00', fin:'19:00', dias:[1,2,3,4,5,6]}; // 0=Dom..6=Sáb
-let horariosDoctoras = JSON.parse(localStorage.getItem('agenda_demo_horarios')||'null');
-if(!horariosDoctoras){
+// --- Mapeo cita: JS (camelCase) <-> Supabase (snake_case) ---
+function citaDesdeDb(r){
+  return {
+    id:r.id, fecha:r.fecha, hora:(r.hora||'').slice(0,5), duracionMin:r.duracion_min,
+    doctora:r.doctora, paciente:r.paciente, tel:r.tel||'', email:r.email||'', servicio:r.servicio||'',
+    precio:Number(r.precio)||0, descuentoPct:Number(r.descuento_pct)||0, cortesia:!!r.cortesia,
+    notas:r.notas||'', estado:r.estado, sinCita:!!r.sin_cita, cancelada:!!r.cancelada,
+    pagado:!!r.pagado, montoPagado:Number(r.monto_pagado)||0, medioPago:r.medio_pago||'',
+    deleted:!!r.deleted, deletedAt:r.deleted_at, deletedBy:r.deleted_by
+  };
+}
+function citaHaciaDb(c){
+  return {
+    id:c.id, fecha:c.fecha, hora:c.hora, duracion_min:c.duracionMin||60,
+    doctora:c.doctora, paciente:c.paciente, tel:c.tel||null, email:c.email||null, servicio:c.servicio||null,
+    precio:c.precio||0, descuento_pct:c.descuentoPct||0, cortesia:!!c.cortesia,
+    notas:c.notas||null, estado:c.estado, sin_cita:!!c.sinCita, cancelada:!!c.cancelada,
+    pagado:!!c.pagado, monto_pagado:c.montoPagado||0, medio_pago:c.medioPago||null,
+    deleted:!!c.deleted, deleted_at:c.deletedAt||null, deleted_by:c.deletedBy||null
+  };
+}
+
+async function cargarCitas(){
+  const { data, error } = await sb.from('citas').select('*');
+  if(error){ toast('⚠ Error cargando citas: '+error.message); citas = []; return; }
+  citas = (data||[]).map(citaDesdeDb);
+}
+
+// Guarda TODAS las citas en memoria hacia Supabase (upsert por id).
+// Nota: el borrado definitivo (fuera del array) se hace aparte, en
+// eliminarCitaDefinitivo(), con un DELETE explícito.
+async function guardarLocal(){
+  if(!citas.length) return;
+  const filas = citas.map(citaHaciaDb);
+  const { error } = await sb.from('citas').upsert(filas, { onConflict:'id' });
+  if(error) toast('⚠ No se pudo guardar en la nube: '+error.message);
+}
+
+// --- Horarios laborales ---
+async function cargarHorarios(){
+  const { data, error } = await sb.from('horarios_doctoras').select('*');
   horariosDoctoras = {};
-  DOCTORAS.forEach(d=>{ horariosDoctoras[d] = {...HORARIO_DEFECTO}; });
-  guardarHorarios();
+  if(error){ toast('⚠ Error cargando horarios: '+error.message); }
+  (data||[]).forEach(r=>{
+    horariosDoctoras[r.doctora] = { inicio:(r.hora_inicio||'').slice(0,5), fin:(r.hora_fin||'').slice(0,5), dias:r.dias_laborales||[1,2,3,4,5,6] };
+  });
+  // Cualquier doctora sin fila propia usa el horario por defecto (no se escribe hasta que lo editen)
+  DOCTORAS.forEach(d=>{ if(!horariosDoctoras[d]) horariosDoctoras[d] = {...HORARIO_DEFECTO}; });
 }
-function guardarHorarios(){ localStorage.setItem('agenda_demo_horarios', JSON.stringify(horariosDoctoras)); }
-function horarioDe(doctora){ return horariosDoctoras[doctora] || HORARIO_DEFECTO; }
-
-// ═══════════════════════════════════════════
-// BLOQUEOS DE AGENDA — vacaciones, permisos, congresos, etc. por solicitud
-// de la doctora. Un bloqueo puede ser de todo el día o un rango de horas.
-// ═══════════════════════════════════════════
-let bloqueos = JSON.parse(localStorage.getItem('agenda_demo_bloqueos')||'null');
-if(!bloqueos){
-  const hoyB = new Date();
-  const enDias = n => { const d=new Date(hoyB); d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; };
-  bloqueos = [
-    {id:1, doctora:'Dra. Fulana C', fecha:enDias(3), todoDia:true, horaInicio:'', horaFin:'', motivo:'Congreso médico', creadoPor:'Dra. Fulana C', creadoEn:new Date().toISOString().split('T')[0]},
-    {id:2, doctora:'Dra. Fulana A', fecha:enDias(1), todoDia:false, horaInicio:'09:00', horaFin:'11:00', motivo:'Cita personal', creadoPor:'Dra. Fulana A', creadoEn:new Date().toISOString().split('T')[0]},
-  ];
-  guardarBloqueos();
+async function guardarHorarios(){
+  const filas = DOCTORAS.map(d=>{
+    const h = horariosDoctoras[d] || HORARIO_DEFECTO;
+    return { doctora:d, hora_inicio:h.inicio, hora_fin:h.fin, dias_laborales:h.dias };
+  });
+  const { error } = await sb.from('horarios_doctoras').upsert(filas, { onConflict:'doctora' });
+  if(error) toast('⚠ No se pudo guardar el horario: '+error.message);
 }
-function guardarBloqueos(){ localStorage.setItem('agenda_demo_bloqueos', JSON.stringify(bloqueos)); }
 
-// ═══════════════════════════════════════════
-// BITÁCORA DE GESTIÓN (CRM) — registro de contacto con pacientes inactivos.
-// Nadie llama dos veces al mismo paciente sin saberlo, porque todos ven la
-// misma bitácora (una vez esto viva en OneDrive; por ahora es localStorage).
-// ═══════════════════════════════════════════
-let gestiones = JSON.parse(localStorage.getItem('agenda_demo_gestiones')||'null');
-if(!gestiones){
-  const hoy2 = new Date().toISOString().split('T')[0];
-  const diasAtras2 = n => { const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString().split('T')[0]; };
-  gestiones = [
-    {id:1,pacienteKey:'carmen villarreal soto',paciente:'Carmen Villarreal Soto',fecha:diasAtras2(4),canal:'Llamada',resultado:'No contestó, se deja mensaje de voz',hechaPor:'recepcion',editada:false,historialEdiciones:[],eliminada:false,eliminadaPor:null,eliminadaEn:null},
-    {id:2,pacienteKey:'carmen villarreal soto',paciente:'Carmen Villarreal Soto',fecha:diasAtras2(2),canal:'WhatsApp',resultado:'Contestó — dice que agenda la próxima semana',hechaPor:'recepcion',editada:false,historialEdiciones:[],eliminada:false,eliminadaPor:null,eliminadaEn:null},
-  ];
-  guardarGestiones();
+// --- Bloqueos de agenda ---
+function bloqueoDesdeDb(r){
+  return { id:r.id, doctora:r.doctora, fecha:r.fecha, todoDia:!!r.todo_dia,
+    horaInicio:(r.hora_inicio||'').slice(0,5), horaFin:(r.hora_fin||'').slice(0,5),
+    motivo:r.motivo||'', creadoPor:r.creado_por, creadoEn:r.creado_en };
 }
-function guardarGestiones(){ localStorage.setItem('agenda_demo_gestiones', JSON.stringify(gestiones)); }
+function bloqueoHaciaDb(b){
+  return { id:b.id, doctora:b.doctora, fecha:b.fecha, todo_dia:!!b.todoDia,
+    hora_inicio:b.horaInicio||null, hora_fin:b.horaFin||null,
+    motivo:b.motivo||null, creado_por:b.creadoPor||null, creado_en:b.creadoEn };
+}
+async function cargarBloqueos(){
+  const { data, error } = await sb.from('bloqueos_agenda').select('*');
+  if(error){ toast('⚠ Error cargando bloqueos: '+error.message); bloqueos = []; return; }
+  bloqueos = (data||[]).map(bloqueoDesdeDb);
+}
+async function guardarBloqueos(){
+  if(!bloqueos.length) return;
+  const filas = bloqueos.map(bloqueoHaciaDb);
+  const { error } = await sb.from('bloqueos_agenda').upsert(filas, { onConflict:'id' });
+  if(error) toast('⚠ No se pudo guardar el bloqueo: '+error.message);
+}
 
-function reiniciarDatos(){
-  if(!confirm('¿Borrar los datos de prueba guardados en este navegador y recargar limpio?'))return;
-  localStorage.removeItem('agenda_demo_citas');
-  localStorage.removeItem('agenda_demo_gestiones');
-  location.reload();
+// --- Gestiones (CRM) ---
+function gestionDesdeDb(r){
+  return { id:r.id, pacienteKey:r.paciente_key, paciente:r.paciente, fecha:r.fecha,
+    canal:r.canal, resultado:r.resultado||'', hechaPor:r.hecha_por,
+    editada:!!r.editada, historialEdiciones:r.historial_ediciones||[],
+    eliminada:!!r.eliminada, eliminadaPor:r.eliminada_por, eliminadaEn:r.eliminada_en };
+}
+function gestionHaciaDb(g){
+  return { id:g.id, paciente_key:g.pacienteKey, paciente:g.paciente, fecha:g.fecha,
+    canal:g.canal, resultado:g.resultado||null, hecha_por:g.hechaPor||null,
+    editada:!!g.editada, historial_ediciones:g.historialEdiciones||[],
+    eliminada:!!g.eliminada, eliminada_por:g.eliminadaPor||null, eliminada_en:g.eliminadaEn||null };
+}
+async function cargarGestiones(){
+  const { data, error } = await sb.from('gestiones').select('*');
+  if(error){ toast('⚠ Error cargando gestiones: '+error.message); gestiones = []; return; }
+  gestiones = (data||[]).map(gestionDesdeDb);
+}
+async function guardarGestiones(){
+  if(!gestiones.length) return;
+  const filas = gestiones.map(gestionHaciaDb);
+  const { error } = await sb.from('gestiones').upsert(filas, { onConflict:'id' });
+  if(error) toast('⚠ No se pudo guardar la gestión: '+error.message);
 }
 
 let fechaActual = new Date().toISOString().split('T')[0];
@@ -1268,12 +1422,15 @@ function restaurarCita(id){
   toast('✓ Cita restaurada');
 }
 
-function eliminarCitaDefinitivo(id){
+async function eliminarCitaDefinitivo(id){
   const code = prompt('Código de seguridad para eliminar definitivamente:');
   if(code===null || code.trim()==='') return;
+  // NOTA: esta validación sigue siendo del lado del cliente (igual que en el
+  // prototipo) — pendiente de mover a una Edge Function server-side.
   if(code.trim()!==DELETE_SECURITY_CODE_AGENDA){ toast('⚠ Código incorrecto — no se eliminó'); return; }
+  const { error } = await sb.from('citas').delete().eq('id', id);
+  if(error){ toast('⚠ No se pudo eliminar en la nube: '+error.message); return; }
   citas = citas.filter(x=>x.id!==id);
-  guardarLocal();
   renderPapeleraAgenda();
   render();
   toast('✓ Cita eliminada permanentemente');
@@ -1585,23 +1742,11 @@ async function confirmarPago(){
 }
 
 // ═══════════════════════════════════════════
-// SESIÓN ACTUAL — simula el login real que vendrá después (perfiles + PIN).
-// Controla qué puede EDITAR cada quien y qué VE en el Cierre.
+// SESIÓN ACTUAL — ahora viene del login real (Supabase Auth + tabla
+// perfiles), no de un selector. 'recepcion' o el nombre exacto de la
+// doctora autenticada.
 // ═══════════════════════════════════════════
-let sesionActual = 'recepcion'; // 'recepcion' | nombre exacto de una doctora
-
-function initSesionSelect(){
-  const sel = document.getElementById('sesion-actual');
-  sel.innerHTML = `<option value="recepcion">👥 Sesión: Recepción</option>`;
-  DOCTORAS.forEach(d=>{ sel.innerHTML += `<option value="${esc(d)}">👩‍⚕️ Sesión: ${esc(d)}</option>`; });
-}
-function cambiarSesion(){
-  sesionActual = document.getElementById('sesion-actual').value || 'recepcion';
-  render();
-  if(document.getElementById('section-cierre').style.display!=='none') renderCierre();
-  if(document.getElementById('section-historico').style.display!=='none') renderHistorico();
-  if(document.getElementById('section-prm').style.display!=='none') renderPRM();
-}
+let sesionActual = 'recepcion';
 
 let fechaCierre = new Date().toISOString().split('T')[0];
 let modoCierre = 'dia'; // 'dia' | 'mes'
@@ -2441,7 +2586,7 @@ async function enviarNotificacionLlego(cita){
   }catch(e){ console.warn('No se pudo enviar la notificación de llegada:', e); }
 }
 
-inicializarFirebaseSiHayConfig();
+// (Firebase se inicializa después del login, dentro de iniciarAppDespuesDeLogin)
 
 // Mide el ancho REAL que necesita la PRIMERA línea del texto más largo
 // ("Semana del 13/07/2026"), para que ese texto se acomode en 2 renglones
@@ -2475,11 +2620,40 @@ function fijarAnchoEtiquetaFecha(){
   el.style.height = (lineHeightPx*2)+'px';
 }
 
-initSelects();
-initSesionSelect();
-defaultsHistorico();
-fijarAnchoEtiquetaFecha();
-cambiarVista('semana');
+// ═══════════════════════════════════════════
+// ARRANQUE REAL DE LA APP — se ejecuta solo después de un login
+// exitoso (con MFA si aplica). Carga doctoras, citas, horarios,
+// bloqueos y gestiones desde Supabase, y luego sí prende la UI.
+// ═══════════════════════════════════════════
+async function iniciarAppDespuesDeLogin(){
+  sesionActual = currentUser.rol === 'recepcion' ? 'recepcion' : currentUser.nombre;
+
+  // Doctoras activas (para selects, colores, horarios por defecto, etc.)
+  const { data: perfilesDoctoras, error: errDoc } = await sb
+    .from('perfiles').select('nombre').eq('rol','doctora').eq('activo', true);
+  if(errDoc){ mostrarErrorLogin('No se pudo cargar la lista de doctoras.'); return; }
+  DOCTORAS = (perfilesDoctoras||[]).map(p=>p.nombre);
+  DOCTORAS.forEach((d,i)=>COLOR_DOCTORA[d]=PALETA_DOTS[i%PALETA_DOTS.length]);
+
+  await Promise.all([ cargarCitas(), cargarHorarios(), cargarBloqueos(), cargarGestiones() ]);
+
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-root').style.display = '';
+  document.getElementById('header-sub-sesion').textContent =
+    currentUser.rol === 'recepcion' ? '👥 Sesión: Recepción' : '👩‍⚕️ Sesión: '+currentUser.nombre;
+
+  initSelects();
+  defaultsHistorico();
+  fijarAnchoEtiquetaFecha();
+  cambiarVista('semana');
+  inicializarFirebaseSiHayConfig();
+}
+
+// Si ya había una sesión abierta (recargaste la página), entra directo.
+(async function arrancar(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(session) await completarLoginYArrancarApp();
+})();
 
 // Aviso visible si algo truena en tiempo real (solo para esta fase de pruebas)
 window.addEventListener('error', (e)=>{
