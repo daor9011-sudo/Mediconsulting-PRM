@@ -5,8 +5,6 @@
 importScripts('https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging-compat.js');
 
-// ⚠ CONFIGURACIÓN PENDIENTE: pega aquí los MISMOS valores de FIREBASE_CONFIG
-// que pusiste en el archivo principal de la Agenda.
 firebase.initializeApp({
   apiKey: "AIzaSyBPi78epig3Axp0-n9w7e5sv5pB5Jx9n3E",
   authDomain: "notificaciones-de-agenda.firebaseapp.com",
@@ -18,12 +16,18 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Qué hacer cuando llega una notificación y la doctora NO tiene la pestaña abierta
+// Qué hacer cuando llega una notificación y la doctora NO tiene la pestaña abierta.
+// IMPORTANTE: usa la MISMA "tag" que la app usa en primer plano
+// (new Notification(titulo, {tag:'agenda-llego'})) — así, si por algún
+// estado ambiguo del navegador se llegan a disparar las dos rutas para el
+// mismo aviso, la segunda REEMPLAZA a la primera en vez de amontonarse
+// como dos notificaciones separadas.
 messaging.onBackgroundMessage((payload) => {
   const titulo = payload.notification?.title || 'Agenda';
   const opciones = {
     body: payload.notification?.body || '',
-    icon: '/icono-agenda.png' // opcional: pon aquí el logo de Mediconsulting si quieres
+    icon: '/icono-agenda.png', // opcional: pon aquí el logo de Mediconsulting si quieres
+    tag: 'agenda-llego'
   };
   self.registration.showNotification(titulo, opciones);
 });
