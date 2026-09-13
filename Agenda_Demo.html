@@ -2484,7 +2484,7 @@ function resetFormularioPersonal(){
 async function renderListaPersonal(){
   const cont = document.getElementById('personal-lista');
   cont.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--gray-400);">Cargando...</div>';
-  const { data, error } = await sb.from('perfiles').select('user_id,nombre,rol,es_admin,activo').order('rol').order('nombre');
+  const { data, error } = await sb.from('perfiles').select('user_id,nombre,rol,es_admin,activo,email').order('rol').order('nombre');
   if(error){ cont.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--danger);">Error cargando: ${esc(error.message)}</div>`; return; }
 
   cont.innerHTML = (data||[]).map(p=>`
@@ -2495,13 +2495,40 @@ async function renderListaPersonal(){
           ${p.es_admin?'<span style="font-size:9.5px;font-weight:700;color:#7D3C98;background:#F5F0FC;border:1px solid #D2B4DE;padding:1px 6px;border-radius:5px;margin-left:5px;">ADMIN</span>':''}
           ${p.activo===false?'<span style="font-size:9.5px;font-weight:700;color:var(--danger);background:#FDECEA;border:1px solid #F5C2BC;padding:1px 6px;border-radius:5px;margin-left:5px;">INACTIVA</span>':''}
         </div>
-        <div style="font-size:10.5px;color:var(--gray-400);">${p.rol==='recepcion'?(p.es_admin?'Administrador':'Recepción'):'Doctora'}</div>
+        <div style="font-size:10.5px;color:var(--gray-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.rol==='recepcion'?(p.es_admin?'Administrador':'Recepción'):'Doctora'} · ${esc(p.email||'sin correo registrado')}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
         <button class="btn btn-outline" style="font-size:10.5px;padding:5px 10px;" onclick="iniciarResetPasswordPersonal('${p.user_id}','${esc(p.nombre).replace(/'/g,"\\'")}')" title="Ponerle una contraseña temporal nueva">🔑</button>
         <button class="btn btn-outline" style="font-size:10.5px;padding:5px 10px;" onclick="iniciarEdicionPersonal('${p.user_id}')">Editar</button>
+        <button class="btn btn-outline" style="font-size:10.5px;padding:5px 10px;color:var(--danger);border-color:#F5C2BC;" onclick="iniciarEliminarPersonal('${p.user_id}','${esc(p.nombre).replace(/'/g,"\\'")}')" title="Eliminar esta cuenta para siempre">🗑</button>
       </div>
     </div>`).join('') || '<div style="padding:14px;font-size:12px;color:var(--gray-400);">Sin cuentas todavía.</div>';
+}
+
+function iniciarEliminarPersonal(userId, nombre){
+  if(userId === currentUser.id){ toast('⚠ No puedes eliminar tu propia cuenta'); return; }
+  mostrarConfirm({
+    titulo:'¿Eliminar esta cuenta para siempre?',
+    mensaje:`<strong>${esc(nombre)}</strong> perderá el acceso por completo y no podrá volver a iniciar sesión. Esta acción no se puede deshacer — a diferencia de desactivar, aquí la cuenta desaparece del todo.`,
+    textoConfirmar:'Sí, eliminar para siempre', icono:'🗑'
+  }, async ()=>{
+    const { data: { session } } = await sb.auth.getSession();
+    if(!session){ toast('⚠ Sesión expirada, vuelve a iniciar sesión'); return; }
+    try{
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/eliminar-perfil-personal`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` },
+        body: JSON.stringify({ targetUserId:userId })
+      });
+      const resultado = await resp.json();
+      if(!resp.ok){ toast('⚠ '+(resultado.error||'No se pudo eliminar')); return; }
+    }catch(e){
+      toast('⚠ Error de conexión: '+e.message);
+      return;
+    }
+    toast('🗑 Cuenta eliminada: '+nombre);
+    await renderListaPersonal();
+  });
 }
 
 async function iniciarEdicionPersonal(userId){
@@ -2673,6 +2700,10 @@ function formatearEntradaAuditoria(entry, mapaNombres){
 
   if(entry.tabla==='perfiles' && entry.accion==='INSERT'){
     return { icono:'👤', texto:`Creó el acceso de <strong>${esc(d.nombre||'—')}</strong> (${d.rol==='recepcion'?'Recepción':'Doctora'})` };
+  }
+
+  if(entry.tabla==='perfiles' && entry.accion==='DELETE'){
+    return { icono:'🗑️', texto:`Eliminó para siempre el acceso de <strong>${esc(d.nombre||'—')}</strong> (${d.email?esc(d.email):'sin correo registrado'})` };
   }
 
   if(entry.tabla==='perfiles' && entry.accion==='UPDATE'){
