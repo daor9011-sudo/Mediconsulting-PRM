@@ -1971,9 +1971,21 @@ function irHoy(){
 function initSelects(){
   const filD = document.getElementById('fil-doctora');
   const modD = document.getElementById('m-doctora');
+  // Se resetea a su estado base cada vez — initSelects() se vuelve a llamar
+  // después de crear/editar una doctora desde Personal, y sin este reset
+  // las opciones se irían duplicando cada vez.
+  filD.innerHTML = '<option value="">Todas las doctoras</option>';
+  modD.innerHTML = '';
   DOCTORAS.forEach(d=>{
     filD.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
     modD.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
+  });
+  // El filtro de la Agenda (para VER, no para crear citas nuevas) también
+  // incluye a las doctoras "de práctica" que solo existen en las citas
+  // (sin perfil real) — si no, no se podría filtrar la vista por ellas.
+  const soloEnCitas = [...new Set(citas.map(c=>c.doctora).filter(Boolean))].filter(d=>!DOCTORAS.includes(d));
+  soloEnCitas.forEach(d=>{
+    filD.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
   });
 }
 
@@ -2141,7 +2153,13 @@ function toggleMostrarCanceladas(){
 
 function renderWeek(){
   const filD = document.getElementById('fil-doctora').value;
-  const doctorasAMostrar = filD ? [filD] : DOCTORAS;
+  // "Todas las doctoras" debe incluir tanto a las que tienen perfil real
+  // (DOCTORAS) como a cualquier otro nombre que aparezca en las citas
+  // (ej. doctoras de práctica/demo sin cuenta de acceso) — si no, sus
+  // citas existen en la base de datos pero nunca se dibujan aquí.
+  const doctorasEnCitas = [...new Set(citas.map(c=>c.doctora).filter(Boolean))];
+  const todasLasDoctoras = [...new Set([...DOCTORAS, ...doctorasEnCitas])];
+  const doctorasAMostrar = filD ? [filD] : todasLasDoctoras;
   const modoTodas = !filD && doctorasAMostrar.length>1;
 
   const d0 = new Date(fechaActual+'T00:00:00');
@@ -4628,6 +4646,12 @@ async function iniciarAppDespuesDeLogin(){
   DOCTORAS.forEach((d,i)=>COLOR_DOCTORA[d]=PALETA_DOTS[i%PALETA_DOTS.length]);
 
   await Promise.all([ cargarCitas(), cargarHorarios(), cargarBloqueos(), cargarGestiones(), cargarCatalogoServicios() ]);
+  // A las doctoras "de práctica" (sin perfil real, solo texto en las citas)
+  // también les toca un color propio — si no, comparten el gris de
+  // respaldo y no se distinguen entre sí en la vista Semana.
+  [...new Set(citas.map(c=>c.doctora).filter(Boolean))].forEach(d=>{
+    if(!COLOR_DOCTORA[d]) COLOR_DOCTORA[d] = PALETA_DOTS[Object.keys(COLOR_DOCTORA).length % PALETA_DOTS.length];
+  });
   iniciarRealtime();
 
   document.getElementById('login-screen').style.display = 'none';
