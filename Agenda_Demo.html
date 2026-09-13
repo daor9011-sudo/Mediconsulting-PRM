@@ -948,12 +948,12 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     </div>
     <div class="form-group" id="personal-admin-wrap" style="display:none;">
       <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;">
-        <input type="checkbox" id="personal-es-admin"> Es administrador (puede borrar definitivamente y crear/editar accesos)
+        <input type="checkbox" id="personal-es-admin" style="width:auto;flex-shrink:0;"> Es administrador (puede borrar definitivamente y crear/editar accesos)
       </label>
     </div>
     <div class="form-group" id="personal-activo-wrap" style="display:none;">
       <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;">
-        <input type="checkbox" id="personal-activo" checked> Cuenta activa (si se desmarca, no podrá iniciar sesión)
+        <input type="checkbox" id="personal-activo" checked style="width:auto;flex-shrink:0;"> Cuenta activa (si se desmarca, no podrá iniciar sesión)
       </label>
     </div>
     <div id="personal-error" style="color:var(--danger);font-size:12px;margin-bottom:8px;"></div>
@@ -1028,7 +1028,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     </div>
     <div class="form-group" id="servicio-activo-wrap" style="display:none;">
       <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;">
-        <input type="checkbox" id="servicio-activo" checked> Activo (si se desmarca, ya no aparece para elegir)
+        <input type="checkbox" id="servicio-activo" checked style="width:auto;flex-shrink:0;"> Activo (si se desmarca, ya no aparece para elegir)
       </label>
     </div>
     <div id="servicio-error" style="color:var(--danger);font-size:12px;margin-bottom:8px;"></div>
@@ -2495,7 +2495,7 @@ async function renderListaPersonal(){
           ${p.es_admin?'<span style="font-size:9.5px;font-weight:700;color:#7D3C98;background:#F5F0FC;border:1px solid #D2B4DE;padding:1px 6px;border-radius:5px;margin-left:5px;">ADMIN</span>':''}
           ${p.activo===false?'<span style="font-size:9.5px;font-weight:700;color:var(--danger);background:#FDECEA;border:1px solid #F5C2BC;padding:1px 6px;border-radius:5px;margin-left:5px;">INACTIVA</span>':''}
         </div>
-        <div style="font-size:10.5px;color:var(--gray-400);">${p.rol==='recepcion'?'Recepción':'Doctora'}</div>
+        <div style="font-size:10.5px;color:var(--gray-400);">${p.rol==='recepcion'?(p.es_admin?'Administrador':'Recepción'):'Doctora'}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
         <button class="btn btn-outline" style="font-size:10.5px;padding:5px 10px;" onclick="iniciarResetPasswordPersonal('${p.user_id}','${esc(p.nombre).replace(/'/g,"\\'")}')" title="Ponerle una contraseña temporal nueva">🔑</button>
