@@ -4559,7 +4559,7 @@ async function iniciarAppDespuesDeLogin(){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-root').style.display = '';
   document.getElementById('header-sub-sesion').textContent =
-    currentUser.rol === 'recepcion' ? '👥 Recepción' : '👩‍⚕️ '+currentUser.nombre;
+    currentUser.rol === 'recepcion' ? (currentUser.esAdmin ? '👑 Administrador' : '👥 Recepción') : '👩‍⚕️ '+currentUser.nombre;
   document.getElementById('btn-personal-header').style.display = currentUser.esAdmin ? '' : 'none';
   document.getElementById('btn-auditoria-header').style.display = currentUser.esAdmin ? '' : 'none';
   document.getElementById('btn-servicios-header').style.display = currentUser.esAdmin ? '' : 'none';
