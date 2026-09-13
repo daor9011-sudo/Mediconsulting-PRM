@@ -393,6 +393,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   </div>
   <div class="header-right">
     <div class="header-sesion-info">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
       <span id="header-sub-sesion">—</span>
     </div>
     <div style="position:relative;">
@@ -4558,7 +4559,7 @@ async function iniciarAppDespuesDeLogin(){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-root').style.display = '';
   document.getElementById('header-sub-sesion').textContent =
-    currentUser.rol === 'recepcion' ? (currentUser.esAdmin ? '👑 Administrador' : '👥 Recepción') : '👩‍⚕️ '+currentUser.nombre;
+    currentUser.rol === 'recepcion' ? (currentUser.esAdmin ? 'Administrador' : 'Recepción') : currentUser.nombre;
   document.getElementById('btn-personal-header').style.display = currentUser.esAdmin ? '' : 'none';
   document.getElementById('btn-auditoria-header').style.display = currentUser.esAdmin ? '' : 'none';
   document.getElementById('btn-servicios-header').style.display = currentUser.esAdmin ? '' : 'none';
