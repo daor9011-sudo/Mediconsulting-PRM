@@ -271,6 +271,10 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .hist-filtro-link{display:flex;align-items:center;gap:5px;color:var(--gray-600);cursor:pointer;}
 .hist-filtro-link input{width:13px;height:13px;margin:0;}
 .hist-filtro-link:has(input:checked){color:#0F6E56;text-decoration:underline;font-weight:700;}
+.switch-personal{position:relative;width:34px;height:19px;background:var(--gray-200);border-radius:99px;flex-shrink:0;cursor:pointer;transition:background .15s;}
+.switch-personal.activo{background:var(--gold);}
+.switch-personal-bolita{position:absolute;top:2px;left:2px;width:15px;height:15px;background:#fff;border-radius:50%;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,0.2);}
+.switch-personal.activo .switch-personal-bolita{left:17px;}
 
 .campo-elegir-servicio{border:1px solid var(--gray-200);border-radius:7px;padding:9px 12px;font-size:12.5px;color:var(--gray-400);cursor:pointer;font-weight:600;}
 .campo-elegir-servicio:hover{border-color:var(--gold-light);color:var(--gold);}
@@ -2481,72 +2485,45 @@ function resetFormularioPersonal(){
   document.getElementById('personal-btn-cancelar-edicion').style.display = 'none';
 }
 
-let mostrarInactivosPersonal = false;
-
 async function renderListaPersonal(){
   const cont = document.getElementById('personal-lista');
   cont.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--gray-400);">Cargando...</div>';
   const { data, error } = await sb.from('perfiles').select('user_id,nombre,rol,es_admin,activo,email').order('rol').order('nombre');
   if(error){ cont.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--danger);">Error cargando: ${esc(error.message)}</div>`; return; }
 
-  const todos = data || [];
-  const inactivos = todos.filter(p=>p.activo===false);
-  const visibles = mostrarInactivosPersonal ? todos : todos.filter(p=>p.activo!==false);
-
-  const filas = visibles.map(p=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid var(--gray-100);gap:8px;">
-      <div style="min-width:0;">
-        <div style="font-size:12.5px;font-weight:700;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-          ${esc(p.nombre)}
-          ${p.es_admin?'<span style="font-size:9.5px;font-weight:700;color:#7D3C98;background:#F5F0FC;border:1px solid #D2B4DE;padding:1px 6px;border-radius:5px;margin-left:5px;">ADMIN</span>':''}
-          ${p.activo===false?'<span style="font-size:9.5px;font-weight:700;color:var(--gray-400);background:var(--gray-100);border:1px solid var(--gray-200);padding:1px 6px;border-radius:5px;margin-left:5px;">OCULTA</span>':''}
+  cont.innerHTML = (data||[]).map(p=>{
+    const activa = p.activo !== false;
+    return `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid var(--gray-100);gap:10px;${activa?'':'opacity:0.55;'}">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+        <div class="switch-personal ${activa?'activo':''}" onclick="toggleActivoPersonalSwitch('${p.user_id}')" title="${activa?'Cuenta activa — clic para inactivar':'Cuenta inactiva — clic para reactivar'}"><div class="switch-personal-bolita"></div></div>
+        <div style="min-width:0;">
+          <div style="font-size:12.5px;font-weight:700;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${esc(p.nombre)}
+            ${p.es_admin?'<span style="font-size:9.5px;font-weight:700;color:#7D3C98;background:#F5F0FC;border:1px solid #D2B4DE;padding:1px 6px;border-radius:5px;margin-left:5px;">ADMIN</span>':''}
+          </div>
+          <div style="font-size:10.5px;color:var(--gray-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.rol==='recepcion'?(p.es_admin?'Administrador':'Recepción'):'Doctora'} · ${esc(p.email||'sin correo registrado')}</div>
         </div>
-        <div style="font-size:10.5px;color:var(--gray-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.rol==='recepcion'?(p.es_admin?'Administrador':'Recepción'):'Doctora'} · ${esc(p.email||'sin correo registrado')}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
         <button class="btn btn-outline" style="font-size:10.5px;padding:5px 10px;" onclick="iniciarResetPasswordPersonal('${p.user_id}','${esc(p.nombre).replace(/'/g,"\\'")}')" title="Ponerle una contraseña temporal nueva">🔑</button>
         <button class="btn btn-outline" style="font-size:10.5px;padding:5px 10px;" onclick="iniciarEdicionPersonal('${p.user_id}')">Editar</button>
-        ${p.activo===false
-          ? `<button class="btn btn-outline" style="font-size:10.5px;padding:5px 10px;color:var(--success);border-color:#A8D8B4;" onclick="iniciarReactivarPersonal('${p.user_id}','${esc(p.nombre).replace(/'/g,"\\'")}')">↺ Reactivar</button>`
-          : `<button class="btn btn-outline" style="font-size:10.5px;padding:5px 10px;color:var(--gray-600);" onclick="iniciarOcultarPersonal('${p.user_id}','${esc(p.nombre).replace(/'/g,"\\'")}')" title="Quitarla de la lista — no borra ninguna información">🙈</button>`}
+        <button class="btn btn-outline" style="font-size:10.5px;padding:5px 8px;color:var(--danger);border-color:#F5C2BC;" onclick="iniciarEliminarPersonal('${p.user_id}','${esc(p.nombre).replace(/'/g,"\\'")}')" title="Eliminar esta cuenta para siempre">🗑</button>
       </div>
-    </div>`).join('') || '<div style="padding:14px;font-size:12px;color:var(--gray-400);">Sin cuentas todavía.</div>';
-
-  const pieToggle = inactivos.length ? `
-    <div style="padding:9px 12px;text-align:center;background:var(--gray-50);">
-      <span style="font-size:11px;color:var(--gold);text-decoration:underline;cursor:pointer;" onclick="mostrarInactivosPersonal=!mostrarInactivosPersonal; renderListaPersonal();">
-        ${mostrarInactivosPersonal ? 'Ocultar de nuevo las cuentas ocultas' : `👁 Mostrar ${inactivos.length} cuenta(s) oculta(s)`}
-      </span>
-    </div>` : '';
-
-  cont.innerHTML = filas + pieToggle;
+    </div>`;
+  }).join('') || '<div style="padding:14px;font-size:12px;color:var(--gray-400);">Sin cuentas todavía.</div>';
 }
 
-// Quitar de la lista NO borra nada — solo bloquea el login y la saca de
-// la vista normal. Todo su historial (citas, gestiones, auditoría) sigue
-// intacto, porque esos registros guardan el nombre como texto, no un
-// enlace directo a esta cuenta. Se puede reactivar cuando sea.
-function iniciarOcultarPersonal(userId, nombre){
-  mostrarConfirm({
-    titulo:'¿Quitar de la lista?',
-    mensaje:`<strong>${esc(nombre)}</strong> ya no podrá iniciar sesión ni aparecerá en la lista normal. <u>No se borra ninguna información</u> — sus citas, gestiones e historial siguen intactos, y puedes reactivarla cuando quieras desde "Mostrar cuentas ocultas".`,
-    textoConfirmar:'Sí, quitar de la lista', icono:'🙈'
-  }, async ()=>{
-    const { data: p, error: errBusqueda } = await sb.from('perfiles').select('nombre,rol,es_admin').eq('user_id', userId).single();
-    if(errBusqueda || !p){ toast('⚠ No se pudo cargar ese perfil'); return; }
-    await guardarCambioActivoPersonal(userId, p.nombre, p.rol, p.es_admin, false, '🙈 Quitada de la lista: ');
-  });
-}
-function iniciarReactivarPersonal(userId, nombre){
-  mostrarConfirm({
-    titulo:'¿Reactivar esta cuenta?',
-    mensaje:`<strong>${esc(nombre)}</strong> podrá volver a iniciar sesión y reaparecerá en la lista normal.`,
-    textoConfirmar:'Sí, reactivar', icono:'↺'
-  }, async ()=>{
-    const { data: p, error: errBusqueda } = await sb.from('perfiles').select('nombre,rol,es_admin').eq('user_id', userId).single();
-    if(errBusqueda || !p){ toast('⚠ No se pudo cargar ese perfil'); return; }
-    await guardarCambioActivoPersonal(userId, p.nombre, p.rol, p.es_admin, true, '↺ Reactivada: ');
-  });
+// El switch inactiva/reactiva al vuelo — no borra nada, solo bloquea el
+// login. Todo el historial (citas, gestiones, auditoría) sigue intacto,
+// porque esos registros guardan el nombre como texto, no un enlace
+// directo a esta cuenta.
+async function toggleActivoPersonalSwitch(userId){
+  const { data: p, error: errBusqueda } = await sb.from('perfiles').select('nombre,rol,es_admin,activo').eq('user_id', userId).single();
+  if(errBusqueda || !p){ toast('⚠ No se pudo cargar ese perfil'); return; }
+  const nuevoActivo = p.activo === false;
+  if(userId === currentUser.id && !nuevoActivo){ toast('⚠ No puedes inactivar tu propia cuenta'); return; }
+  await guardarCambioActivoPersonal(userId, p.nombre, p.rol, p.es_admin, nuevoActivo, nuevoActivo ? '↺ Reactivada: ' : '⏸ Inactivada: ');
 }
 async function guardarCambioActivoPersonal(userId, nombre, rol, esAdmin, activo, mensajeExito){
   const { data: { session } } = await sb.auth.getSession();
@@ -2565,6 +2542,36 @@ async function guardarCambioActivoPersonal(userId, nombre, rol, esAdmin, activo,
   }
   toast(mensajeExito+nombre);
   await renderListaPersonal();
+}
+
+// Eliminar SÍ borra la cuenta de acceso para siempre (Auth + su fila en
+// "perfiles"). Es seguro para el historial: las citas, gestiones y
+// auditoría guardan el nombre como texto plano, no enlazado a esta
+// cuenta, así que nada de eso se pierde ni se ve afectado.
+function iniciarEliminarPersonal(userId, nombre){
+  if(userId === currentUser.id){ toast('⚠ No puedes eliminar tu propia cuenta'); return; }
+  mostrarConfirm({
+    titulo:'¿Eliminar esta cuenta para siempre?',
+    mensaje:`<strong>${esc(nombre)}</strong> perderá el acceso por completo y no podrá volver a iniciar sesión — esto no se puede deshacer. Su historial de citas, gestiones y auditoría <strong>no se ve afectado</strong>, se queda igual.`,
+    textoConfirmar:'Sí, eliminar para siempre', icono:'🗑'
+  }, async ()=>{
+    const { data: { session } } = await sb.auth.getSession();
+    if(!session){ toast('⚠ Sesión expirada, vuelve a iniciar sesión'); return; }
+    try{
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/eliminar-perfil-personal`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` },
+        body: JSON.stringify({ targetUserId:userId })
+      });
+      const resultado = await resp.json();
+      if(!resp.ok){ toast('⚠ '+(resultado.error||'No se pudo eliminar')); return; }
+    }catch(e){
+      toast('⚠ Error de conexión: '+e.message);
+      return;
+    }
+    toast('🗑 Cuenta eliminada: '+nombre);
+    await renderListaPersonal();
+  });
 }
 
 async function iniciarEdicionPersonal(userId){
