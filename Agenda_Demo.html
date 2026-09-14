@@ -1606,12 +1606,18 @@ async function cargarCitas(){
   citas = (data||[]).map(citaDesdeDb);
 }
 
-// Guarda TODAS las citas en memoria hacia Supabase (upsert por id).
+// Guarda SOLO la(s) cita(s) que realmente se modificaron (una, o un
+// arreglo). Antes guardaba TODO el arreglo de memoria de un jalón — eso
+// dejó de funcionar en cuanto las doctoras empezaron a ver también las
+// citas de sus colegas: el envío intentaba re-guardar filas ajenas sin
+// permiso de escritura, y Supabase rechazaba el paquete COMPLETO —
+// incluyendo el cambio real de quien lo hizo.
 // Nota: el borrado definitivo (fuera del array) se hace aparte, en
 // eliminarCitaDefinitivo(), con un DELETE explícito.
-async function guardarLocal(){
-  if(!citas.length) return;
-  const filas = citas.map(citaHaciaDb);
+async function guardarLocal(citaOCitas){
+  const lista = citaOCitas ? (Array.isArray(citaOCitas) ? citaOCitas : [citaOCitas]) : citas;
+  if(!lista.length) return;
+  const filas = lista.map(citaHaciaDb);
   const { error } = await sb.from('citas').upsert(filas, { onConflict:'id' });
   if(error) toast('⚠ No se pudo guardar en la nube: '+error.message);
 }
@@ -2391,7 +2397,7 @@ function avanzarEstado(id, estadoClic){
   }
   // Click en el estado actual o uno anterior no hace nada raro: permite retroceder también
   c.estado = estadoClic;
-  guardarLocal();
+  guardarLocal(c);
   render();
   toast('Estado actualizado: '+ESTADO_LABEL[estadoClic]);
   if(eraLlegoNuevo) enviarNotificacionLlego(c);
@@ -2414,7 +2420,7 @@ function elegirDejarCancelada(){
   const c = citas.find(x=>x.id===citaCancelarId);
   if(!c)return;
   c.cancelada = true;
-  guardarLocal();
+  guardarLocal(c);
   cerrarModalCancelar();
   render();
   toast('Cita cancelada');
@@ -2437,7 +2443,7 @@ function marcarFacturada(id){
     if(folio===null) return; // canceló
     c.facturada = true;
     c.numeroFactura = folio.trim() || null;
-    guardarLocal();
+    guardarLocal(c);
     render();
     if(document.getElementById('section-historico').style.display!=='none') renderHistorico();
     toast('✓ Marcada como facturada');
@@ -2463,7 +2469,7 @@ function editarNumeroFactura(id){
       c.numeroFactura = folioLimpio;
       toast('✓ Folio actualizado');
     }
-    guardarLocal();
+    guardarLocal(c);
     render();
     if(document.getElementById('section-historico').style.display!=='none') renderHistorico();
   });
@@ -2474,7 +2480,7 @@ function reactivarCita(id){
   if(!c)return;
   mostrarConfirm({titulo:'¿Reactivar esta cita?', mensaje:'Vuelve a quedar como estaba antes de cancelarla, en el mismo día y hora.', textoConfirmar:'Sí, reactivar', icono:'↺'}, ()=>{
     c.cancelada = false;
-    guardarLocal();
+    guardarLocal(c);
     render();
     toast('✓ Cita reactivada — sigue igual que antes de cancelarla');
   });
@@ -2974,7 +2980,7 @@ function eliminarCita(id){
     c.deleted = true;
     c.deletedAt = new Date().toISOString();
     c.deletedBy = sesionActual;
-    guardarLocal();render();
+    guardarLocal(c);render();
     toast('Cita eliminada (disponible en la Papelera)');
   });
 }
@@ -2995,7 +3001,7 @@ function restaurarCita(id){
   const c = citas.find(x=>x.id===id);
   if(!c)return;
   delete c.deleted; delete c.deletedAt; delete c.deletedBy;
-  guardarLocal();
+  guardarLocal(c);
   renderPapeleraAgenda();
   render();
   toast('✓ Cita restaurada');
@@ -3161,7 +3167,7 @@ function marcarNoLlego(id){
     textoConfirmar:'Sí, no llegó', icono:'👻'
   }, ()=>{
     c.noLlego = true;
-    guardarLocal();
+    guardarLocal(c);
     render();
     if(document.getElementById('section-historico').style.display!=='none') renderHistorico();
     toast('👻 Marcado como "No llegó"');
@@ -3255,15 +3261,19 @@ function guardarCita(){
 
 function guardarCitaFinal(datos){
   const {fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,notas} = datos;
+  let citaGuardada;
   if(modalEditId){
     const c = citas.find(x=>x.id===modalEditId);
     Object.assign(c,{fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,notas});
+    citaGuardada = c;
     toast('✓ Cita actualizada');
   }else{
-    citas.push({id:Date.now(),fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,notas,estado:nuevaEsSinCita?'llego':'agendado',sinCita:nuevaEsSinCita,cancelada:false,noLlego:false,pagado:false,montoPagado:0,medioPago:'',montoPagado2:null,medioPago2:null,saldoPendiente:0,requiereFactura:false,facturada:false,numeroFactura:null,terminalPago:null,terminalPago2:null,terminalPorServicio:null});
+    const nueva = {id:Date.now(),fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,notas,estado:nuevaEsSinCita?'llego':'agendado',sinCita:nuevaEsSinCita,cancelada:false,noLlego:false,pagado:false,montoPagado:0,medioPago:'',montoPagado2:null,medioPago2:null,saldoPendiente:0,requiereFactura:false,facturada:false,numeroFactura:null,terminalPago:null,terminalPago2:null,terminalPorServicio:null};
+    citas.push(nueva);
+    citaGuardada = nueva;
     toast('✓ Cita agendada');
   }
-  guardarLocal();
+  guardarLocal(citaGuardada);
   cerrarModal();
   fechaActual = fecha;
   render();
@@ -3688,7 +3698,7 @@ async function ejecutarPago(c, datos){
   c.requiereFactura = !!requiereFactura;
   c.facturada = false;
   c.estado = 'final'; // procesar el pago (aunque quede pendiente de cobro) completa el flujo
-  guardarLocal();
+  guardarLocal(c);
 
   const montoTotal = montoTotalPagado(c);
   const medioTexto = medioPagoTexto(c);
