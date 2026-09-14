@@ -1141,7 +1141,19 @@ function aplicarCambioRealtimeCita(payload){
   if(payload.eventType==='DELETE'){
     citas = citas.filter(c=>c.id!==payload.old.id);
   }else{
-    const actualizada = citaDesdeDb(payload.new);
+    let actualizada = citaDesdeDb(payload.new);
+    // Realtime escucha la TABLA real, no la vista que enmascara — así que
+    // si soy doctora y esta cita es de otra, tapo el dinero aquí también
+    // (por si el evento llegara a traer la fila sin enmascarar).
+    const veoElDineroDeEsta = sesionActual==='recepcion' || actualizada.doctora===sesionActual;
+    if(!veoElDineroDeEsta){
+      actualizada = { ...actualizada,
+        precio:null, descuentoPct:null, cortesia:null, montoPagado:null, medioPago:'',
+        montoPagado2:null, medioPago2:null, terminalPago:null, terminalPago2:null,
+        terminalPorServicio:null, saldoPendiente:null, requiereFactura:null, facturada:null,
+        numeroFactura:null
+      };
+    }
     const anterior = citas.find(c=>c.id===actualizada.id);
 
     // Alimenta la campanita de actividad cuando detecta una transición
@@ -1150,7 +1162,7 @@ function aplicarCambioRealtimeCita(payload){
       if(actualizada.estado==='llego' && anterior.estado!=='llego'){
         agregarActividad(`🚶 <strong>${esc(actualizada.paciente)}</strong> llegó — ${esc(actualizada.doctora)}`);
       }
-      if(actualizada.pagado && !anterior.pagado){
+      if(veoElDineroDeEsta && actualizada.pagado && !anterior.pagado){
         const monto = montoTotalPagado(actualizada);
         agregarActividad(`💳 Pago procesado — <strong>${esc(actualizada.paciente)}</strong>, $${monto.toLocaleString('es-MX',{minimumFractionDigits:2})}`);
       }
@@ -1586,7 +1598,10 @@ function montoPorMedio(lista, medio){
 }
 
 async function cargarCitas(){
-  const { data, error } = await sb.from('citas').select('*');
+  // Se lee de la VISTA (citas_agenda), no de la tabla directa — la vista
+  // ya se encarga de tapar el dinero de las citas que no son de quien
+  // pregunta. Guardar/editar sigue yendo a la tabla real (más abajo).
+  const { data, error } = await sb.from('citas_agenda').select('*');
   if(error){ toast('⚠ Error cargando citas: '+error.message); citas = []; return; }
   citas = (data||[]).map(citaDesdeDb);
 }
@@ -2078,10 +2093,11 @@ function render(){
           ${c.sinCita?'<span style="font-size:10.5px;font-weight:700;color:#1B5C9E;background:#EEF5FC;border:1px solid #BDD5F0;padding:3px 9px;border-radius:6px;">🚶 Sin cita</span>':''}
           ${c.cancelada?'<span class="cancel-tag">✕ Cancelada</span>':''}
           ${c.noLlego?'<span style="font-size:10.5px;font-weight:700;color:#7D3C98;background:#F5EEF8;border:1px solid #D9B3D9;padding:3px 9px;border-radius:6px;">👻 No llegó</span>':''}
-          ${c.pagado?(c.cortesia?`<span style="font-size:10.5px;font-weight:700;color:#7D3C98;background:#F5F0FC;border:1px solid #D2B4DE;padding:3px 9px;border-radius:6px;">🎁 Procesado — Cortesía</span>`:`<span style="font-size:10.5px;font-weight:700;color:var(--success);background:#EEF8F1;border:1px solid #A8D8B4;padding:3px 9px;border-radius:6px;">✓ Procesado — $${montoTotalPagado(c).toLocaleString('es-MX',{minimumFractionDigits:2})} (${esc(medioPagoTexto(c))})</span>`):''}
+          ${c.pagado?(c.precio===null?`<span style="font-size:10.5px;font-weight:700;color:var(--success);background:#EEF8F1;border:1px solid #A8D8B4;padding:3px 9px;border-radius:6px;">✓ Procesado</span>`:(c.cortesia?`<span style="font-size:10.5px;font-weight:700;color:#7D3C98;background:#F5F0FC;border:1px solid #D2B4DE;padding:3px 9px;border-radius:6px;">🎁 Procesado — Cortesía</span>`:`<span style="font-size:10.5px;font-weight:700;color:var(--success);background:#EEF8F1;border:1px solid #A8D8B4;padding:3px 9px;border-radius:6px;">✓ Procesado — $${montoTotalPagado(c).toLocaleString('es-MX',{minimumFractionDigits:2})} (${esc(medioPagoTexto(c))})</span>`)):''}
           ${c.pagado && c.saldoPendiente>0?`<span style="font-size:10.5px;font-weight:700;color:#9A6010;background:#FDF6EC;border:1px solid #EDD49A;padding:3px 9px;border-radius:6px;">💰 Pago pdte. — $${Number(c.saldoPendiente).toLocaleString('es-MX',{minimumFractionDigits:2})}</span>`:''}
         </div>
         <div class="cita-actions">
+          ${(sesionActual==='recepcion' || c.doctora===sesionActual) ? `
           ${(!c.cancelada && !c.pagado && !c.noLlego)?`<button class="btn-sm" style="background:#EEF8F1;color:var(--success);border:1px solid #A8D8B4;" onclick="abrirPagoModal(${c.id})">💳 Procesar pago</button>`:''}
           <button class="btn-sm btn-sm-edit" onclick="abrirModal(${c.id})">✎ Editar</button>
           ${!c.cancelada?`<button class="btn-sm btn-sm-cancel" onclick="cancelarCita(${c.id})">⊘ Cancelar</button>`:''}
@@ -2090,6 +2106,7 @@ function render(){
           ${sesionActual==='recepcion'
             ? `<button class="btn-sm btn-sm-del" onclick="eliminarCita(${c.id})">🗑 Eliminar</button>`
             : `<button class="btn-sm" style="background:#EEF5FC;color:#1B5C9E;border:1px solid #BDD5F0;" onclick="abrirReagendar(${c.id})">📅 Reagendar</button>`}
+          ` : `<span style="font-size:10.5px;color:var(--gray-400);font-style:italic;">🔒 Solo lectura — es de ${esc(c.doctora)}</span>`}
         </div>
         ${c.notas?`<div style="font-size:11.5px;color:var(--gray-400);width:100%;margin-top:-2px;margin-bottom:6px;">${esc(c.notas)}</div>`:''}
       </div>
@@ -2345,6 +2362,10 @@ function abrirNuevaCitaEnSlot(fecha, hora, doctora){
 function avanzarEstado(id, estadoClic){
   const c = citas.find(x=>x.id===id);
   if(!c || c.cancelada) return;
+  if(sesionActual!=='recepcion' && c.doctora!==sesionActual){
+    toast('🔒 Esta cita es de '+c.doctora+' — solo puede modificarla ella o recepción');
+    return;
+  }
   if(c.noLlego && estadoClic!=='llego'){
     toast('⚠ Este paciente fue marcado "No llegó" — solo puede pasar a "Llegó" si se presenta después');
     return;
