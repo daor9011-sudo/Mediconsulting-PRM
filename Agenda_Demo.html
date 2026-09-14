@@ -328,7 +328,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <div style="margin-bottom:10px;">
         <label style="display:block;font-size:11.5px;font-weight:600;color:var(--gray-600);margin-bottom:4px;">Contraseña</label>
         <div style="position:relative;">
-          <input type="password" id="login-password" style="width:100%;padding:10px;padding-right:38px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')intentarLogin();">
+          <input type="password" id="login-password" autocomplete="current-password" style="width:100%;padding:10px;padding-right:38px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')intentarLogin();">
           <button type="button" onclick="toggleLoginOjo()" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;color:var(--gray-400);display:flex;" id="login-toggle-ojo"></button>
         </div>
       </div>
@@ -372,7 +372,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <div style="margin-bottom:14px;">
         <label style="display:block;font-size:11.5px;font-weight:600;color:var(--gray-600);margin-bottom:4px;">Contraseña nueva</label>
         <div style="position:relative;">
-          <input type="password" id="nueva-password" style="width:100%;padding:10px;padding-right:38px;box-sizing:border-box;">
+          <input type="password" id="nueva-password" autocomplete="new-password" style="width:100%;padding:10px;padding-right:38px;box-sizing:border-box;">
           <button type="button" onclick="toggleNuevaPasswordOjo()" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;color:var(--gray-400);display:flex;" id="nueva-password-toggle-ojo"></button>
         </div>
       </div>
@@ -964,7 +964,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     <div class="form-group" id="personal-password-wrap">
       <label>Contraseña temporal</label>
       <div style="position:relative;">
-        <input type="password" id="personal-password" style="width:100%;box-sizing:border-box;padding-right:38px;">
+        <input type="password" id="personal-password" autocomplete="new-password" style="width:100%;box-sizing:border-box;padding-right:38px;">
         <button type="button" onclick="togglePersonalOjo()" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;color:var(--gray-400);" id="personal-toggle-ojo"></button>
       </div>
       <div style="font-size:10.5px;color:var(--gray-400);margin-top:4px;">Compártela con la persona por un medio seguro — puede cambiarla después desde su propia cuenta.</div>
@@ -1110,7 +1110,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-06';
+const APP_VERSION = '2026-09-14-07';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
