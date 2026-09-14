@@ -545,15 +545,20 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   <div id="section-historico" style="display:none">
 
     <div class="filter-bar" style="align-items:flex-end;">
+      <div class="form-group" style="margin:0;display:flex;flex-direction:column;">
+        <label class="hist-filter-label">&nbsp;</label>
+        <div style="display:flex;gap:4px;">
+          <button class="day-nav-btn" onclick="cambiarPeriodoHistorico(-1)" title="Un día antes">‹</button>
+          <button class="day-nav-btn" onclick="cambiarPeriodoHistorico(1)" title="Un día después">›</button>
+        </div>
+      </div>
       <div class="form-group" style="margin:0;">
         <label class="hist-filter-label">Desde</label>
-        <input type="date" id="hist-desde" onchange="actualizarFmtHistorico()">
-        <span id="hist-desde-fmt" class="hist-filter-fmt"></span>
+        <input type="date" id="hist-desde" onchange="aplicarFiltroHistorico()">
       </div>
       <div class="form-group" style="margin:0;">
         <label class="hist-filter-label">Hasta</label>
-        <input type="date" id="hist-hasta" onchange="actualizarFmtHistorico()">
-        <span id="hist-hasta-fmt" class="hist-filter-fmt"></span>
+        <input type="date" id="hist-hasta" onchange="aplicarFiltroHistorico()">
       </div>
       <div class="form-group" style="margin:0;">
         <label class="hist-filter-label">Paciente</label>
@@ -1110,7 +1115,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-08';
+const APP_VERSION = '2026-09-14-09';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -4095,17 +4100,24 @@ function defaultsHistorico(){
   const hoy = new Date();
   document.getElementById('hist-desde').value = fechaLocalISO(hoy);
   document.getElementById('hist-hasta').value = fechaLocalISO(hoy);
-  actualizarFmtHistorico();
 }
 
-function actualizarFmtHistorico(){
-  const desde = document.getElementById('hist-desde').value;
-  const hasta = document.getElementById('hist-hasta').value;
-  document.getElementById('hist-desde-fmt').textContent = desde ? fmtDDMMYYYY(desde) : '';
-  document.getElementById('hist-hasta-fmt').textContent = hasta ? fmtDDMMYYYY(hasta) : '';
-}
+function aplicarFiltroHistorico(){ renderHistorico(); }
 
-function aplicarFiltroHistorico(){ actualizarFmtHistorico(); renderHistorico(); }
+// Mueve el rango completo (Desde y Hasta) un día hacia adelante o atrás,
+// conservando el ancho del rango — si están en el mismo día, simplemente
+// avanza/retrocede un día; si es una semana, mueve la semana completa.
+function cambiarPeriodoHistorico(delta){
+  const elDesde = document.getElementById('hist-desde');
+  const elHasta = document.getElementById('hist-hasta');
+  const desde = elDesde.value ? new Date(elDesde.value+'T00:00:00') : new Date();
+  const hasta = elHasta.value ? new Date(elHasta.value+'T00:00:00') : new Date();
+  desde.setDate(desde.getDate()+delta);
+  hasta.setDate(hasta.getDate()+delta);
+  elDesde.value = fechaLocalISO(desde);
+  elHasta.value = fechaLocalISO(hasta);
+  aplicarFiltroHistorico();
+}
 
 // Los 4 filtros especiales de Histórico son mutuamente excluyentes — no
 // tiene sentido combinarlos (ej. "Facturado" + "Facturas pendientes" a la
