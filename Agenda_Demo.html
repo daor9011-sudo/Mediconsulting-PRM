@@ -700,6 +700,12 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <label style="margin:0;" for="m-cortesia">Es cortesía (sin cobro)</label>
     </div>
     <div id="m-precio-final" style="font-size:12px;color:var(--gray-600);margin:-4px 0 12px;font-weight:600;"></div>
+    <div class="form-group" id="m-requiere-factura-wrap" style="display:none;background:var(--gray-50);border-radius:8px;padding:10px 12px;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;margin:0;">
+        <input type="checkbox" id="m-requiere-factura" style="width:auto;flex-shrink:0;"> Requiere factura
+      </label>
+      <div style="font-size:10.5px;color:var(--gray-400);margin-top:3px;">Se puede activar o desactivar en cualquier momento, aunque la cita ya esté pagada — el folio se sigue capturando desde Histórico.</div>
+    </div>
     <div class="form-group"><label>Notas (opcional)</label><textarea id="m-notas" rows="2" style="width:100%;font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:6px;"></textarea></div>
     <div class="modal-footer">
       <button class="btn btn-gold" onclick="guardarCita()">✓ Guardar</button>
@@ -1091,7 +1097,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-01';
+const APP_VERSION = '2026-09-14-02';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2485,21 +2491,6 @@ function elegirReprogramar(){
   abrirModal(id); // la cita NO se marca como cancelada — solo se reagenda
 }
 
-function activarRequiereFactura(id){
-  const c = citas.find(x=>x.id===id);
-  if(!c)return;
-  mostrarConfirm({
-    titulo:'¿Marcar que sí requiere factura?',
-    mensaje:`<strong>${esc(c.paciente)}</strong> no pidió factura al momento de pagar — si ahora sí la necesita, se marca como pendiente de facturar (podrás capturar el folio después).`,
-    textoConfirmar:'Sí, marcar', icono:'🧾'
-  }, ()=>{
-    c.requiereFactura = true;
-    guardarLocal(c);
-    render();
-    if(document.getElementById('section-historico').style.display!=='none') renderHistorico();
-    toast('🧾 Marcada como pendiente de facturar');
-  });
-}
 function marcarFacturada(id){
   const c = citas.find(x=>x.id===id);
   if(!c)return;
@@ -3190,6 +3181,8 @@ function abrirModal(id, sinCita){
     renderChipsServicioCita();
     document.getElementById('m-descuento').value = c.descuentoPct||'';
     document.getElementById('m-cortesia').checked = !!c.cortesia;
+    document.getElementById('m-requiere-factura-wrap').style.display = c.pagado ? '' : 'none';
+    document.getElementById('m-requiere-factura').checked = !!c.requiereFactura;
     document.getElementById('m-notas').value = c.notas||'';
     aplicarBloqueoDinero(puedeEditarDinero(!!c.sinCita, c.doctora));
     const btnCancelar = document.getElementById('btn-cancelar-cita-modal');
@@ -3208,6 +3201,8 @@ function abrirModal(id, sinCita){
     renderChipsServicioCita();
     document.getElementById('m-descuento').value = '';
     document.getElementById('m-cortesia').checked = false;
+    document.getElementById('m-requiere-factura-wrap').style.display = 'none';
+    document.getElementById('m-requiere-factura').checked = false;
     document.getElementById('m-notas').value = nuevaEsSinCita ? 'Paciente sin cita — llegó directo a recepción' : '';
     aplicarBloqueoDinero(puedeEditarDinero(nuevaEsSinCita));
     document.getElementById('btn-cancelar-cita-modal').style.display = 'none';
@@ -3297,6 +3292,7 @@ function guardarCita(){
   const precio = parseFloat(document.getElementById('m-precio').value)||0;
   const descuentoPct = parseFloat(document.getElementById('m-descuento').value)||0;
   const cortesia = document.getElementById('m-cortesia').checked;
+  const requiereFactura = document.getElementById('m-requiere-factura').checked;
   const notas = document.getElementById('m-notas').value.trim();
 
   limpiarErroresForm();
@@ -3319,20 +3315,21 @@ function guardarCita(){
       const mensaje = conflicto.tipo==='cita'
         ? `${esc(doctora)} ya tiene una cita a esa hora con <strong>${esc(conflicto.detalle)}</strong>. Esta nueva cita quedará empalmada con la existente.`
         : `${esc(doctora)} tiene un bloqueo en ese horario: <strong>${esc(conflicto.detalle)}</strong>. La cita quedará agendada sobre ese bloqueo.`;
-      mostrarConfirm({etiqueta:'⚠ Conflicto de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🗓️'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,notas}));
+      mostrarConfirm({etiqueta:'⚠ Conflicto de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🗓️'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas}));
       return;
     }
   }
 
-  guardarCitaFinal({fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,notas});
+  guardarCitaFinal({fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas});
 }
 
 function guardarCitaFinal(datos){
-  const {fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,notas} = datos;
+  const {fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas} = datos;
   let citaGuardada;
   if(modalEditId){
     const c = citas.find(x=>x.id===modalEditId);
     Object.assign(c,{fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,notas});
+    if(c.pagado) c.requiereFactura = requiereFactura;
     citaGuardada = c;
     toast('✓ Cita actualizada');
   }else{
@@ -4198,7 +4195,7 @@ function renderHistorico(){
       <td>${esc(c.servicio)}</td>
       <td>${bPago(c)}</td>
       <td style="font-weight:600;color:var(--gold)">$${montoTotalPagado(c).toLocaleString('es-MX',{minimumFractionDigits:2})}</td>
-      <td>${!c.requiereFactura?`<span style="font-size:10.5px;color:var(--gray-400);cursor:pointer;text-decoration:underline;" onclick="activarRequiereFactura(${c.id})" title="El paciente no pidió factura al momento del pago — clic si ahora sí la necesita">— <span style="font-size:9px;">(marcar que sí)</span></span>`:(c.facturada?`<span class="badge" style="background:#EEF8F1;color:var(--success);border:1px solid #A8D8B4;cursor:pointer;" onclick="editarNumeroFactura(${c.id})" title="Clic para editar el folio">🧾 ${c.numeroFactura?esc(c.numeroFactura):'Facturada'}</span>`:`<button class="btn-sm" style="background:#FDF6EC;color:var(--warn);border:1px solid #EDD49A;" onclick="marcarFacturada(${c.id})">🧾 Pendiente</button>`)}</td>
+      <td>${!c.requiereFactura?'—':(c.facturada?`<span class="badge" style="background:#EEF8F1;color:var(--success);border:1px solid #A8D8B4;cursor:pointer;" onclick="editarNumeroFactura(${c.id})" title="Clic para editar el folio">🧾 ${c.numeroFactura?esc(c.numeroFactura):'Facturada'}</span>`:`<button class="btn-sm" style="background:#FDF6EC;color:var(--warn);border:1px solid #EDD49A;" onclick="marcarFacturada(${c.id})">🧾 Pendiente</button>`)}</td>
       <td style="font-weight:700;${c.saldoPendiente>0?'color:var(--danger);':'color:var(--gray-400);'}">${c.saldoPendiente>0?'$'+Number(c.saldoPendiente).toLocaleString('es-MX',{minimumFractionDigits:2}):'—'}</td>
       <td>
         <button class="btn-sm btn-edit" onclick="abrirModal(${c.id})" title="Editar esta cita (paciente, teléfono, servicio, etc. — el dinero lo captura la doctora)">✎ Editar</button>
