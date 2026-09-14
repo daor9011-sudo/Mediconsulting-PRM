@@ -1088,6 +1088,10 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // ═══════════════════════════════════════════
 // CONEXIÓN A SUPABASE (backend real)
 // ═══════════════════════════════════════════
+// Se cambia cada vez que se sube una versión nueva del archivo — es lo que
+// permite detectar cuándo hay una actualización disponible (ver más abajo,
+// revisarVersionNueva).
+const APP_VERSION = '2026-09-14-01';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1115,6 +1119,50 @@ let canalCitasRealtime = null;
 let canalBloqueosRealtime = null;
 let canalHorariosRealtime = null;
 let canalGestionesRealtime = null;
+
+// ═══════════════════════════════════════════
+// ACTUALIZACIÓN AUTOMÁTICA — para que nadie tenga que refrescar el link
+// a mano cuando se sube una versión nueva. Revisa cada 2 minutos si el
+// archivo publicado cambió (comparando APP_VERSION); si alguien tiene un
+// modal abierto (a media edición), espera a que no haya ninguno abierto
+// antes de recargar, para no perder lo que esté escribiendo.
+// ═══════════════════════════════════════════
+let versionNuevaPendiente = false;
+function hayModalAbierto(){
+  return !!document.querySelector('[id$="-overlay"].open');
+}
+function mostrarBannerActualizacion(){
+  if(document.getElementById('banner-actualizacion')) return;
+  const b = document.createElement('div');
+  b.id = 'banner-actualizacion';
+  b.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--gold);color:#0B1628;padding:10px 18px;border-radius:8px;font-size:12.5px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,0.25);z-index:9999;';
+  b.textContent = '🔄 Hay una actualización lista — se aplicará sola en cuanto termines esto';
+  document.body.appendChild(b);
+}
+async function revisarVersionNueva(){
+  if(versionNuevaPendiente){
+    if(!hayModalAbierto()) window.location.reload();
+    return;
+  }
+  try{
+    const resp = await fetch(location.pathname + '?_v=' + Date.now(), { cache:'no-store' });
+    if(!resp.ok) return;
+    const html = await resp.text();
+    const m = html.match(/const APP_VERSION\s*=\s*'([^']+)'/);
+    if(m && m[1] && m[1] !== APP_VERSION){
+      versionNuevaPendiente = true;
+      if(!hayModalAbierto()){
+        window.location.reload();
+      }else{
+        mostrarBannerActualizacion();
+      }
+    }
+  }catch(e){ /* sin conexión momentánea — se reintenta en el siguiente ciclo, sin molestar a nadie */ }
+}
+setInterval(revisarVersionNueva, 120000); // cada 2 minutos
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible') revisarVersionNueva();
+});
 
 function iniciarRealtime(){
   canalCitasRealtime = sb.channel('citas-realtime')
