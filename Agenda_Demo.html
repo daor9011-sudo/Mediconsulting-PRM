@@ -966,6 +966,11 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
         <input type="checkbox" id="personal-es-admin" style="width:auto;flex-shrink:0;"> Es administrador (puede borrar definitivamente y crear/editar accesos)
       </label>
     </div>
+    <div class="form-group" id="personal-servicios-wrap" style="display:none;">
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;">
+        <input type="checkbox" id="personal-puede-servicios" style="width:auto;flex-shrink:0;"> Puede agregar/editar el catálogo de servicios (sin permisos de borrado)
+      </label>
+    </div>
     <div class="form-group" id="personal-activo-wrap" style="display:none;">
       <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;">
         <input type="checkbox" id="personal-activo" checked style="width:auto;flex-shrink:0;"> Cuenta activa (si se desmarca, no podrá iniciar sesión)
@@ -1097,7 +1102,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-02';
+const APP_VERSION = '2026-09-14-04';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1524,7 +1529,7 @@ async function completarLoginYArrancarApp(){
 
   const { data: perfil, error: errPerfil } = await sb
     .from('perfiles')
-    .select('rol,nombre,activo,es_admin')
+    .select('rol,nombre,activo,es_admin,puede_servicios')
     .eq('user_id', session.user.id)
     .single();
 
@@ -1545,7 +1550,7 @@ async function completarLoginYArrancarApp(){
     return;
   }
 
-  currentUser = { id: session.user.id, rol: perfil.rol, nombre: perfil.nombre, esAdmin: !!perfil.es_admin };
+  currentUser = { id: session.user.id, rol: perfil.rol, nombre: perfil.nombre, esAdmin: !!perfil.es_admin, puedeServicios: !!perfil.puede_servicios };
   await iniciarAppDespuesDeLogin();
 }
 
@@ -2589,6 +2594,7 @@ function resetFormularioPersonal(){
   document.getElementById('personal-correo-wrap').style.display = '';
   document.getElementById('personal-password-wrap').style.display = '';
   document.getElementById('personal-admin-wrap').style.display = 'none';
+  document.getElementById('personal-servicios-wrap').style.display = 'none';
   document.getElementById('personal-activo-wrap').style.display = 'none';
   document.getElementById('personal-btn-guardar').textContent = '✓ Crear acceso';
   document.getElementById('personal-btn-guardar').onclick = crearPerfilPersonal;
@@ -2598,7 +2604,7 @@ function resetFormularioPersonal(){
 async function renderListaPersonal(){
   const cont = document.getElementById('personal-lista');
   cont.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--gray-400);">Cargando...</div>';
-  const { data, error } = await sb.from('perfiles').select('user_id,nombre,rol,es_admin,activo,email').order('rol').order('nombre');
+  const { data, error } = await sb.from('perfiles').select('user_id,nombre,rol,es_admin,puede_servicios,activo,email').order('rol').order('nombre');
   if(error){ cont.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--danger);">Error cargando: ${esc(error.message)}</div>`; return; }
 
   cont.innerHTML = (data||[]).map(p=>{
@@ -2611,6 +2617,7 @@ async function renderListaPersonal(){
           <div style="font-size:12.5px;font-weight:700;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
             ${esc(p.nombre)}
             ${p.es_admin?'<span style="font-size:9.5px;font-weight:700;color:#7D3C98;background:#F5F0FC;border:1px solid #D2B4DE;padding:1px 6px;border-radius:5px;margin-left:5px;">ADMIN</span>':''}
+            ${p.puede_servicios?'<span style="font-size:9.5px;font-weight:700;color:#0F6E56;background:#EBF9F9;border:1px solid #A8E6E6;padding:1px 6px;border-radius:5px;margin-left:5px;">SERVICIOS</span>':''}
           </div>
           <div style="font-size:10.5px;color:var(--gray-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.rol==='recepcion'?(p.es_admin?'Administrador':'Recepción'):'Doctora'} · ${esc(p.email||'sin correo registrado')}</div>
         </div>
@@ -2629,20 +2636,20 @@ async function renderListaPersonal(){
 // porque esos registros guardan el nombre como texto, no un enlace
 // directo a esta cuenta.
 async function toggleActivoPersonalSwitch(userId){
-  const { data: p, error: errBusqueda } = await sb.from('perfiles').select('nombre,rol,es_admin,activo').eq('user_id', userId).single();
+  const { data: p, error: errBusqueda } = await sb.from('perfiles').select('nombre,rol,es_admin,puede_servicios,activo').eq('user_id', userId).single();
   if(errBusqueda || !p){ toast('⚠ No se pudo cargar ese perfil'); return; }
   const nuevoActivo = p.activo === false;
   if(userId === currentUser.id && !nuevoActivo){ toast('⚠ No puedes inactivar tu propia cuenta'); return; }
-  await guardarCambioActivoPersonal(userId, p.nombre, p.rol, p.es_admin, nuevoActivo, nuevoActivo ? '↺ Reactivada: ' : '⏸ Inactivada: ');
+  await guardarCambioActivoPersonal(userId, p.nombre, p.rol, p.es_admin, p.puede_servicios, nuevoActivo, nuevoActivo ? '↺ Reactivada: ' : '⏸ Inactivada: ');
 }
-async function guardarCambioActivoPersonal(userId, nombre, rol, esAdmin, activo, mensajeExito){
+async function guardarCambioActivoPersonal(userId, nombre, rol, esAdmin, puedeServicios, activo, mensajeExito){
   const { data: { session } } = await sb.auth.getSession();
   if(!session){ toast('⚠ Sesión expirada, vuelve a iniciar sesión'); return; }
   try{
     const resp = await fetch(`${SUPABASE_URL}/functions/v1/editar-perfil-personal`, {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` },
-      body: JSON.stringify({ targetUserId:userId, nombre, rol, esAdmin, activo })
+      body: JSON.stringify({ targetUserId:userId, nombre, rol, esAdmin, puedeServicios, activo })
     });
     const resultado = await resp.json();
     if(!resp.ok){ toast('⚠ '+(resultado.error||'No se pudo guardar')); return; }
@@ -2685,13 +2692,14 @@ function iniciarEliminarPersonal(userId, nombre){
 }
 
 async function iniciarEdicionPersonal(userId){
-  const { data: p, error } = await sb.from('perfiles').select('user_id,nombre,rol,es_admin,activo').eq('user_id', userId).single();
+  const { data: p, error } = await sb.from('perfiles').select('user_id,nombre,rol,es_admin,puede_servicios,activo').eq('user_id', userId).single();
   if(error || !p){ toast('⚠ No se pudo cargar ese perfil'); return; }
 
   personalEditandoId = userId;
   document.getElementById('personal-nombre').value = p.nombre;
   document.getElementById('personal-rol').value = p.rol;
   document.getElementById('personal-es-admin').checked = !!p.es_admin;
+  document.getElementById('personal-puede-servicios').checked = !!p.puede_servicios;
   document.getElementById('personal-activo').checked = p.activo !== false;
   document.getElementById('personal-error').textContent = '';
 
@@ -2700,6 +2708,7 @@ async function iniciarEdicionPersonal(userId){
   document.getElementById('personal-correo-wrap').style.display = 'none';
   document.getElementById('personal-password-wrap').style.display = 'none';
   document.getElementById('personal-admin-wrap').style.display = '';
+  document.getElementById('personal-servicios-wrap').style.display = '';
   document.getElementById('personal-activo-wrap').style.display = '';
 
   // Candado: no puedes quitarte tu propio admin ni desactivarte a ti mismo
@@ -2758,6 +2767,7 @@ async function guardarEdicionPersonal(){
   const nombre = document.getElementById('personal-nombre').value.trim();
   const rol = document.getElementById('personal-rol').value;
   const esAdmin = document.getElementById('personal-es-admin').checked;
+  const puedeServicios = document.getElementById('personal-puede-servicios').checked;
   const activo = document.getElementById('personal-activo').checked;
   const elError = document.getElementById('personal-error');
   elError.textContent = '';
@@ -2771,7 +2781,7 @@ async function guardarEdicionPersonal(){
     const resp = await fetch(`${SUPABASE_URL}/functions/v1/editar-perfil-personal`, {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` },
-      body: JSON.stringify({ targetUserId:userId, nombre, rol, esAdmin, activo })
+      body: JSON.stringify({ targetUserId:userId, nombre, rol, esAdmin, puedeServicios, activo })
     });
     const resultado = await resp.json();
     if(!resp.ok){ elError.textContent = resultado.error || 'No se pudo guardar.'; return; }
@@ -2796,7 +2806,7 @@ async function guardarEdicionPersonal(){
 // datos igual rechazaría la consulta si no es admin.
 // ═══════════════════════════════════════════
 function abrirAuditoriaModal(){
-  if(!currentUser.esAdmin){ toast('⚠ Solo un administrador puede ver el historial'); return; }
+  if(!currentUser.esAdmin && !currentUser.puedeServicios){ toast('⚠ No tienes permiso para ver el historial'); return; }
   document.getElementById('auditoria-filtro-tabla').value = '';
   document.getElementById('auditoria-modal-overlay').classList.add('open');
   renderListaAuditoria();
@@ -4782,8 +4792,8 @@ async function iniciarAppDespuesDeLogin(){
   document.getElementById('header-sub-sesion').textContent =
     currentUser.rol === 'recepcion' ? (currentUser.esAdmin ? 'Administrador' : 'Recepción') : currentUser.nombre;
   document.getElementById('btn-personal-header').style.display = currentUser.esAdmin ? '' : 'none';
-  document.getElementById('btn-auditoria-header').style.display = currentUser.esAdmin ? '' : 'none';
-  document.getElementById('btn-servicios-header').style.display = currentUser.esAdmin ? '' : 'none';
+  document.getElementById('btn-auditoria-header').style.display = (currentUser.esAdmin || currentUser.puedeServicios) ? '' : 'none';
+  document.getElementById('btn-servicios-header').style.display = (currentUser.esAdmin || currentUser.puedeServicios) ? '' : 'none';
 
   initSelects();
   defaultsHistorico();
