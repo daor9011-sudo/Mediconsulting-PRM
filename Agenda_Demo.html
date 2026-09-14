@@ -558,6 +558,11 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
         <span class="hist-filter-fmt">&nbsp;</span>
       </div>
       <div class="form-group" style="margin:0;">
+        <label class="hist-filter-label">Servicio</label>
+        <select id="hist-servicio" onchange="renderHistorico()"></select>
+        <span class="hist-filter-fmt">&nbsp;</span>
+      </div>
+      <div class="form-group" style="margin:0;">
         <label class="hist-filter-label">&nbsp;</label>
         <button class="btn btn-outline" onclick="aplicarFiltroHistorico()">Filtrar</button>
         <span class="hist-filter-fmt">&nbsp;</span>
@@ -4036,6 +4041,7 @@ function getFiltradoHistorico(){
   const desde = document.getElementById('hist-desde').value;
   const hasta = document.getElementById('hist-hasta').value;
   const filDoc = esRecepcion ? document.getElementById('hist-doctora').value : sesionActual;
+  const filServ = document.getElementById('hist-servicio').value;
   const filPac = document.getElementById('hist-paciente').value.trim().toLowerCase();
   const soloFacturasPendientes = document.getElementById('hist-solo-facturas-pendientes').checked;
   const soloFacturado = document.getElementById('hist-solo-facturado').checked;
@@ -4052,6 +4058,7 @@ function getFiltradoHistorico(){
   if(desde) filtrado = filtrado.filter(c=>c.fecha>=desde);
   if(hasta) filtrado = filtrado.filter(c=>c.fecha<=hasta);
   if(filDoc) filtrado = filtrado.filter(c=>c.doctora===filDoc);
+  if(filServ) filtrado = filtrado.filter(c=>c.servicio && c.servicio.split(' + ').map(s=>s.trim()).includes(filServ));
   if(filPac) filtrado = filtrado.filter(c=>c.paciente.toLowerCase().includes(filPac));
   if(soloFacturasPendientes) filtrado = filtrado.filter(c=>c.requiereFactura && !c.facturada);
   if(soloFacturado) filtrado = filtrado.filter(c=>c.facturada);
@@ -4076,8 +4083,17 @@ function bPago(c){
   return badgeUno(c.medioPago);
 }
 
+function initHistServicioSelect(){
+  const sel = document.getElementById('hist-servicio');
+  if(sel.dataset.init) return; // solo una vez — para no perder la selección en cada render
+  const nombres = [...new Set(CATALOGO_SERVICIOS.map(s=>s.nombre))].sort((a,b)=>a.localeCompare(b,'es'));
+  sel.innerHTML = `<option value="">Todos los servicios</option>` + nombres.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  sel.dataset.init = '1';
+}
+
 function renderHistorico(){
   initHistDoctoraSelect();
+  initHistServicioSelect();
   const esRecepcion = sesionActual === 'recepcion';
   const aviso = document.getElementById('hist-aviso-rol');
   if(esRecepcion){
