@@ -1110,7 +1110,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-07';
+const APP_VERSION = '2026-09-14-08';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -4093,8 +4093,7 @@ function initHistDoctoraSelect(){
 
 function defaultsHistorico(){
   const hoy = new Date();
-  const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  document.getElementById('hist-desde').value = fechaLocalISO(primerDiaMes);
+  document.getElementById('hist-desde').value = fechaLocalISO(hoy);
   document.getElementById('hist-hasta').value = fechaLocalISO(hoy);
   actualizarFmtHistorico();
 }
