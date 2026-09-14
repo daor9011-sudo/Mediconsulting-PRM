@@ -1768,14 +1768,20 @@ function renderDesglosePrecioServicios(nombres){
     actualizarPrecioDesdeDesglose();
     return;
   }
-  // Si ya había valores capturados para estos mismos servicios, los conserva
-  // (no se resetean a 0 con cada cambio de otro campo del formulario).
+  // Si ya había un valor capturado para ese servicio, se conserva. Si no,
+  // se sugiere el precio configurado en el catálogo (editable, no forzado)
+  // — para eso se cargó el catálogo con precios reales.
   const previos = window._desglosePrecioValores || {};
-  cont.innerHTML = nombres.map((n,i)=>`
+  cont.innerHTML = nombres.map((n,i)=>{
+    const catEntry = CATALOGO_SERVICIOS.find(s=>s.nombre===n);
+    const sugerido = catEntry ? (Number(catEntry.precio)||0) : 0;
+    const valorInicial = previos[n] ?? sugerido;
+    return `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;${i<nombres.length-1?'border-bottom:1px solid var(--gray-100);':''}">
       <span style="font-size:12px;color:var(--gray-800);">${esc(n)}</span>
-      <input type="number" min="0" step="0.01" data-servicio="${esc(n)}" value="${previos[n]??0}" oninput="actualizarPrecioDesdeDesglose()" style="width:100px;text-align:right;padding:5px 7px;font-size:12px;">
-    </div>`).join('');
+      <input type="number" min="0" step="0.01" data-servicio="${esc(n)}" value="${valorInicial}" oninput="actualizarPrecioDesdeDesglose()" style="width:100px;text-align:right;padding:5px 7px;font-size:12px;">
+    </div>`;
+  }).join('');
   actualizarPrecioDesdeDesglose();
 }
 function actualizarPrecioDesdeDesglose(){
