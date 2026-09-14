@@ -3082,6 +3082,13 @@ function aplicarBloqueoDinero(permitido){
 
 function abrirModal(id, sinCita){
   limpiarErroresForm();
+  if(id){
+    const cExistente = citas.find(x=>x.id===id);
+    if(cExistente && sesionActual!=='recepcion' && cExistente.doctora!==sesionActual){
+      toast('🔒 Esta cita es de '+cExistente.doctora+' — '+cExistente.paciente+', '+cExistente.hora+', '+cExistente.servicio);
+      return;
+    }
+  }
   modalEditId = id || null;
   nuevaEsSinCita = !id && !!sinCita;
   document.getElementById('modal-title').textContent = id ? 'Editar cita' : (nuevaEsSinCita ? '🚶 Paciente sin cita (llegó directo)' : 'Nueva cita');
