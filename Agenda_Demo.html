@@ -1183,7 +1183,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-23';
+const APP_VERSION = '2026-09-14-24';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1259,9 +1259,12 @@ document.addEventListener('visibilitychange', ()=>{
 function iniciarRealtime(){
   canalCitasRealtime = sb.channel('citas-realtime')
     .on('postgres_changes', { event:'*', schema:'public', table:'citas' }, payload=>{
+      console.log('📡 Realtime citas recibido:', payload.eventType, payload.new || payload.old);
       aplicarCambioRealtimeCita(payload);
     })
-    .subscribe();
+    .subscribe((estado)=>{
+      console.log('📡 Estado del canal de citas en tiempo real:', estado);
+    });
 
   canalBloqueosRealtime = sb.channel('bloqueos-realtime')
     .on('postgres_changes', { event:'*', schema:'public', table:'bloqueos_agenda' }, payload=>{
