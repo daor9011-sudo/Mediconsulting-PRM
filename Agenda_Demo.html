@@ -1183,7 +1183,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-21';
+const APP_VERSION = '2026-09-14-22';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1347,6 +1347,22 @@ function actualizarBadgeActividad(){
 function toggleCampanitaPanel(){
   const panel = document.getElementById('campanita-panel');
   const abrir = panel.style.display==='none';
+  if(abrir){
+    // Se calcula la posición real del botón y se usa position:fixed —
+    // así no importa si el botón vive dentro de una fila con scroll
+    // horizontal (como en el header de móvil), que si no, recortaría
+    // el panel por su overflow:auto en vez de dejarlo "salirse".
+    const btn = document.getElementById('btn-campanita');
+    const r = btn.getBoundingClientRect();
+    panel.style.position = 'fixed';
+    panel.style.top = (r.bottom + 6) + 'px';
+    const anchoPanel = Math.min(300, window.innerWidth - 20);
+    panel.style.width = anchoPanel + 'px';
+    let left = r.right - anchoPanel;
+    left = Math.max(10, Math.min(left, window.innerWidth - anchoPanel - 10));
+    panel.style.left = left + 'px';
+    panel.style.right = 'auto';
+  }
   panel.style.display = abrir ? 'block' : 'none';
   if(abrir) renderListaActividad();
 }
