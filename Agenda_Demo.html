@@ -1183,7 +1183,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-20';
+const APP_VERSION = '2026-09-14-21';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -4789,6 +4789,17 @@ function inicializarFirebaseSiHayConfig(){
 
 // Se llama desde el botón "🔔 Activar notificaciones" — una vez por doctora,
 // una sola vez por dispositivo/navegador donde quiera recibir avisos.
+// Detecta iPhone/iPad en Safari normal (no instalada como app en la
+// pantalla de inicio) — en ese caso, Apple no permite notificaciones
+// push en absoluto, sin importar qué tan bien esté hecho el código.
+// window.navigator.standalone solo existe en iOS, y es true únicamente
+// cuando el sitio se abrió desde un ícono agregado a la pantalla de inicio.
+function esIOSSafariSinInstalar(){
+  const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const yaInstalada = window.navigator.standalone === true;
+  return esIOS && !yaInstalada;
+}
+
 async function activarNotificacionesPush(){
   if(!firebaseListo){
     toast('⚠ Notificaciones aún no configuradas — falta conectar Firebase');
@@ -4796,6 +4807,18 @@ async function activarNotificacionesPush(){
   }
   if(sesionActual==='recepcion'){
     toast('Las notificaciones son para que cada doctora reciba su aviso — cambia la sesión a tu nombre primero');
+    return;
+  }
+  if(esIOSSafariSinInstalar()){
+    mostrarConfirm({
+      titulo:'📲 Falta un paso en iPhone',
+      mensaje:'Apple no permite notificaciones en una pestaña normal de Safari — solo funcionan si agregas esta página a tu pantalla de inicio, como si fuera una app.<br><br><strong>Cómo hacerlo:</strong><br>1. Toca el botón de compartir (el cuadrito con la flecha hacia arriba) en la barra de abajo.<br>2. Elige "Agregar a pantalla de inicio".<br>3. Abre la Agenda desde ese nuevo ícono (no desde Safari) y vuelve a intentar aquí.',
+      textoConfirmar:'Entendido', icono:'📲', sinCancelar:true
+    }, ()=>{});
+    return;
+  }
+  if(!('Notification' in window)){
+    toast('⚠ Este navegador no admite notificaciones push');
     return;
   }
   try{
@@ -4812,7 +4835,7 @@ async function activarNotificacionesPush(){
     toast('✓ Notificaciones activadas para '+sesionActual);
   }catch(e){
     console.error('Error activando notificaciones:', e);
-    toast('⚠ Error activando notificaciones (revisa consola)');
+    toast('⚠ Error activando notificaciones: '+(e.message||e));
   }
 }
 
