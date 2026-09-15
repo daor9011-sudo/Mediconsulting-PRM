@@ -619,8 +619,8 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <div class="form-group" style="margin:0;display:flex;flex-direction:column;">
         <label class="hist-filter-label">&nbsp;</label>
         <div style="display:flex;gap:4px;">
-          <button class="day-nav-btn" onclick="cambiarPeriodoHistorico(-1)" title="Un día antes">‹</button>
-          <button class="day-nav-btn" onclick="cambiarPeriodoHistorico(1)" title="Un día después">›</button>
+          <button class="day-nav-btn" style="height:35px;" onclick="cambiarPeriodoHistorico(-1)" title="Un día antes">‹</button>
+          <button class="day-nav-btn" style="height:35px;" onclick="cambiarPeriodoHistorico(1)" title="Un día después">›</button>
         </div>
       </div>
       <div class="form-group" style="margin:0;">
@@ -1186,7 +1186,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-14';
+const APP_VERSION = '2026-09-14-15';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
