@@ -297,6 +297,59 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   .pipe-label{display:none;}
   .cita-actions{width:100%;justify-content:flex-end;}
 }
+
+/* ═══════════════════════════════════════════
+   AJUSTES GENERALES DE MÓVIL — para que nada
+   se sienta apeñuscado en pantallas angostas.
+   ═══════════════════════════════════════════ */
+@media(max-width:640px){
+  /* Header: en pantallas angostas no alcanza el espacio para centrar el
+     título de forma absoluta sin que choque con lo demás — se apila todo
+     en columnas, cada cosa en su propia fila, sin superposiciones. */
+  .header{flex-direction:column;align-items:stretch;justify-content:flex-start;gap:6px;padding:0.6rem 0.8rem;}
+  .header-brand-left{justify-content:center;}
+  .header-brand-left img{height:24px;}
+  .header-brand-center{position:static;transform:none;max-width:100%;text-align:center;order:0;}
+  .header-cliente-nombre{font-size:15px;}
+  .header-sesion-info{font-size:10.5px;justify-content:center;}
+  .header-right{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;justify-content:flex-start;padding-bottom:2px;max-width:100%;}
+  .header-right::-webkit-scrollbar{height:3px;}
+  .btn-header-notif,.btn-header-salir{flex-shrink:0;white-space:nowrap;padding:6px 10px;font-size:10.5px;}
+
+  /* Barras de filtro (Agenda, Histórico, etc.): cada campo ocupa el
+     ancho completo, apilados en columna en vez de apretarse en fila. */
+  .filter-bar{flex-direction:column;align-items:stretch;gap:10px;}
+  .filter-bar .form-group{width:100%;margin:0;}
+  .filter-bar select,.filter-bar input:not([type="checkbox"]){width:100%;box-sizing:border-box;}
+  .filter-bar > button{width:100%;justify-content:center;}
+  .day-nav-btn{flex:1;}
+
+  /* Modales: casi a pantalla completa, sin tanto aire perdido en los
+     bordes ni texto/botones apretados. */
+  .modal{padding:18px 16px;max-width:94vw;max-height:92vh;}
+  .modal h3{font-size:14.5px;}
+  .modal-footer{flex-direction:column;}
+
+  /* Tarjetas de cita: un poco más compactas para que quepa más info
+     sin sentirse abarrotado. */
+  .cita-card{padding:9px 11px;}
+  .cita-hora{font-size:13px;}
+  .cita-paciente{font-size:12.5px;}
+  .cita-tel{font-size:11px;}
+
+  /* Vista Semana: 7 columnas de día + la de horas son demasiado
+     angostas para apachurrarse en un celular — mejor que se deslice
+     en horizontal y cada columna mantenga un ancho legible. */
+  #week-view{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .week-grid{min-width:640px;}
+
+  /* Tablas (Histórico, Cierre, auditoría): igual, que se deslicen en
+     vez de comprimir las columnas hasta ser ilegibles. */
+  .tx-table{min-width:640px;}
+
+  /* Botones de acción de personal/servicios: que no se aprieten tanto */
+  .form-group[id$="-wrap"] label{font-size:12px;}
+}
 </style>
 </head>
 <body>
@@ -1115,7 +1168,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-09';
+const APP_VERSION = '2026-09-14-10';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
