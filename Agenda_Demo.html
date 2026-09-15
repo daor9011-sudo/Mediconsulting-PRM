@@ -40,7 +40,7 @@ body{background:var(--gray-50);font-family:'Segoe UI',system-ui,sans-serif;color
 .container{max-width:1100px;margin:0 auto;padding:20px 20px 60px;}
 
 /* Barra de navegación de día */
-.day-nav{display:flex;align-items:center;justify-content:space-between;background:#FFFFFF;border:1px solid var(--gray-200);border-radius:10px;padding:12px 16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(11,22,40,0.05);min-height:60px;box-sizing:border-box;}
+.day-nav{display:flex;align-items:center;justify-content:space-between;background:#FFFFFF;border:1px solid var(--gray-200);border-radius:10px;padding:12px 16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(11,22,40,0.05);min-height:60px;box-sizing:border-box;flex-wrap:wrap;row-gap:10px;}
 .day-nav-arrows{display:flex;gap:6px;}
 .day-nav-btn{background:var(--gray-50);border:1px solid var(--gray-200);color:var(--gray-600);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
 .day-nav-btn:hover{background:var(--gold-bg);color:var(--gold);border-color:var(--gold-border);}
@@ -117,7 +117,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 
 /* Toggle de vista */
 .vista-toggle{display:flex;gap:0;background:var(--gray-100);border-radius:8px;padding:3px;}
-.day-nav-actions{display:flex;gap:10px;flex-shrink:0;}
+.day-nav-actions{display:flex;gap:10px;flex-wrap:wrap;row-gap:8px;}
 .vista-toggle button{background:transparent;border:none;padding:6px 14px;font-size:12px;font-weight:600;color:var(--gray-600);border-radius:6px;cursor:pointer;transition:all .15s;}
 .vista-toggle button.active{background:#fff;color:var(--gold);box-shadow:0 1px 3px rgba(11,22,40,0.1);}
 
@@ -1183,7 +1183,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-19';
+const APP_VERSION = '2026-09-14-20';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
