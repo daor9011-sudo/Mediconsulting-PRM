@@ -616,16 +616,13 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   <div id="section-historico" style="display:none">
 
     <div class="filter-bar" style="align-items:flex-end;">
-      <div class="form-group" style="margin:0;display:flex;flex-direction:column;">
-        <label class="hist-filter-label">&nbsp;</label>
-        <div style="display:flex;gap:4px;">
-          <button class="day-nav-btn" style="height:35px;" onclick="cambiarPeriodoHistorico(-1)" title="Un día antes">‹</button>
-          <button class="day-nav-btn" style="height:35px;" onclick="cambiarPeriodoHistorico(1)" title="Un día después">›</button>
-        </div>
-      </div>
       <div class="form-group" style="margin:0;">
         <label class="hist-filter-label">Desde</label>
-        <input type="date" id="hist-desde" onchange="aplicarFiltroHistorico()">
+        <div style="display:flex;gap:4px;align-items:center;">
+          <button class="day-nav-btn" style="width:26px;height:26px;flex-shrink:0;" onclick="cambiarPeriodoHistorico(-1)" title="Un día antes">‹</button>
+          <input type="date" id="hist-desde" onchange="aplicarFiltroHistorico()">
+          <button class="day-nav-btn" style="width:26px;height:26px;flex-shrink:0;" onclick="cambiarPeriodoHistorico(1)" title="Un día después">›</button>
+        </div>
       </div>
       <div class="form-group" style="margin:0;">
         <label class="hist-filter-label">Hasta</label>
@@ -1186,7 +1183,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-16';
+const APP_VERSION = '2026-09-14-17';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
