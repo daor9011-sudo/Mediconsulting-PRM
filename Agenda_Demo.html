@@ -635,7 +635,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       </div>
       <div class="form-group" style="margin:0;">
         <label class="hist-filter-label">Paciente</label>
-        <input type="text" id="hist-paciente" placeholder="Buscar por nombre..." oninput="renderHistorico()">
+        <input type="text" id="hist-paciente" placeholder="Nombre del niño/a o tutor..." oninput="renderHistorico()">
         <span class="hist-filter-fmt">&nbsp;</span>
       </div>
       <div class="form-group" style="margin:0;">
@@ -757,10 +757,11 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       </div>
     </div>
     <div class="form-group" id="fg-doctora"><label>Doctora</label><select id="m-doctora"></select><span class="field-error-msg">Selecciona doctora</span></div>
-    <div class="form-group" id="fg-paciente"><label>Paciente</label><input type="text" id="m-paciente" placeholder="Nombre completo"><span class="field-error-msg">Falta el nombre del paciente</span></div>
+    <div class="form-group" id="fg-tutor"><label>Nombre del padre/madre o tutor</label><input type="text" id="m-tutor" placeholder="Nombre completo"></div>
+    <div class="form-group" id="fg-paciente"><label>Paciente (niño/niña)</label><input type="text" id="m-paciente" placeholder="Nombre completo"><span class="field-error-msg">Falta el nombre del paciente</span></div>
     <div class="form-row">
-      <div class="form-group"><label>Teléfono</label><input type="tel" id="m-tel" placeholder="55XXXXXXXX"></div>
-      <div class="form-group"><label>Email (para el comprobante de pago)</label><input type="email" id="m-email" placeholder="paciente@correo.com"></div>
+      <div class="form-group"><label>Teléfono (del padre/madre o tutor)</label><input type="tel" id="m-tel" placeholder="55XXXXXXXX"></div>
+      <div class="form-group"><label>Email (para el comprobante de pago)</label><input type="email" id="m-email" placeholder="correo@ejemplo.com"></div>
     </div>
     <div class="form-group" id="fg-servicio">
       <label>Servicio(s)</label>
@@ -1189,7 +1190,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-30';
+const APP_VERSION = '2026-09-14-31';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1738,7 +1739,7 @@ function activeCitas(){ return citas.filter(c=>!c.deleted); }
 function citaDesdeDb(r){
   return {
     id:r.id, fecha:r.fecha, hora:(r.hora||'').slice(0,5), duracionMin:r.duracion_min,
-    doctora:r.doctora, paciente:r.paciente, tel:r.tel||'', email:r.email||'', servicio:r.servicio||'',
+    doctora:r.doctora, paciente:r.paciente, nombreTutor:r.nombre_tutor||'', tel:r.tel||'', email:r.email||'', servicio:r.servicio||'',
     precio:Number(r.precio)||0, descuentoPct:Number(r.descuento_pct)||0, cortesia:!!r.cortesia,
     notas:r.notas||'', estado:r.estado, sinCita:!!r.sin_cita, cancelada:!!r.cancelada, noLlego:!!r.no_llego,
     pagado:!!r.pagado, montoPagado:Number(r.monto_pagado)||0, medioPago:r.medio_pago||'',
@@ -1752,7 +1753,7 @@ function citaDesdeDb(r){
 function citaHaciaDb(c){
   return {
     id:c.id, fecha:c.fecha, hora:c.hora, duracion_min:c.duracionMin||60,
-    doctora:c.doctora, paciente:c.paciente, tel:c.tel||null, email:c.email||null, servicio:c.servicio||null,
+    doctora:c.doctora, paciente:c.paciente, nombre_tutor:c.nombreTutor||null, tel:c.tel||null, email:c.email||null, servicio:c.servicio||null,
     precio:c.precio||0, descuento_pct:c.descuentoPct||0, cortesia:!!c.cortesia,
     notas:c.notas||null, estado:c.estado, sin_cita:!!c.sinCita, cancelada:!!c.cancelada, no_llego:!!c.noLlego,
     pagado:!!c.pagado, monto_pagado:c.montoPagado||0, medio_pago:c.medioPago||null,
@@ -2288,7 +2289,7 @@ function render(){
         <div class="cita-info">
           <span class="cita-hora"><span class="ico">🕐</span>${c.hora}</span>
           <div class="nombre-servicio">
-            <span class="cita-paciente">${esc(c.paciente)}</span>
+            <span class="cita-paciente">${esc(c.paciente)}</span>${c.nombreTutor?` <span style="font-size:11.5px;font-weight:500;color:var(--gray-600);">— tutor: ${esc(c.nombreTutor)}</span>`:''}
             <span class="cita-servicio">${esc(c.servicio)}</span>
           </div>
           <span class="cita-tel">📞 ${esc(c.tel)}</span>
@@ -2497,12 +2498,14 @@ function renderWeek(){
       }
 
       const c = e.cita;
+      const tituloTutor = c.nombreTutor ? ` — tutor: ${esc(c.nombreTutor)}` : '';
       if(modoTodas){
-        return `<div class="week-cita-block chip ${c.cancelada?'cancelada':''}" style="${posStyle}background:${COLOR_DOCTORA[e.doctora]||'var(--gold)'};" onclick="abrirModal(${c.id})" title="${esc(e.doctora)}: ${esc(c.paciente)} — ${c.hora} (${c.duracionMin||60} min)">${esc(c.paciente)}</div>`;
+        return `<div class="week-cita-block chip ${c.cancelada?'cancelada':''}" style="${posStyle}background:${COLOR_DOCTORA[e.doctora]||'var(--gold)'};" onclick="abrirModal(${c.id})" title="${esc(e.doctora)}: ${esc(c.paciente)}${tituloTutor} — ${c.hora} (${c.duracionMin||60} min)">${esc(c.paciente)}</div>`;
       }
-      return `<div class="week-cita-block ${c.cancelada?'cancelada':''}" style="${posStyle}" onclick="abrirModal(${c.id})" title="${esc(c.paciente)} — ${c.hora} (${c.duracionMin||60} min)">
+      return `<div class="week-cita-block ${c.cancelada?'cancelada':''}" style="${posStyle}" onclick="abrirModal(${c.id})" title="${esc(c.paciente)}${tituloTutor} — ${c.hora} (${c.duracionMin||60} min)">
         <div class="week-cita-block-nombre">${esc(c.paciente)}</div>
         <div class="week-cita-block-detalle">${c.hora}·${c.duracionMin||60}m</div>
+        ${alto>=60 && c.nombreTutor ? `<div class="week-cita-block-detalle">tutor: ${esc(c.nombreTutor)}</div>` : ''}
         ${alto>=38 ? `<div class="week-cita-block-servicio">${esc(c.servicio)}</div>` : ''}
       </div>`;
     }).join('');
@@ -3317,6 +3320,7 @@ function abrirModal(id, sinCita){
     document.getElementById('m-hora').value = c.hora;
     document.getElementById('m-duracion').value = c.duracionMin || 60;
     document.getElementById('m-doctora').value = c.doctora;
+    document.getElementById('m-tutor').value = c.nombreTutor||'';
     document.getElementById('m-paciente').value = c.paciente;
     document.getElementById('m-tel').value = c.tel;
     document.getElementById('m-email').value = c.email||'';
@@ -3341,6 +3345,7 @@ function abrirModal(id, sinCita){
     document.getElementById('m-hora').value = nuevaEsSinCita ? ahora.toTimeString().slice(0,5) : '';
     document.getElementById('m-duracion').value = 60;
     document.getElementById('m-doctora').value = DOCTORAS[0]||'';
+    document.getElementById('m-tutor').value = '';
     document.getElementById('m-paciente').value = '';
     document.getElementById('m-tel').value = '';
     document.getElementById('m-email').value = '';
@@ -3433,6 +3438,7 @@ function guardarCita(){
   const hora = document.getElementById('m-hora').value;
   const duracionMin = parseInt(document.getElementById('m-duracion').value) || 60;
   const doctora = document.getElementById('m-doctora').value;
+  const nombreTutor = document.getElementById('m-tutor').value.trim();
   const paciente = document.getElementById('m-paciente').value.trim();
   const tel = document.getElementById('m-tel').value.trim();
   const email = document.getElementById('m-email').value.trim();
@@ -3463,25 +3469,25 @@ function guardarCita(){
       const mensaje = conflicto.tipo==='cita'
         ? `${esc(doctora)} ya tiene una cita a esa hora con <strong>${esc(conflicto.detalle)}</strong>. Esta nueva cita quedará empalmada con la existente.`
         : `${esc(doctora)} tiene un bloqueo en ese horario: <strong>${esc(conflicto.detalle)}</strong>. La cita quedará agendada sobre ese bloqueo.`;
-      mostrarConfirm({etiqueta:'⚠ Conflicto de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🗓️'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas}));
+      mostrarConfirm({etiqueta:'⚠ Conflicto de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🗓️'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas}));
       return;
     }
   }
 
-  guardarCitaFinal({fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas});
+  guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas});
 }
 
 function guardarCitaFinal(datos){
-  const {fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas} = datos;
+  const {fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas} = datos;
   let citaGuardada;
   if(modalEditId){
     const c = citas.find(x=>x.id===modalEditId);
-    Object.assign(c,{fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,notas});
+    Object.assign(c,{fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,notas});
     if(c.pagado) c.requiereFactura = requiereFactura;
     citaGuardada = c;
     toast('✓ Cita actualizada');
   }else{
-    const nueva = {id:Date.now(),fecha,hora,duracionMin,doctora,paciente,tel,email,servicio,precio,descuentoPct,cortesia,notas,estado:nuevaEsSinCita?'llego':'agendado',sinCita:nuevaEsSinCita,cancelada:false,noLlego:false,pagado:false,montoPagado:0,medioPago:'',montoPagado2:null,medioPago2:null,saldoPendiente:0,requiereFactura:false,facturada:false,numeroFactura:null,terminalPago:null,terminalPago2:null,terminalPorServicio:null};
+    const nueva = {id:Date.now(),fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,notas,estado:nuevaEsSinCita?'llego':'agendado',sinCita:nuevaEsSinCita,cancelada:false,noLlego:false,pagado:false,montoPagado:0,medioPago:'',montoPagado2:null,medioPago2:null,saldoPendiente:0,requiereFactura:false,facturada:false,numeroFactura:null,terminalPago:null,terminalPago2:null,terminalPorServicio:null};
     citas.push(nueva);
     citaGuardada = nueva;
     toast('✓ Cita agendada');
@@ -4279,7 +4285,7 @@ function getFiltradoHistorico(){
   if(hasta) filtrado = filtrado.filter(c=>c.fecha<=hasta);
   if(filDoc) filtrado = filtrado.filter(c=>c.doctora===filDoc);
   if(filServ) filtrado = filtrado.filter(c=>c.servicio && c.servicio.split(' + ').map(s=>s.trim()).includes(filServ));
-  if(filPac) filtrado = filtrado.filter(c=>c.paciente.toLowerCase().includes(filPac));
+  if(filPac) filtrado = filtrado.filter(c=>c.paciente.toLowerCase().includes(filPac) || (c.nombreTutor||'').toLowerCase().includes(filPac));
   if(soloFacturasPendientes) filtrado = filtrado.filter(c=>c.requiereFactura && !c.facturada);
   if(soloFacturado) filtrado = filtrado.filter(c=>c.facturada);
   if(soloCuentasCobrar) filtrado = filtrado.filter(c=>c.saldoPendiente>0);
@@ -4373,7 +4379,7 @@ function renderHistorico(){
       <td>${fmtDDMMYYYY(c.fecha)}</td>
       <td>${c.hora}</td>
       <td>${bDoctora(c.doctora)}</td>
-      <td><strong>${esc(c.paciente)}</strong>${c.sinCita?' <span style="font-size:10px;color:var(--gray-400)">(sin cita)</span>':''}</td>
+      <td><strong>${esc(c.paciente)}</strong>${c.sinCita?' <span style="font-size:10px;color:var(--gray-400)">(sin cita)</span>':''}${c.nombreTutor?`<br><span style="font-size:10.5px;font-weight:500;color:var(--gray-400);">tutor: ${esc(c.nombreTutor)}</span>`:''}</td>
       <td>${esc(c.servicio)}</td>
       <td>${bPago(c)}</td>
       <td style="font-weight:600;color:var(--gold)">$${montoTotalPagado(c).toLocaleString('es-MX',{minimumFractionDigits:2})}</td>
@@ -4410,14 +4416,14 @@ function exportarExcelHistorico(){
   }
 
   // Hoja 1: Citas
-  const txData=[['Fecha','Hora','Doctora','Paciente','Servicio','Medio de pago','Terminal','Monto','Factura','Sin cita','Notas']];
+  const txData=[['Fecha','Hora','Doctora','Paciente','Tutor','Servicio','Medio de pago','Terminal','Monto','Factura','Sin cita','Notas']];
   [...filtrado].sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora)).forEach(c=>{
     const terminalTexto = [c.terminalPago, c.terminalPago2].filter(Boolean).join(' + ');
     const facturaTexto = !c.requiereFactura ? '' : (c.facturada ? 'Facturada'+(c.numeroFactura?' - '+c.numeroFactura:'') : 'Pendiente');
-    txData.push([fmtDDMMYYYY(c.fecha),c.hora,c.doctora,c.paciente,c.servicio,medioPagoTexto(c),terminalTexto,montoTotalPagado(c),facturaTexto,c.sinCita?'Sí':'No',c.notas||'']);
+    txData.push([fmtDDMMYYYY(c.fecha),c.hora,c.doctora,c.paciente,c.nombreTutor||'',c.servicio,medioPagoTexto(c),terminalTexto,montoTotalPagado(c),facturaTexto,c.sinCita?'Sí':'No',c.notas||'']);
   });
   const wsTx=XLSX.utils.aoa_to_sheet(txData);
-  wsTx['!cols']=[{wch:12},{wch:8},{wch:22},{wch:26},{wch:26},{wch:16},{wch:16},{wch:12},{wch:12},{wch:10},{wch:28}];
+  wsTx['!cols']=[{wch:12},{wch:8},{wch:22},{wch:26},{wch:26},{wch:26},{wch:16},{wch:16},{wch:12},{wch:12},{wch:10},{wch:28}];
   applyStyles(wsTx,txData[0],txData.slice(1));
   XLSX.utils.book_append_sheet(wb,wsTx,'Citas');
 
