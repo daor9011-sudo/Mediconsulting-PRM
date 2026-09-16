@@ -666,6 +666,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <label class="hist-filtro-link"><input type="checkbox" id="hist-solo-facturado" onchange="onCambioFiltroExclusivo(this)"> ✓ Facturado</label>
       <label class="hist-filtro-link"><input type="checkbox" id="hist-solo-no-llegaron" onchange="onCambioFiltroExclusivo(this)"> 👻 No llegaron</label>
       <label class="hist-filtro-link"><input type="checkbox" id="hist-solo-cuentas-cobrar" onchange="onCambioFiltroExclusivo(this)"> 💰 Cuentas por cobrar</label>
+      <label class="hist-filtro-link"><input type="checkbox" id="hist-solo-por-verificar" onchange="onCambioFiltroExclusivo(this)"> 🏦 Por verificar</label>
     </div>
 
     <div id="hist-aviso-rol" style="display:none;background:#EEF5FC;border:1px solid #BDD5F0;color:#1B5C9E;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;font-weight:600;"></div>
@@ -1188,7 +1189,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-29';
+const APP_VERSION = '2026-09-14-30';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3656,8 +3657,9 @@ function abrirPagoModal(id){
   document.getElementById('pago-pendiente-nombre').textContent = c.paciente;
 
   // Terminal (solo aplica a Tarjeta): opciones = la doctora de esta cita + CANOPY PEDIATRICS
-  llenarSelectTerminal('pago-terminal1', c.doctora);
-  llenarSelectTerminal('pago-terminal2', c.doctora);
+  const sugerida = sugerirTerminalCita(c);
+  llenarSelectTerminal('pago-terminal1', c.doctora, sugerida);
+  llenarSelectTerminal('pago-terminal2', c.doctora, sugerida);
   document.getElementById('pago-requiere-factura').checked = !!c.requiereFactura;
 
   // El selector de "¿cómo queda el pago?" no aplica a cortesías (no hay
@@ -3715,9 +3717,27 @@ function actualizarPagoParcial(){
     el.textContent = `Queda debiendo: $${restante.toLocaleString('es-MX',{minimumFractionDigits:2})}`;
   }
 }
-function llenarSelectTerminal(selectId, doctora){
+function llenarSelectTerminal(selectId, doctora, sugerida){
   const sel = document.getElementById(selectId);
-  sel.innerHTML = `<option value="">Seleccionar...</option><option>${esc(doctora)}</option><option>CANOPY PEDIATRICS</option>`;
+  const marcarDoctora = sugerida==='doctora';
+  const marcarCanopy = sugerida==='canopy';
+  sel.innerHTML = `<option value="">Seleccionar...</option><option ${marcarDoctora?'selected':''}>${esc(doctora)}</option><option ${marcarCanopy?'selected':''}>CANOPY PEDIATRICS</option>`;
+}
+// Aunque al dividir el pago se usa un solo selector de terminal (no uno
+// por servicio, para no complicar demasiado el formulario), sí se le
+// puede sugerir un valor de entrada — según qué terminal prefiere la
+// mayoría de los servicios de esta cita, tal como ya se sugiere cuando
+// NO se divide el pago.
+function sugerirTerminalCita(c){
+  const nombres = c.servicio ? c.servicio.split(' + ').map(s=>s.trim()).filter(Boolean) : [];
+  let votosCanopy = 0, votosDoctora = 0;
+  nombres.forEach(n=>{
+    const cat = CATALOGO_SERVICIOS.find(s=>s.nombre===n);
+    if(cat?.terminal_preferida==='canopy') votosCanopy++;
+    else if(cat?.terminal_preferida==='doctora') votosDoctora++;
+  });
+  if(votosCanopy===0 && votosDoctora===0) return null;
+  return votosCanopy>=votosDoctora ? 'canopy' : 'doctora';
 }
 function actualizarTerminalesVisibles(){
   const medio1 = document.getElementById('pago-medio').value;
@@ -4225,7 +4245,7 @@ function cambiarPeriodoHistorico(delta){
 // tiene sentido combinarlos (ej. "Facturado" + "Facturas pendientes" a la
 // vez siempre da vacío). Al marcar uno, se apagan los demás. Fecha,
 // paciente y doctora siguen aplicando normal, se combinan con cualquiera.
-const FILTROS_EXCLUSIVOS_HIST = ['hist-solo-facturas-pendientes','hist-solo-facturado','hist-solo-no-llegaron','hist-solo-cuentas-cobrar'];
+const FILTROS_EXCLUSIVOS_HIST = ['hist-solo-facturas-pendientes','hist-solo-facturado','hist-solo-no-llegaron','hist-solo-cuentas-cobrar','hist-solo-por-verificar'];
 function onCambioFiltroExclusivo(elegido){
   if(elegido.checked){
     FILTROS_EXCLUSIVOS_HIST.forEach(idOtro=>{
@@ -4246,6 +4266,7 @@ function getFiltradoHistorico(){
   const soloFacturado = document.getElementById('hist-solo-facturado').checked;
   const soloNoLlegaron = document.getElementById('hist-solo-no-llegaron').checked;
   const soloCuentasCobrar = document.getElementById('hist-solo-cuentas-cobrar').checked;
+  const soloPorVerificar = document.getElementById('hist-solo-por-verificar').checked;
 
   // Las citas "No llegó" nunca tienen pago procesado — si se activa ese
   // filtro, la base cambia para mostrarlas (si no, el filtro normal de
@@ -4262,6 +4283,7 @@ function getFiltradoHistorico(){
   if(soloFacturasPendientes) filtrado = filtrado.filter(c=>c.requiereFactura && !c.facturada);
   if(soloFacturado) filtrado = filtrado.filter(c=>c.facturada);
   if(soloCuentasCobrar) filtrado = filtrado.filter(c=>c.saldoPendiente>0);
+  if(soloPorVerificar) filtrado = filtrado.filter(c=>c.medioPago==='Transferencia' || c.medioPago2==='Transferencia');
   return filtrado;
 }
 
@@ -4278,8 +4300,14 @@ function bPago(c){
     const cls = p==='Efectivo'?'badge-efectivo':p==='Transferencia'?'badge-transferencia':'badge-tarjeta';
     return `<span class="badge ${cls}">${esc(p)}</span>`;
   };
-  if(c.medioPago2) return badgeUno(c.medioPago)+' '+badgeUno(c.medioPago2);
-  return badgeUno(c.medioPago);
+  // Una transferencia no se confirma en automático — a diferencia de
+  // tarjeta o efectivo, hay que verificar que el dinero sí haya llegado
+  // a la cuenta antes de darla por buena.
+  const alertaVerificar = (c.medioPago==='Transferencia' || c.medioPago2==='Transferencia')
+    ? ' <span class="badge" style="background:#FDF6EC;color:var(--warn);border:1px solid #EDD49A;" title="Confirma que la transferencia sí haya entrado a la cuenta">⏳ Por verificar</span>'
+    : '';
+  if(c.medioPago2) return badgeUno(c.medioPago)+' '+badgeUno(c.medioPago2)+alertaVerificar;
+  return badgeUno(c.medioPago)+alertaVerificar;
 }
 
 function initHistServicioSelect(){
