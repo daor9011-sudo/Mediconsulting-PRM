@@ -25,16 +25,16 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--gray-50);font-family:'Segoe UI',system-ui,sans-serif;color:var(--text);font-size:14px;}
-.header{background:linear-gradient(135deg,#0B1628,#1B3A6B);padding:0.7rem 1.75rem;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;box-shadow:0 2px 8px rgba(11,22,40,0.25);}
+.header{background:linear-gradient(135deg,#0B1628,#1B3A6B);padding:0.6rem 1rem;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;box-shadow:0 2px 8px rgba(11,22,40,0.25);}
 .header-brand-left{display:flex;align-items:center;}
 .header-brand-center{text-align:center;}
 .header-cliente-nombre{font-size:19px;font-weight:800;color:#fff;letter-spacing:0.5px;line-height:1.2;}
 .header-cliente-tagline{font-size:10.5px;color:var(--gold-light);font-weight:500;margin-top:1px;}
-.header-sesion-info{font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;display:flex;align-items:center;gap:7px;flex-shrink:0;}
-.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;row-gap:6px;min-width:0;}
-.btn-header-notif{display:flex;align-items:center;gap:5px;font-size:11px;padding:6px 11px;border-radius:7px;border:none;background:var(--gold);color:#0B1628;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.header-sesion-info{font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;display:flex;align-items:center;gap:5px;flex-shrink:0;}
+.header-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;row-gap:6px;min-width:0;}
+.btn-header-notif{display:flex;align-items:center;gap:4px;font-size:10.5px;padding:5px 8px;border-radius:7px;border:none;background:var(--gold);color:#0B1628;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
 .btn-header-notif:hover{background:var(--gold-light);}
-.btn-header-salir{display:flex;align-items:center;gap:5px;font-size:11px;padding:6px 11px;border-radius:7px;border:1px solid rgba(255,255,255,0.28);background:transparent;color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.btn-header-salir{display:flex;align-items:center;gap:4px;font-size:10.5px;padding:5px 8px;border-radius:7px;border:1px solid rgba(255,255,255,0.28);background:transparent;color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap;}
 .btn-header-salir:hover{background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.5);}
 .header-disclaimer{background:var(--gray-50);border-top:1px solid var(--gray-100);padding:14px 24px 24px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:10.5px;color:var(--gray-400);margin-top:20px;}
 .header-disclaimer-link{color:var(--gold);text-decoration:underline;cursor:pointer;}
@@ -481,7 +481,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <span id="header-sub-sesion">—</span>
     </div>
     <div style="position:relative;">
-      <button id="btn-campanita" onclick="toggleCampanitaPanel()" style="background:transparent;border:none;cursor:pointer;padding:7px;display:flex;position:relative;color:#fff;border-radius:7px;" title="Actividad reciente">
+      <button id="btn-campanita" onclick="toggleCampanitaPanel()" style="background:transparent;border:none;cursor:pointer;padding:5px;display:flex;position:relative;color:#fff;border-radius:7px;" title="Actividad reciente">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span id="campanita-badge" style="display:none;position:absolute;top:3px;right:3px;background:#E74C3C;color:#fff;font-size:9px;font-weight:800;border-radius:50%;width:15px;height:15px;align-items:center;justify-content:center;">0</span>
       </button>
@@ -497,17 +497,15 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Personal
     </button>
-    <button class="btn-header-salir" id="btn-auditoria-header" style="display:none;" onclick="abrirAuditoriaModal()">
+    <button class="btn-header-salir" id="btn-auditoria-header" style="display:none;padding:5px 8px;" onclick="abrirAuditoriaModal()" title="Historial de auditoría">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
-      Historial
     </button>
-    <button class="btn-header-salir" id="btn-servicios-header" style="display:none;" onclick="abrirServiciosModal()">
+    <button class="btn-header-salir" id="btn-servicios-header" style="display:none;padding:5px 8px;" onclick="abrirServiciosModal()" title="Catálogo de servicios">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/></svg>
-      Servicios
     </button>
     <button class="btn-header-notif" onclick="activarNotificacionesPush()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      Activar notificaciones
+      Activar avisos
     </button>
     <button class="btn-header-salir" onclick="cerrarSesionApp()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -1190,7 +1188,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-27';
+const APP_VERSION = '2026-09-14-28';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
