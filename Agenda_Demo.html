@@ -96,9 +96,9 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 /* Pipeline de estados */
 .pipeline{display:flex;align-items:center;gap:0;margin-top:0px;}
 .pipe-step{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;position:relative;flex:1;}
-.pipe-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;background:var(--gray-200);transition:all .2s;border:2px solid var(--gray-50);}
+.pipe-dot{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;color:#fff;background:var(--gray-200);transition:all .2s;border:2px solid var(--gray-50);}
 .pipe-label{font-size:9.5px;color:var(--gray-400);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;}
-.pipe-line{flex:1;height:2px;background:var(--gray-200);margin:0 -2px;position:relative;top:-16px;z-index:-1;}
+.pipe-line{flex:1;height:2px;background:var(--gray-200);margin:0 -2px;position:relative;top:0px;z-index:-1;}
 .pipe-step.done .pipe-dot{background:var(--gray-800);}
 .pipe-step.done .pipe-label{color:var(--gray-800);}
 .pipe-step[data-st="agendado"].done .pipe-dot{background:var(--st-agendado);}
@@ -1193,7 +1193,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-33';
+const APP_VERSION = '2026-09-14-34';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
