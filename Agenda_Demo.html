@@ -73,15 +73,18 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .cita-card:hover{box-shadow:0 3px 10px rgba(11,22,40,0.08);}
 .cita-card.cancelada{opacity:0.55;}
 .cita-card.no-llego{opacity:0.55;}
-.cita-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px;}
-.cita-info{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;}
-.cita-hora{font-weight:700;color:var(--gray-800);font-size:15.5px;display:flex;align-items:center;gap:5px;}
-.cita-hora .ico{color:var(--gold);}
-.cita-paciente{font-weight:600;color:var(--text);}
-.nombre-servicio{display:flex;flex-direction:column;gap:2px;}
+.cita-top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px;}
+.cita-info{display:flex;flex-direction:column;gap:0;flex:1;min-width:0;}
+.cita-badges-extra{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.cita-hora{font-weight:700;color:var(--gray-800);font-size:14.5px;display:flex;align-items:center;gap:5px;}
+.cita-paciente{font-weight:700;color:var(--text);font-size:14.5px;}
+.cita-linea1{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;row-gap:3px;}
+.cita-tutor{font-size:12px;color:var(--gray-600);font-weight:600;}
 .cita-tel{font-size:12px;color:var(--gray-400);}
+.cita-linea2{display:flex;align-items:center;gap:7px;margin-top:3px;flex-wrap:wrap;}
 .cita-doctora{font-size:10.5px;padding:2px 9px;border-radius:99px;font-weight:600;background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-border);}
-.cita-servicio{font-size:12px;color:var(--gray-400);font-weight:400;line-height:1.2;}
+.cita-servicio{font-size:11.5px;color:var(--gray-400);font-weight:400;line-height:1.2;}
+.cita-hora .ico{color:var(--gold);}
 .cita-actions{display:flex;gap:6px;flex-basis:100%;justify-content:flex-end;margin-bottom:14px;}
 .btn-sm{padding:5px 12px;font-size:11.5px;border-radius:5px;cursor:pointer;border:none;font-weight:500;display:inline-flex;align-items:center;gap:4px;transition:all .15s;}
 .btn-sm-edit{background:#EEF5FC;color:#1B5C9E;border:1px solid #BDD5F0;}.btn-sm-edit:hover{background:#D8EAF9;}
@@ -1190,7 +1193,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-31';
+const APP_VERSION = '2026-09-14-32';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2287,18 +2290,23 @@ function render(){
     return `<div class="cita-card ${c.cancelada?'cancelada':''} ${(c.noLlego && !c.cancelada)?'no-llego':''}" style="border-left-color:${COLOR_DOCTORA[c.doctora]||'#D0DCEA'}">
       <div class="cita-top">
         <div class="cita-info">
-          <span class="cita-hora"><span class="ico">🕐</span>${c.hora}</span>
-          <div class="nombre-servicio">
-            <span class="cita-paciente">${esc(c.paciente)}</span>${c.nombreTutor?` <span style="font-size:11.5px;font-weight:500;color:var(--gray-600);">— tutor: ${esc(c.nombreTutor)}</span>`:''}
-            <span class="cita-servicio">${esc(c.servicio)}</span>
+          <div class="cita-linea1">
+            <span class="cita-hora"><span class="ico">🕐</span>${c.hora}</span>
+            <span class="cita-paciente">${esc(c.paciente)}</span>
+            ${c.nombreTutor?`<span class="cita-tutor">tutor: ${esc(c.nombreTutor)}</span>`:''}
+            <span class="cita-tel">📞 ${esc(c.tel)}</span>
           </div>
-          <span class="cita-tel">📞 ${esc(c.tel)}</span>
-          <span class="cita-doctora" style="background:${COLOR_DOCTORA[c.doctora]?COLOR_DOCTORA[c.doctora]+'22':'var(--gold-bg)'};color:${COLOR_DOCTORA[c.doctora]||'var(--gold)'};border-color:${COLOR_DOCTORA[c.doctora]?COLOR_DOCTORA[c.doctora]+'55':'var(--gold-border)'}">${esc(c.doctora)}</span>
+          <div class="cita-linea2">
+            <span class="cita-servicio">${esc(c.servicio)}</span>
+            <span class="cita-doctora" style="background:${COLOR_DOCTORA[c.doctora]?COLOR_DOCTORA[c.doctora]+'22':'var(--gold-bg)'};color:${COLOR_DOCTORA[c.doctora]||'var(--gold)'};border-color:${COLOR_DOCTORA[c.doctora]?COLOR_DOCTORA[c.doctora]+'55':'var(--gold-border)'}">${esc(c.doctora)}</span>
+          </div>
+          ${(c.sinCita||c.cancelada||c.noLlego||c.pagado)?`<div class="cita-badges-extra">
           ${c.sinCita?'<span style="font-size:10.5px;font-weight:700;color:#1B5C9E;background:#EEF5FC;border:1px solid #BDD5F0;padding:3px 9px;border-radius:6px;">🚶 Sin cita</span>':''}
           ${c.cancelada?'<span class="cancel-tag">✕ Cancelada</span>':''}
           ${c.noLlego?'<span style="font-size:10.5px;font-weight:700;color:#7D3C98;background:#F5EEF8;border:1px solid #D9B3D9;padding:3px 9px;border-radius:6px;">👻 No llegó</span>':''}
           ${c.pagado?(c.precio===null?`<span style="font-size:10.5px;font-weight:700;color:var(--success);background:#EEF8F1;border:1px solid #A8D8B4;padding:3px 9px;border-radius:6px;">✓ Procesado</span>`:(c.cortesia?`<span style="font-size:10.5px;font-weight:700;color:#7D3C98;background:#F5F0FC;border:1px solid #D2B4DE;padding:3px 9px;border-radius:6px;">🎁 Procesado — Cortesía</span>`:`<span style="font-size:10.5px;font-weight:700;color:var(--success);background:#EEF8F1;border:1px solid #A8D8B4;padding:3px 9px;border-radius:6px;">✓ Procesado — $${montoTotalPagado(c).toLocaleString('es-MX',{minimumFractionDigits:2})} (${esc(medioPagoTexto(c))})</span>`)):''}
           ${c.pagado && c.saldoPendiente>0?`<span style="font-size:10.5px;font-weight:700;color:#9A6010;background:#FDF6EC;border:1px solid #EDD49A;padding:3px 9px;border-radius:6px;">💰 Pago pdte. — $${Number(c.saldoPendiente).toLocaleString('es-MX',{minimumFractionDigits:2})}</span>`:''}
+          </div>`:''}
         </div>
         <div class="cita-actions">
           ${(sesionActual==='recepcion' || c.doctora===sesionActual) ? `
