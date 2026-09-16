@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>CANOPY PEDIATRICS — Agenda | Mediconsulting</title>
 <meta name="theme-color" content="#0B1628">
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAACYElEQVR4nO2Wz2sTURDHZ95ukk12syFNTBM1lUClEalpIdTYQg8WQSp6EL0IIvgX9ODJgyfPnryIFy+eCl4KgngRraDQi23oD9vYdpOq2SQku0maZJN9z4MHj/ssCSh0zu/7PvOdeTM8lCNJGGSQgd5+DPhPAPcfP5+evwWIiMIRAKLjibcvnggCAcYY2H41QJVwq3xAux1gjAeAnHMQnL7ZJUI6wOouZfXd625NB0QehrMDJCIC7XhUkprPLj4QaK9nlDyy0mk2eDLjcYAATHBLSixh7G8AQCSZlsIxbXmpX4A/cXbiYmj41OZ6lhA09UKv1XSU8D5TNRhyezzqUHjqxj1sG029cCZzlUfo3AMAkNUAHZ1h5cLqhzdmqVgtFS9kZlVZyPULILqlBkogKcym22srvuSlWoexH3s8Wp4SoVkuKj+/eMs5SikA+GbvVLxRq1bhSo7jDGOIhrYFAInzk/WKbi+/bOW31ckJyDkXia/JjAGAS5Lm7i6cm7lSXf80lU5/L2g8Ui6AWwl4To7Sbnfj/ZKWXQEAORg+EY3xaJ3nQJRk8doCiafEV49MbZP4VFFSoGfJoWh1N+sIcO4B8So4FCelnXpRAwBlLNPWtUBAsSiXe65J9kXivaYRiQzXzapNBfQHJWbRw3qlUnLOzzkFQg71fOz0yO2HTxNj402bCeNzrNOumSaPAw6bDABJq9H4uPgs/zUrMnukuWtZLbvb6Q+AMYoA+sHet7XPqcvXfaRnFHIN00REHgDXqgBgSAgDaBkVl8+/v7P1e4fzKP9uXR8h/oFfxTFg0IBfDjrn6tTErE4AAAAASUVORK5CYII=">
@@ -1187,7 +1190,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-25';
+const APP_VERSION = '2026-09-14-27';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1237,25 +1240,34 @@ function mostrarBannerActualizacion(){
 }
 async function revisarVersionNueva(){
   if(versionNuevaPendiente){
-    if(!hayModalAbierto()) window.location.reload();
+    if(!hayModalAbierto()) window.location.href = location.pathname + '?_r=' + Date.now();
     return;
   }
   try{
-    const resp = await fetch(location.pathname + '?_v=' + Date.now(), { cache:'no-store' });
-    if(!resp.ok) return;
+    // "cache:no-store" solo le pide al NAVEGADOR que no use su caché local —
+    // eso no evita que el CDN de Vercel entregue una copia vieja. Se
+    // agregan encabezados explícitos + parámetro único para forzar que
+    // también el servidor mande la versión más reciente de verdad.
+    const resp = await fetch(location.pathname + '?_v=' + Date.now(), {
+      cache:'no-store',
+      headers:{ 'Cache-Control':'no-cache, no-store, must-revalidate', 'Pragma':'no-cache' }
+    });
+    if(!resp.ok){ console.warn('📡 Revisión de versión: respuesta no OK', resp.status); return; }
     const html = await resp.text();
     const m = html.match(/const APP_VERSION\s*=\s*'([^']+)'/);
+    console.log('📡 Revisión de versión — actual:', APP_VERSION, '| servidor:', m ? m[1] : '(no encontrada)');
     if(m && m[1] && m[1] !== APP_VERSION){
       versionNuevaPendiente = true;
       if(!hayModalAbierto()){
-        window.location.reload();
+        window.location.href = location.pathname + '?_r=' + Date.now();
       }else{
         mostrarBannerActualizacion();
       }
     }
-  }catch(e){ /* sin conexión momentánea — se reintenta en el siguiente ciclo, sin molestar a nadie */ }
+  }catch(e){ console.warn('📡 Revisión de versión falló:', e); }
 }
 setInterval(revisarVersionNueva, 120000); // cada 2 minutos
+setTimeout(revisarVersionNueva, 15000); // primera revisión rápida, no hasta 2 minutos después
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState === 'visible') revisarVersionNueva();
 });
