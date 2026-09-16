@@ -75,13 +75,13 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .cita-card.no-llego{opacity:0.55;}
 .cita-top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px;}
 .cita-info{display:flex;flex-direction:column;gap:0;flex:1;min-width:0;}
-.cita-badges-extra{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
-.cita-hora{font-weight:700;color:var(--gray-800);font-size:14.5px;display:flex;align-items:center;gap:5px;}
+.cita-badges-extra{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;margin-left:78px;}
+.cita-hora{font-weight:700;color:var(--gray-800);font-size:14.5px;display:flex;align-items:center;gap:5px;flex-shrink:0;}
 .cita-paciente{font-weight:700;color:var(--text);font-size:14.5px;}
 .cita-linea1{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;row-gap:3px;}
 .cita-tutor{font-size:12px;color:var(--gray-600);font-weight:600;}
 .cita-tel{font-size:12px;color:var(--gray-400);}
-.cita-linea2{display:flex;align-items:center;gap:7px;margin-top:3px;flex-wrap:wrap;}
+.cita-linea2{display:flex;align-items:center;gap:7px;margin-top:3px;margin-left:78px;flex-wrap:wrap;}
 .cita-doctora{font-size:10.5px;padding:2px 9px;border-radius:99px;font-weight:600;background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-border);}
 .cita-servicio{font-size:11.5px;color:var(--gray-400);font-weight:400;line-height:1.2;}
 .cita-hora .ico{color:var(--gold);}
@@ -1193,7 +1193,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-32';
+const APP_VERSION = '2026-09-14-33';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
