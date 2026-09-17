@@ -229,7 +229,8 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .week-cita-block:hover{box-shadow:0 2px 6px rgba(0,0,0,0.28);z-index:5 !important;}
 .week-cita-block.chip{font-size:9px;padding:2px 5px;font-weight:600;}
 .week-cita-block.cancelada{background:var(--gray-400) !important;text-decoration:line-through;}
-.week-cita-block.bloqueo-block{background:#E57373;font-weight:600;font-size:9.5px;}
+.week-cita-block.bloqueo-block{background:#E57373;font-weight:700;font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:3px 5px;}
+.week-cita-block.bloqueo-icono-solo{text-align:center;padding:3px 2px;font-size:12px;}
 .week-cita-block-nombre{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .week-cita-block-detalle{font-size:9.5px;opacity:0.85;white-space:nowrap;}
 .week-cita-block-servicio{opacity:0.9;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1193,7 +1194,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-40';
+const APP_VERSION = '2026-09-14-41';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2503,8 +2504,13 @@ function renderWeek(){
       const posStyle = `top:${top}px;height:${alto}px;left:calc(${e.colIndex}/${e.numCols}*100% + 2px);width:calc(100%/${e.numCols} - 4px);`;
 
       if(e.tipo==='bloqueo'){
-        const etiqueta = modoTodas ? esc(e.doctora.replace('Dra. ','').replace('Dr. ','')) : esc(e.motivo);
-        return `<div class="week-cita-block bloqueo-block" style="${posStyle}" onclick="abrirBloqueoModal()" title="${esc(e.doctora)}: ${esc(e.motivo)}">🚫 ${etiqueta}</div>`;
+        // Con muchas doctoras superpuestas en "Todas", la columna se vuelve
+        // tan angosta que ni truncado con "..." se alcanza a leer bien —
+        // en ese caso, mejor solo el ícono (el detalle completo sigue
+        // disponible en el title, al pasar el mouse).
+        const cabeTexto = e.numCols <= 3;
+        const etiqueta = !cabeTexto ? '' : (modoTodas ? esc(e.doctora.replace('Dra. ','').replace('Dr. ','')) : esc(e.motivo));
+        return `<div class="week-cita-block bloqueo-block ${cabeTexto?'':'bloqueo-icono-solo'}" style="${posStyle}" onclick="abrirBloqueoModal()" title="${esc(e.doctora)}: ${esc(e.motivo)}">🚫${etiqueta?' '+etiqueta:''}</div>`;
       }
 
       const c = e.cita;
