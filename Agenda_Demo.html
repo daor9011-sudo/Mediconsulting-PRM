@@ -557,7 +557,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 
   <div class="filter-bar" id="filter-bar">
     <select id="fil-doctora" onchange="render()">
-      <option value="">Todas las doctoras</option>
+      <option value="">Todas las Dras./Dres.</option>
     </select>
     <select id="fil-estado" onchange="render()">
       <option value="">Todos los estados</option>
@@ -642,7 +642,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
         <span class="hist-filter-fmt">&nbsp;</span>
       </div>
       <div class="form-group" style="margin:0;">
-        <label class="hist-filter-label">Doctora</label>
+        <label class="hist-filter-label">Dra./Dr.</label>
         <select id="hist-doctora" onchange="renderHistorico()"></select>
         <span class="hist-filter-fmt">&nbsp;</span>
       </div>
@@ -688,7 +688,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
         <input type="number" id="prm-umbral" value="60" min="1" style="width:90px;">
       </div>
       <div class="form-group" style="margin:0;" id="prm-fil-doctora-wrap">
-        <label class="hist-filter-label">Doctora</label>
+        <label class="hist-filter-label">Dra./Dr.</label>
         <select id="prm-fil-doctora" onchange="renderPRM()"></select>
       </div>
       <div class="form-group" style="margin:0;">
@@ -759,9 +759,9 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
         </select>
       </div>
     </div>
-    <div class="form-group" id="fg-doctora"><label>Doctora</label><select id="m-doctora"></select><span class="field-error-msg">Selecciona doctora</span></div>
-    <div class="form-group" id="fg-tutor"><label>Nombre del padre/madre o tutor</label><input type="text" id="m-tutor" placeholder="Nombre completo"></div>
-    <div class="form-group" id="fg-paciente"><label>Paciente (niño/niña)</label><input type="text" id="m-paciente" placeholder="Nombre completo"><span class="field-error-msg">Falta el nombre del paciente</span></div>
+    <div class="form-group" id="fg-doctora"><label>Dra./Dr.</label><select id="m-doctora"></select><span class="field-error-msg">Selecciona Dra./Dr.</span></div>
+    <div class="form-group" id="fg-tutor"><label>Nombre del padre/madre o tutor</label><input type="text" id="m-tutor" list="dl-tutores" placeholder="Nombre completo" onblur="autocompletarPorNombre('tutor')"><datalist id="dl-tutores"></datalist></div>
+    <div class="form-group" id="fg-paciente"><label>Paciente (niño/niña)</label><input type="text" id="m-paciente" list="dl-pacientes" placeholder="Nombre completo" onblur="autocompletarPorNombre('paciente')"><datalist id="dl-pacientes"></datalist><span class="field-error-msg">Falta el nombre del paciente</span></div>
     <div class="form-row">
       <div class="form-group"><label>Teléfono (del padre/madre o tutor)</label><input type="tel" id="m-tel" placeholder="55XXXXXXXX"></div>
       <div class="form-group"><label>Email (para el comprobante de pago)</label><input type="email" id="m-email" placeholder="correo@ejemplo.com"></div>
@@ -973,7 +973,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   <div class="modal" style="max-width:480px;">
     <h3>🚫 Bloquear agenda</h3>
     <div class="form-row">
-      <div class="form-group"><label>Doctora</label><select id="bq-doctora"></select></div>
+      <div class="form-group"><label>Dra./Dr.</label><select id="bq-doctora"></select></div>
       <div class="form-group"><label>Fecha</label><input type="date" id="bq-fecha"></div>
     </div>
     <div class="form-group" style="display:flex;align-items:center;gap:8px;">
@@ -997,9 +997,9 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 <!-- Modal de configuración de horario por doctora -->
 <div class="modal-overlay" id="horarios-modal-overlay">
   <div class="modal" style="max-width:460px;">
-    <h3>⚙️ Horario laboral por doctora</h3>
+    <h3>⚙️ Horario laboral</h3>
     <div class="form-group">
-      <label>Doctora</label>
+      <label>Dra./Dr.</label>
       <select id="hor-doctora" onchange="cargarHorarioForm()"></select>
     </div>
     <div class="form-row">
@@ -1031,12 +1031,12 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     </div>
     <div class="form-group">
       <label>Nombre para mostrar</label>
-      <input type="text" id="personal-nombre" placeholder='Ej. "Doctora B"'>
+      <input type="text" id="personal-nombre" placeholder='Ej. "Dra. Ana Pérez"'>
     </div>
     <div class="form-group">
       <label>Rol</label>
       <select id="personal-rol" onchange="actualizarVisibilidadPermisosPersonal()">
-        <option value="doctora">Doctora</option>
+        <option value="doctora">Dra./Dr.</option>
         <option value="recepcion">Recepción</option>
       </select>
     </div>
@@ -1193,7 +1193,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-39';
+const APP_VERSION = '2026-09-14-40';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2196,7 +2196,7 @@ function initSelects(){
   // Se resetea a su estado base cada vez — initSelects() se vuelve a llamar
   // después de crear/editar una doctora desde Personal, y sin este reset
   // las opciones se irían duplicando cada vez.
-  filD.innerHTML = '<option value="">Todas las doctoras</option>';
+  filD.innerHTML = '<option value="">Todas las Dras./Dres.</option>';
   modD.innerHTML = '';
   DOCTORAS.forEach(d=>{
     filD.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
@@ -2384,7 +2384,7 @@ function toggleMostrarCanceladas(){
 
 function renderWeek(){
   const filD = document.getElementById('fil-doctora').value;
-  // "Todas las doctoras" debe incluir tanto a las que tienen perfil real
+  // "Todas las Dras./Dres." debe incluir tanto a las que tienen perfil real
   // (DOCTORAS) como a cualquier otro nombre que aparezca en las citas
   // (ej. doctoras de práctica/demo sin cuenta de acceso) — si no, sus
   // citas existen en la base de datos pero nunca se dibujan aquí.
@@ -2415,7 +2415,7 @@ function renderWeek(){
   const ROW_PX = 68; // px por hora — usado para calcular el alto/posición proporcional de cada cita
 
   let html = `<div class="week-toolbar">
-    <div class="week-doctora-label">🗓️ ${filD ? esc(filD)+' <span style="font-weight:400;color:var(--gray-400);font-size:11.5px;">· horario '+horarioDe(filD).inicio+'–'+horarioDe(filD).fin+'</span>' : 'Todas las doctoras'}</div>
+    <div class="week-doctora-label">🗓️ ${filD ? esc(filD)+' <span style="font-weight:400;color:var(--gray-400);font-size:11.5px;">· horario '+horarioDe(filD).inicio+'–'+horarioDe(filD).fin+'</span>' : 'Todas las Dras./Dres.'}</div>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
     <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;" onclick="toggleMostrarCanceladas()">${mostrarCitasCanceladas ? '🙈 Ocultar canceladas' : '👁 Mostrar canceladas'}</button>
     <div class="week-legend">
@@ -2769,7 +2769,7 @@ async function renderListaPersonal(){
             ${p.es_admin?'<span style="font-size:9.5px;font-weight:700;color:#7D3C98;background:#F5F0FC;border:1px solid #D2B4DE;padding:1px 6px;border-radius:5px;margin-left:5px;">ADMIN</span>':''}
             ${p.puede_servicios?'<span style="font-size:9.5px;font-weight:700;color:#0F6E56;background:#EBF9F9;border:1px solid #A8E6E6;padding:1px 6px;border-radius:5px;margin-left:5px;">SERVICIOS</span>':''}
           </div>
-          <div style="font-size:10.5px;color:var(--gray-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.rol==='recepcion'?(p.es_admin?'Administrador':'Recepción'):'Doctora'} · ${esc(p.email||'sin correo registrado')}</div>
+          <div style="font-size:10.5px;color:var(--gray-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.rol==='recepcion'?(p.es_admin?'Administrador':'Recepción'):'Dra./Dr.'} · ${esc(p.email||'sin correo registrado')}</div>
         </div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
@@ -3013,7 +3013,7 @@ function formatearEntradaAuditoria(entry, mapaNombres){
   }
 
   if(entry.tabla==='perfiles' && entry.accion==='INSERT'){
-    return { icono:'👤', texto:`Creó el acceso de <strong>${esc(d.nombre||'—')}</strong> (${d.rol==='recepcion'?'Recepción':'Doctora'})` };
+    return { icono:'👤', texto:`Creó el acceso de <strong>${esc(d.nombre||'—')}</strong> (${d.rol==='recepcion'?'Recepción':'Dra./Dr.'})` };
   }
 
   if(entry.tabla==='perfiles' && entry.accion==='DELETE'){
@@ -3272,7 +3272,7 @@ function renderPapeleraAgenda(){
   if(!borradas.length){ el.innerHTML = '<div class="empty-state">La papelera está vacía</div>'; return; }
   let html = `<div class="cierre-section-title">Papelera — ${borradas.length} cita(s) eliminada(s)</div>
     <div style="overflow-x:auto"><table class="tx-table"><thead><tr>
-      <th>Fecha</th><th>Hora</th><th>Doctora</th><th>Paciente</th><th>Servicio</th><th>Eliminada</th><th>Por</th><th></th>
+      <th>Fecha</th><th>Hora</th><th>Dra./Dr.</th><th>Paciente</th><th>Servicio</th><th>Eliminada</th><th>Por</th><th></th>
     </tr></thead><tbody>`;
   borradas.forEach(c=>{
     html += `<tr>
@@ -3312,6 +3312,52 @@ function aplicarBloqueoDinero(permitido){
   aviso.style.display = permitido ? 'none' : 'block';
 }
 
+// Arma las listas de sugerencias (autocompletar del navegador) con los
+// nombres de tutores y pacientes que ya existen en el historial — no
+// necesita una tabla nueva, ya tenemos todas las citas en memoria.
+function poblarDatalistsPacientes(){
+  const tutores = new Set();
+  const pacientes = new Set();
+  citas.forEach(c=>{
+    if(c.nombreTutor) tutores.add(c.nombreTutor);
+    if(c.paciente) pacientes.add(c.paciente);
+  });
+  document.getElementById('dl-tutores').innerHTML = [...tutores].sort((a,b)=>a.localeCompare(b,'es')).map(n=>`<option value="${esc(n)}">`).join('');
+  document.getElementById('dl-pacientes').innerHTML = [...pacientes].sort((a,b)=>a.localeCompare(b,'es')).map(n=>`<option value="${esc(n)}">`).join('');
+}
+
+// Al salir del campo de tutor o paciente, busca si ese nombre ya
+// apareció antes en el historial y, si sí, rellena teléfono/correo —
+// pero SOLO los campos que sigan vacíos, nunca pisa algo que ya se
+// haya escrito a mano.
+function autocompletarPorNombre(tipo){
+  const nombreBuscado = document.getElementById(tipo==='tutor'?'m-tutor':'m-paciente').value.trim();
+  if(!nombreBuscado) return;
+
+  // La coincidencia más reciente (por fecha) trae el dato de contacto
+  // más actualizado.
+  const candidatas = citas.filter(c=>{
+    const campo = tipo==='tutor' ? c.nombreTutor : c.paciente;
+    return campo && campo.trim().toLowerCase() === nombreBuscado.toLowerCase();
+  }).sort((a,b)=>(b.fecha+b.hora).localeCompare(a.fecha+a.hora));
+  if(!candidatas.length) return;
+  const match = candidatas[0];
+
+  const elTel = document.getElementById('m-tel');
+  const elEmail = document.getElementById('m-email');
+  const elTutor = document.getElementById('m-tutor');
+
+  let algoRelleno = false;
+  if(!elTel.value.trim() && match.tel){ elTel.value = match.tel; algoRelleno = true; }
+  if(!elEmail.value.trim() && match.email){ elEmail.value = match.email; algoRelleno = true; }
+  // Buscar por paciente (niño/a) sí sugiere el tutor de esa cita anterior
+  // (muy probablemente la misma familia). Buscar por tutor NO sugiere el
+  // paciente — un mismo tutor puede traer a varios hijos distintos.
+  if(tipo==='paciente' && !elTutor.value.trim() && match.nombreTutor){ elTutor.value = match.nombreTutor; algoRelleno = true; }
+
+  if(algoRelleno) toast('✓ Datos autocompletados de una cita anterior');
+}
+
 function abrirModal(id, sinCita){
   limpiarErroresForm();
   if(id){
@@ -3323,6 +3369,7 @@ function abrirModal(id, sinCita){
   }
   modalEditId = id || null;
   nuevaEsSinCita = !id && !!sinCita;
+  poblarDatalistsPacientes();
   document.getElementById('modal-title').textContent = id ? 'Editar cita' : (nuevaEsSinCita ? '🚶 Paciente sin cita (llegó directo)' : 'Nueva cita');
   if(id){
     const c = citas.find(x=>x.id===id);
@@ -3463,7 +3510,7 @@ function guardarCita(){
   const faltantes = [];
   if(!fecha){document.getElementById('fg-fecha').classList.add('field-error');faltantes.push('Fecha');}
   if(!hora){document.getElementById('fg-hora').classList.add('field-error');faltantes.push('Hora');}
-  if(!doctora){document.getElementById('fg-doctora').classList.add('field-error');faltantes.push('Doctora');}
+  if(!doctora){document.getElementById('fg-doctora').classList.add('field-error');faltantes.push('Dra./Dr.');}
   if(!paciente){document.getElementById('fg-paciente').classList.add('field-error');faltantes.push('Paciente');}
   if(!servicio){document.getElementById('fg-servicio').classList.add('field-error');faltantes.push('Servicio');}
   if(faltantes.length){
@@ -4225,7 +4272,7 @@ function initHistDoctoraSelect(){
   const esRecepcion = sesionActual === 'recepcion';
   if(esRecepcion){
     sel.disabled = false;
-    sel.innerHTML = `<option value="">Todas las doctoras</option>` + DOCTORAS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
+    sel.innerHTML = `<option value="">Todas las Dras./Dres.</option>` + DOCTORAS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
   }else{
     // Una doctora no puede ver/descargar lo de otra — el selector queda fijo en ella misma
     sel.innerHTML = `<option value="${esc(sesionActual)}">${esc(sesionActual)} (tu sesión)</option>`;
@@ -4401,7 +4448,7 @@ function renderHistorico(){
       </td>
     </tr>`).join('');
   tablaEl.innerHTML = `<div style="overflow-x:auto"><table class="tx-table"><thead><tr>
-      <th>Fecha</th><th>Hora</th><th>Doctora</th>
+      <th>Fecha</th><th>Hora</th><th>Dra./Dr.</th>
       <th>Paciente</th><th>Servicio</th><th>Medio de pago</th><th>Monto</th><th>Factura</th><th>Saldo</th><th></th>
     </tr></thead>
     <tbody>${rows}</tbody>
@@ -4426,7 +4473,7 @@ function exportarExcelHistorico(){
   }
 
   // Hoja 1: Citas
-  const txData=[['Fecha','Hora','Doctora','Paciente','Tutor','Servicio','Medio de pago','Terminal','Monto','Factura','Sin cita','Notas']];
+  const txData=[['Fecha','Hora','Dra./Dr.','Paciente','Tutor','Servicio','Medio de pago','Terminal','Monto','Factura','Sin cita','Notas']];
   [...filtrado].sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora)).forEach(c=>{
     const terminalTexto = [c.terminalPago, c.terminalPago2].filter(Boolean).join(' + ');
     const facturaTexto = !c.requiereFactura ? '' : (c.facturada ? 'Facturada'+(c.numeroFactura?' - '+c.numeroFactura:'') : 'Pendiente');
@@ -4470,7 +4517,7 @@ function exportarExcelHistorico(){
       bucket.servicios+=1;
       bucket.pacientes.add(c.paciente);
     });
-    const cData=[['Fecha','Doctora','Servicios','Pacientes','Efectivo','Tarjeta','Transferencia','Total']];
+    const cData=[['Fecha','Dra./Dr.','Servicios','Pacientes','Efectivo','Tarjeta','Transferencia','Total']];
     Object.keys(cMap).sort().forEach(fecha=>{
       Object.keys(cMap[fecha]).forEach(d=>{
         const x=cMap[fecha][d];
@@ -4724,7 +4771,7 @@ function renderPRM(){
   wrapDoc.style.display = esRecepcion ? '' : 'none';
   const selDoc = document.getElementById('prm-fil-doctora');
   if(esRecepcion && !selDoc.dataset.init){
-    selDoc.innerHTML = `<option value="">Todas las doctoras</option>` + DOCTORAS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
+    selDoc.innerHTML = `<option value="">Todas las Dras./Dres.</option>` + DOCTORAS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
     selDoc.dataset.init = '1';
   }
   const filDoc = esRecepcion ? selDoc.value : '';
@@ -4808,7 +4855,7 @@ function renderPRM(){
   }).join('');
   tablaEl.innerHTML = `<div style="overflow-x:auto"><table class="tx-table"><thead><tr>
       <th>Paciente</th><th>Teléfono</th><th>Última visita</th><th>Inactividad</th><th>Último servicio</th>
-      ${esRecepcion?'<th>Doctora</th>':''}
+      ${esRecepcion?'<th>Dra./Dr.</th>':''}
       <th>Última gestión</th>
       <th></th>
     </tr></thead>
