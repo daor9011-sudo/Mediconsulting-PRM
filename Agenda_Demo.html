@@ -120,6 +120,17 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .cita-card.cancelada .pipeline{opacity:0.4;pointer-events:none;}
 .cita-card.no-llego .pipeline{opacity:0.55;}
 .cancel-tag{font-size:11px;font-weight:700;color:var(--st-cancelada);background:#FDF6EC;border:1px solid #EDD49A;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:5px;}
+.medio-cards-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}
+.medio-card{border-radius:12px;padding:16px;}
+.medio-card-icon{font-size:20px;margin-bottom:6px;}
+.medio-card-label{font-size:11px;font-weight:800;letter-spacing:0.5px;margin-bottom:4px;}
+.medio-card-total{font-size:22px;font-weight:800;color:var(--gray-800);margin-bottom:4px;}
+.medio-card-sub{font-size:11px;color:var(--gray-400);margin-bottom:10px;}
+.medio-card-bar-track{height:6px;background:rgba(0,0,0,0.08);border-radius:99px;margin-bottom:12px;overflow:hidden;}
+.medio-card-bar-fill{height:100%;border-radius:99px;}
+.medio-card-doc-list{display:flex;flex-direction:column;gap:6px;border-top:1px solid rgba(0,0,0,0.08);padding-top:10px;}
+.medio-doc-row{display:flex;justify-content:space-between;font-size:12px;color:var(--gray-600);}
+.medio-doc-row span:last-child{font-weight:700;color:var(--gray-800);}
 
 .empty-state{text-align:center;padding:50px 20px;color:var(--gray-400);font-size:13px;}
 .empty-state .ico{font-size:34px;margin-bottom:10px;}
@@ -643,8 +654,15 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 
     <div id="cierre-summary"></div>
 
-    <div id="cierre-medios" style="margin-bottom:16px;"></div>
-    <div id="cierre-desglose-doctoras" style="margin-bottom:16px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:0 0 14px;flex-wrap:wrap;gap:10px;">
+      <div class="vista-toggle" style="display:inline-flex;">
+        <button id="btn-cierre-vista-doctor" class="active" onclick="cambiarVistaCierre('doctor')">👥 Por Doctor</button>
+        <button id="btn-cierre-vista-medio" onclick="cambiarVistaCierre('medio')">💳 Por Medio de Pago</button>
+      </div>
+      <select id="cierre-fil-doctora" style="display:none;min-width:200px;" onchange="cambiarFiltroCierreDoctora()"></select>
+    </div>
+
+    <div id="cierre-desglose" style="margin-bottom:16px;"></div>
 
   </div>
 
@@ -1233,7 +1251,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-18-64';
+const APP_VERSION = '2026-09-18-65';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -4147,6 +4165,8 @@ let fechaCierre = fechaLocalISO();
 let modoCierre = 'dia'; // 'dia' | 'mes'
 let mesCierre = (()=>{ const d=new Date(); return {y:d.getFullYear(),m:d.getMonth()}; })();
 let docCardAbierto = {}; // estado de expandido/colapsado por doctora, key: 'doc_Nombre'
+let vistaCierreTab = 'doctor'; // 'doctor' o 'medio' — qué desglose se muestra en el Cierre
+let filtroCierreDoctora = ''; // solo aplica cuando la sesión es recepción; '' = todo el personal
 
 function toggleDocCard(key){
   docCardAbierto[key] = docCardAbierto[key]===false ? true : false;
@@ -4311,6 +4331,21 @@ function renderCierre(){
   }
   if(!esRecepcion) del_dia = del_dia.filter(c=>c.doctora===sesionActual);
 
+  // Filtro de doctora — solo aplica para recepción; una doctora ya está
+  // limitada a su propia sesión arriba, así que el selector ni le aparece.
+  const filSel = document.getElementById('cierre-fil-doctora');
+  if(esRecepcion){
+    filSel.style.display = '';
+    if(!filSel.dataset.poblado){
+      filSel.innerHTML = '<option value="">Todo el personal</option>' + DOCTORAS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
+      filSel.dataset.poblado = '1';
+    }
+    filSel.value = filtroCierreDoctora;
+    if(filtroCierreDoctora) del_dia = del_dia.filter(c=>c.doctora===filtroCierreDoctora);
+  }else{
+    filSel.style.display = 'none';
+  }
+
   const aviso = document.getElementById('cierre-rol-aviso');
   if(esRecepcion){
     aviso.style.display = 'none';
@@ -4384,28 +4419,19 @@ function renderCierre(){
     </div>
   `;
 
-  // Desglose por medio de pago
-  const MEDIOS_INFO = {
-    'Efectivo':{color:'#2E7D4F',bg:'#EAF7EE',border:'#A8D8B4',icon:'💵'},
-    'Tarjeta':{color:'#1B5C9E',bg:'#EEF5FC',border:'#BDD5F0',icon:'💳'},
-    'Transferencia':{color:'#1A7A5E',bg:'#FDF6EC',border:'#EDD49A',icon:'🏦'}
-  };
-  let mediosHtml = '<div class="cierre-section-title">Desglose por medio de pago</div><div class="medios-row">';
-  Object.keys(MEDIOS_INFO).forEach(m=>{
-    const info = MEDIOS_INFO[m];
-    const st = montoPorMedio(del_dia, m);
-    mediosHtml += `<div class="cierre-pago-pill" style="background:${info.bg};border:1px solid ${info.border};">${info.icon} <span class="cierre-pago-label">${m}</span><span class="cierre-pago-val" style="color:${info.color}">$${st.toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div>`;
-  });
-  if(totalPorCobrar>0){
-    mediosHtml += `<div class="cierre-pago-pill" style="background:#FDF6EC;border:1px solid #EDD49A;">💰 <span class="cierre-pago-label">Pago pendiente</span><span class="cierre-pago-val" style="color:#9A6010">$${totalPorCobrar.toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div>`;
+  // Desglose — según el toggle "Por Doctor" / "Por Medio de Pago"
+  document.getElementById('btn-cierre-vista-doctor').classList.toggle('active', vistaCierreTab==='doctor');
+  document.getElementById('btn-cierre-vista-medio').classList.toggle('active', vistaCierreTab==='medio');
+  const desgloseEl = document.getElementById('cierre-desglose');
+
+  if(vistaCierreTab==='medio'){
+    renderCierrePorMedio(desgloseEl, del_dia, total);
+    return;
   }
-  mediosHtml += '</div>';
-  document.getElementById('cierre-medios').innerHTML = mediosHtml;
 
   // Desglose por doctora — para recepción: una tarjeta por cada doctora con actividad.
   // Para una doctora: una sola tarjeta, la suya. Mismo componente para ambos casos.
-  const desgloseEl = document.getElementById('cierre-desglose-doctoras');
-  const doctorasAMostrar = esRecepcion ? DOCTORAS : [sesionActual];
+  const doctorasAMostrar = esRecepcion ? (filtroCierreDoctora ? [filtroCierreDoctora] : DOCTORAS) : [sesionActual];
   let docHtml = '<div class="cierre-section-title">'+(esRecepcion?'Desglose por doctora':'Tus pacientes')+'</div>';
   let algunaConDatos = false;
   doctorasAMostrar.forEach(d=>{
@@ -4444,6 +4470,79 @@ function renderCierre(){
     </div>`;
   });
   desgloseEl.innerHTML = algunaConDatos ? docHtml : '<div class="empty-state"><div class="ico">📭</div>Sin pagos procesados para este filtro</div>';
+}
+
+function cambiarVistaCierre(v){
+  vistaCierreTab = v;
+  renderCierre();
+}
+function cambiarFiltroCierreDoctora(){
+  filtroCierreDoctora = document.getElementById('cierre-fil-doctora').value;
+  renderCierre();
+}
+
+// Tarjetas por medio de pago (Efectivo / Tarjeta / Transferencia / Cortesía),
+// cada una con % del corte, número de pagos, barra de progreso y desglose
+// por doctora dentro de ese medio — refleja pagos divididos entre dos medios.
+function renderCierrePorMedio(el, del_dia, total){
+  const MEDIOS_INFO = {
+    'Efectivo':{color:'#2E7D4F',bg:'#EAF7EE',border:'#A8D8B4',icon:'💵'},
+    'Transferencia':{color:'#1A7A5E',bg:'#FDF6EC',border:'#EDD49A',icon:'🏦'},
+    'Tarjeta':{color:'#1B5C9E',bg:'#EEF5FC',border:'#BDD5F0',icon:'💳'}
+  };
+  let cardsHtml = '';
+  let algunaConDatos = false;
+
+  Object.keys(MEDIOS_INFO).forEach(medio=>{
+    const info = MEDIOS_INFO[medio];
+    const citasDeMedio = del_dia.filter(c=>c.medioPago===medio || c.medioPago2===medio);
+    if(!citasDeMedio.length) return;
+    algunaConDatos = true;
+    const monto = montoPorMedio(del_dia, medio);
+    const pct = total>0 ? Math.round(monto/total*100) : 0;
+
+    const porDoctora = {};
+    citasDeMedio.forEach(c=>{
+      let sub = 0;
+      if(c.medioPago===medio) sub += Number(c.montoPagado||0);
+      if(c.medioPago2===medio) sub += Number(c.montoPagado2||0);
+      porDoctora[c.doctora] = (porDoctora[c.doctora]||0) + sub;
+    });
+    const filasDoc = Object.entries(porDoctora).sort((a,b)=>b[1]-a[1]).map(([doc,m])=>
+      `<div class="medio-doc-row"><span>${esc(doc)}</span><span>$${m.toLocaleString('es-MX',{minimumFractionDigits:2})}</span></div>`
+    ).join('');
+
+    cardsHtml += `<div class="medio-card" style="background:${info.bg};border:1px solid ${info.border};">
+      <div class="medio-card-icon">${info.icon}</div>
+      <div class="medio-card-label" style="color:${info.color}">${medio.toUpperCase()}</div>
+      <div class="medio-card-total">$${monto.toLocaleString('es-MX',{minimumFractionDigits:2})}</div>
+      <div class="medio-card-sub">${pct}% del total · ${citasDeMedio.length} pago(s)</div>
+      <div class="medio-card-bar-track"><div class="medio-card-bar-fill" style="width:${pct}%;background:${info.color};"></div></div>
+      <div class="medio-card-doc-list">${filasDoc}</div>
+    </div>`;
+  });
+
+  const cortesias = del_dia.filter(c=>c.cortesia);
+  if(cortesias.length){
+    algunaConDatos = true;
+    const porDoctora = {};
+    cortesias.forEach(c=> porDoctora[c.doctora] = (porDoctora[c.doctora]||0)+1 );
+    const filasDoc = Object.entries(porDoctora).map(([doc,n])=>
+      `<div class="medio-doc-row"><span>${esc(doc)}</span><span>${n} cortesía(s)</span></div>`
+    ).join('');
+    cardsHtml += `<div class="medio-card" style="background:#F5F0FC;border:1px solid #D2B4DE;">
+      <div class="medio-card-icon">🎁</div>
+      <div class="medio-card-label" style="color:#7D3C98">CORTESÍA</div>
+      <div class="medio-card-total">$0.00</div>
+      <div class="medio-card-sub">0% del total · ${cortesias.length} pago(s)</div>
+      <div class="medio-card-bar-track"><div class="medio-card-bar-fill" style="width:0%;background:#7D3C98;"></div></div>
+      <div class="medio-card-doc-list">${filasDoc}</div>
+    </div>`;
+  }
+
+  el.innerHTML = algunaConDatos
+    ? '<div class="cierre-section-title">Desglose por medio de pago</div><div class="medio-cards-row">'+cardsHtml+'</div>'
+    : '<div class="empty-state"><div class="ico">📭</div>Sin pagos procesados para este filtro</div>';
 }
 
 // ═══════════════════════════════════════════
