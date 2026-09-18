@@ -528,6 +528,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     <button id="tab-historico" onclick="cambiarSeccion('historico')">📁 Histórico</button>
     <button id="tab-cierre" onclick="cambiarSeccion('cierre')">📊 Cierre</button>
     <button id="tab-prm" onclick="cambiarSeccion('prm')">🎯 PRM</button>
+    <button id="tab-faqs" onclick="cambiarSeccion('faqs')">❓ Ayuda</button>
   </div>
 
   <div id="section-agenda">
@@ -723,6 +724,17 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     <div id="prm-summary"></div>
     <div id="prm-tabla"></div>
 
+  </div>
+
+  <div id="section-faqs" style="display:none">
+    <div class="filter-bar" style="align-items:flex-end;">
+      <div class="form-group" style="margin:0;flex:1;">
+        <label class="hist-filter-label">Buscar una pregunta</label>
+        <input type="text" id="faq-buscar" placeholder="Ej. transferencia, bloquear, notificaciones..." oninput="faqAbierta=null;renderFAQs()">
+      </div>
+    </div>
+    <div id="faq-categorias" style="display:flex;gap:6px;flex-wrap:wrap;margin:14px 0;"></div>
+    <div id="faq-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
   </div>
 
 </div>
@@ -1213,7 +1225,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-50';
+const APP_VERSION = '2026-09-14-51';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -4135,21 +4147,95 @@ function toggleDocCard(key){
   toggleLink.textContent = abierto ? '▲ Ocultar pacientes' : '▼ Mostrar pacientes';
 }
 
+// ═══════════════════════════════════════════
+// AYUDA / PREGUNTAS FRECUENTES — vive aquí mismo, siempre actualizada
+// junto con el resto de la app (a diferencia de un PDF aparte).
+// ═══════════════════════════════════════════
+const FAQS = [
+  {cat:'Agenda', icono:'📅', p:'¿Cómo agendo una cita nueva?', r:'Desde la Agenda, botón <strong>"+ Nueva cita"</strong> (arriba, junto a Hoy/Día/Semana/Mes). Llena el nombre del padre/madre o tutor, el nombre del niño/a, teléfono, doctora, servicio y horario. Si el paciente ya vino antes, en cuanto escribas su nombre te va a sugerir el teléfono y correo solos.'},
+  {cat:'Agenda', icono:'📅', p:'¿Cómo marco que un paciente ya llegó?', r:'Abre la cita (clic en la tarjeta) y avanza el círculo del pipeline a "Llegó" — o usa los botones rápidos de la tarjeta. El pipeline sigue el orden: Agendado → Confirmada → Llegó → En curso → Finalizado.'},
+  {cat:'Agenda', icono:'📅', p:'¿Puedo mover una cita a otro horario o cancelarla?', r:'Sí — abre la cita con "✎ Editar" para cambiar fecha/hora/doctora/servicio, o usa "⊘ Cancelar" si ya no va a venir (queda marcada como cancelada, no se borra del historial). Solo recepción (o la doctora dueña de la cita) puede hacer estos cambios.'},
+  {cat:'Agenda', icono:'📅', p:'¿Qué diferencia hay entre "Cancelar" y "No llegó"?', r:'"Cancelada" es cuando alguien avisó que no va a venir. "No llegó" es cuando se agendó, nadie avisó nada, y simplemente no se presentó — son dos historiales distintos para que sepas qué tan seguido pasa cada cosa.'},
+
+  {cat:'Bloqueos', icono:'🚫', p:'Una doctora se va de vacaciones una semana, ¿cómo bloqueo varios días de un jalón?', r:'Botón "🚫 Bloquear" en la Agenda. Llena "Desde" y "Hasta" con el rango completo (por ejemplo, del lunes al viernes) — se bloquean todos esos días de un jalón, no hace falta repetirlo día por día.'},
+  {cat:'Bloqueos', icono:'🚫', p:'¿Por qué en la vista "Todas las Dras./Dres." los bloqueos se ven con rayas rojas y solo 2 letras?', r:'Cuando hay varias doctoras a la vez en la misma columna, no cabe el nombre completo — por eso se usan las iniciales (ej. "IB" = Irene Botas) sobre un fondo de rayas rojas, para que se distinga de un vistazo sin necesitar leer texto pequeño. Pasa el mouse encima para ver el motivo completo.'},
+  {cat:'Bloqueos', icono:'🚫', p:'¿Cómo quito un bloqueo antes de tiempo?', r:'Botón "🚫 Bloquear" → en la lista de "Bloqueos activos" (abajo del formulario), botón "✕ Quitar" junto al bloqueo que quieras eliminar. Si era un rango de varios días, se quitan todos juntos.'},
+
+  {cat:'Pagos', icono:'💳', p:'¿Cómo proceso el pago de una cita?', r:'Botón "💳 Procesar pago" en la tarjeta de la cita. Puedes cobrar completo, dejar un saldo pendiente, o dividir el pago en dos medios distintos (ej. mitad efectivo, mitad tarjeta).'},
+  {cat:'Pagos', icono:'💳', p:'¿Por qué me sale "Por verificar" en un pago con transferencia?', r:'Es a propósito — a diferencia de tarjeta o efectivo, una transferencia no se confirma en automático, hay que revisar que el dinero sí haya entrado a la cuenta antes de darla por buena. Ese aviso (y el filtro del mismo nombre en Histórico) es para no perder de vista cuáles faltan por confirmar.'},
+  {cat:'Pagos', icono:'💳', p:'¿Cómo sé a qué terminal (mía o de CANOPY) va cada pago?', r:'Cada servicio ya tiene configurado a qué terminal va (Consultas/Hospitalización/Cirugías → la doctora; Servicios/Otros → CANOPY). Al procesar el pago con tarjeta, la app sugiere la terminal correcta sola — sigue siendo editable si hace falta.'},
+  {cat:'Pagos', icono:'💳', p:'Cobré de más o de menos por error, ¿puedo corregirlo?', r:'El dinero de una cita solo lo puede editar la doctora dueña de esa cita (o recepción, si es un paciente "sin cita"). Ábrela con "✎ Editar" — si ya está pagada, el campo de precio queda bloqueado para todos los demás, justo para evitar cambios accidentales.'},
+
+  {cat:'Directorio', icono:'👥', p:'¿Qué es el Directorio y para qué sirve?', r:'Es la lista de todos los pacientes que ya han venido, armada sola a partir del historial de citas — no hay que capturar nada aparte. Tiene buscador (por nombre del niño, del tutor, o teléfono), filtro por doctora, y un botón "+ Nueva cita" que ya te llena los datos de contacto.'},
+  {cat:'Directorio', icono:'👥', p:'Busqué a un paciente y "Ver historial" no hizo nada, ¿está roto?', r:'No — ese botón muestra las visitas ya <strong>pagadas</strong>. Si ese paciente solo tiene citas agendadas a futuro (todavía sin cobrar), te va a avisar con una ventana que no tiene historial de pagos todavía, en vez de abrir algo vacío.'},
+
+  {cat:'Histórico', icono:'📁', p:'¿Por qué Histórico me abre mostrando solo el día de hoy?', r:'Es el default para que no cargue de golpe un mes completo de citas. Cambia las fechas "Desde"/"Hasta" arriba (o usa las flechitas ‹› para moverte día por día) para ver otro rango.'},
+  {cat:'Histórico', icono:'📁', p:'¿Cómo marco que ya facturé una cita?', r:'En la columna de factura, si dice "🧾 Pendiente" dale clic y captura el folio. Si el paciente no pidió factura al momento de pagar pero luego sí la necesita, edita la cita y activa la casilla "Requiere factura" (solo aparece ahí una vez que la cita ya está pagada).'},
+  {cat:'Histórico', icono:'📁', p:'¿Puedo descargar Histórico a Excel?', r:'Sí, botón "↓ Exportar Excel" — descarga exactamente lo que estés viendo en pantalla en ese momento (respeta todos los filtros que tengas activos).'},
+
+  {cat:'Notificaciones', icono:'🔔', p:'Activé notificaciones pero no me llegan en mi iPhone, ¿qué hago?', r:'En iPhone, Safari <strong>no permite</strong> notificaciones en una pestaña normal del navegador — es una regla de Apple, ningún ajuste de la app lo puede evitar. Hay que agregar la Agenda a la pantalla de inicio como si fuera una app (botón compartir → "Agregar a pantalla de inicio") y activarlas desde ahí.'},
+  {cat:'Notificaciones', icono:'🔔', p:'Me llega la notificación doble, ¿por qué?', r:'Casi siempre es porque tienes la Agenda abierta en más de un lugar a la vez (por ejemplo, la app instalada Y también una pestaña normal del navegador). Cierra una de las dos y déjala solo en un lugar.'},
+  {cat:'Notificaciones', icono:'🔔', p:'¿Qué es la campanita 🔔 del header?', r:'Es un aviso dentro de la misma app (no una notificación del celular) — muestra la actividad reciente de tu sesión, como cuando un paciente marca "Llegó" o se procesa un pago. Se pone en cero cada vez que le das "Marcar todo leído".'},
+
+  {cat:'Roles y permisos', icono:'🔒', p:'¿Qué puede ver una doctora que no sea la mía?', r:'Cada doctora ve la agenda completa (como recepción) — nombres, horarios, servicios de todas — pero <strong>nunca</strong> el precio, el pago ni la terminal de las citas que no son suyas. Eso solo lo ve recepción/admin y la doctora dueña de cada cita.'},
+  {cat:'Roles y permisos', icono:'🔒', p:'¿Cómo le doy a alguien permiso de administrar el catálogo de servicios sin que sea admin completo?', r:'Panel de Personal → editar esa cuenta → casilla "Puede agregar/editar el catálogo de servicios" (aparte de "Es administrador"). Le da acceso a Servicios e Historial de auditoría, pero nada de eliminar cuentas ni citas.'},
+
+  {cat:'General', icono:'⚙️', p:'¿Tengo que refrescar la página cada vez que suben una actualización?', r:'No — la app revisa sola cada 2 minutos (y también cuando regresas a la pestaña) si hay una versión nueva, y se actualiza automáticamente. Si tienes algo abierto a media edición, espera a que termines para no perder lo que estabas escribiendo.'},
+  {cat:'General', icono:'⚙️', p:'¿Cada cuánto se respalda la información?', r:'Todos los días, automático, sin que nadie tenga que hacer nada — se guardan los últimos 7 días de respaldo.'},
+];
+
+let faqCategoriaActiva = '';
+let faqAbierta = null;
+
+function renderFAQs(){
+  const q = document.getElementById('faq-buscar').value.trim().toLowerCase();
+  const categorias = [...new Set(FAQS.map(f=>f.cat))];
+
+  document.getElementById('faq-categorias').innerHTML =
+    `<span class="hist-filtro-link" style="cursor:pointer;font-weight:${!faqCategoriaActiva?800:600};color:${!faqCategoriaActiva?'var(--gold)':'var(--gray-600)'};" onclick="faqCategoriaActiva='';faqAbierta=null;renderFAQs()">Todas</span>` +
+    categorias.map(c=>`<span class="hist-filtro-link" style="cursor:pointer;font-weight:${faqCategoriaActiva===c?800:600};color:${faqCategoriaActiva===c?'var(--gold)':'var(--gray-600)'};" onclick="faqCategoriaActiva='${c}';faqAbierta=null;renderFAQs()">${esc(c)}</span>`).join('');
+
+  let lista = FAQS;
+  if(faqCategoriaActiva) lista = lista.filter(f=>f.cat===faqCategoriaActiva);
+  if(q) lista = lista.filter(f=>f.p.toLowerCase().includes(q) || f.r.toLowerCase().includes(q) || f.cat.toLowerCase().includes(q));
+
+  const el = document.getElementById('faq-lista');
+  if(!lista.length){
+    el.innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--gray-400);font-size:13px;">Sin resultados — prueba con otra palabra.</div>`;
+    return;
+  }
+  el.innerHTML = lista.map((f,i)=>{
+    const abierta = faqAbierta === i;
+    return `<div class="cita-card" style="cursor:pointer;padding:13px 16px;" onclick="faqAbierta=${abierta?'null':i};renderFAQs()">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <div style="font-weight:700;font-size:13.5px;color:var(--text);display:flex;align-items:center;gap:8px;">
+          <span>${f.icono}</span><span>${esc(f.p)}</span>
+        </div>
+        <span style="color:var(--gray-400);font-size:12px;flex-shrink:0;">${abierta?'▲':'▼'}</span>
+      </div>
+      ${abierta?`<div style="font-size:12.5px;color:var(--gray-600);line-height:1.6;margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-100);">${f.r}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
 function cambiarSeccion(sec){
   document.getElementById('tab-agenda').classList.toggle('active', sec==='agenda');
   document.getElementById('tab-directorio').classList.toggle('active', sec==='directorio');
   document.getElementById('tab-cierre').classList.toggle('active', sec==='cierre');
   document.getElementById('tab-historico').classList.toggle('active', sec==='historico');
   document.getElementById('tab-prm').classList.toggle('active', sec==='prm');
+  document.getElementById('tab-faqs').classList.toggle('active', sec==='faqs');
   document.getElementById('section-agenda').style.display = sec==='agenda' ? '' : 'none';
   document.getElementById('section-directorio').style.display = sec==='directorio' ? '' : 'none';
   document.getElementById('section-cierre').style.display = sec==='cierre' ? '' : 'none';
   document.getElementById('section-historico').style.display = sec==='historico' ? '' : 'none';
   document.getElementById('section-prm').style.display = sec==='prm' ? '' : 'none';
+  document.getElementById('section-faqs').style.display = sec==='faqs' ? '' : 'none';
   if(sec==='directorio') renderDirectorio();
   if(sec==='cierre') renderCierre();
   if(sec==='historico') renderHistorico();
   if(sec==='prm') renderPRM();
+  if(sec==='faqs') renderFAQs();
 }
 
 function cambiarModoCierre(m){
