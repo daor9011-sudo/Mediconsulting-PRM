@@ -76,8 +76,8 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .cita-top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px;}
 .cita-info{display:grid;grid-template-columns:auto 1fr;column-gap:9px;align-items:start;flex:1;min-width:0;}
 .cita-info-resto{display:flex;flex-direction:column;min-width:0;}
-.cita-badges-extra{display:flex;flex-direction:column;gap:6px;margin-top:6px;}
-.cita-badges-extra>span{display:block;width:100%;box-sizing:border-box;text-align:left;}
+.cita-badges-extra{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.cita-badges-extra>span{white-space:nowrap;flex-shrink:0;}
 .cita-hora{font-weight:700;color:var(--gray-800);font-size:14.5px;display:flex;align-items:center;gap:5px;flex-shrink:0;}
 .cita-paciente{font-weight:700;color:var(--text);font-size:14.5px;}
 .cita-linea1{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;row-gap:3px;}
@@ -1227,7 +1227,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-18-57';
+const APP_VERSION = '2026-09-18-58';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
