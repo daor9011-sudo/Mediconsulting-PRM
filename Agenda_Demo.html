@@ -74,7 +74,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .cita-card.cancelada{opacity:0.55;}
 .cita-card.no-llego{opacity:0.55;}
 .cita-top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px;}
-.cita-info{display:grid;grid-template-columns:auto 1fr;column-gap:9px;flex:1;min-width:0;}
+.cita-info{display:grid;grid-template-columns:auto 1fr;column-gap:9px;align-items:start;flex:1;min-width:0;}
 .cita-info-resto{display:flex;flex-direction:column;min-width:0;}
 .cita-badges-extra{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
 .cita-hora{font-weight:700;color:var(--gray-800);font-size:14.5px;display:flex;align-items:center;gap:5px;flex-shrink:0;}
@@ -1225,7 +1225,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-51';
+const APP_VERSION = '2026-09-14-53';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1794,6 +1794,7 @@ function citaDesdeDb(r){
     saldoPendiente:Number(r.saldo_pendiente)||0,
     requiereFactura:!!r.requiere_factura, facturada:!!r.facturada, numeroFactura:r.numero_factura||null,
     terminalPago:r.terminal_pago||null, terminalPago2:r.terminal_pago_2||null, terminalPorServicio:r.terminal_por_servicio||null,
+    transferenciaVerificada:!!r.transferencia_verificada,
     deleted:!!r.deleted, deletedAt:r.deleted_at, deletedBy:r.deleted_by
   };
 }
@@ -1808,6 +1809,7 @@ function citaHaciaDb(c){
     saldo_pendiente:c.saldoPendiente||0,
     requiere_factura:!!c.requiereFactura, facturada:!!c.facturada, numero_factura:c.numeroFactura||null,
     terminal_pago:c.terminalPago||null, terminal_pago_2:c.terminalPago2||null, terminal_por_servicio:c.terminalPorServicio||null,
+    transferencia_verificada:!!c.transferenciaVerificada,
     deleted:!!c.deleted, deleted_at:c.deletedAt||null, deleted_by:c.deletedBy||null
   };
 }
@@ -4162,7 +4164,7 @@ const FAQS = [
   {cat:'Bloqueos', icono:'🚫', p:'¿Cómo quito un bloqueo antes de tiempo?', r:'Botón "🚫 Bloquear" → en la lista de "Bloqueos activos" (abajo del formulario), botón "✕ Quitar" junto al bloqueo que quieras eliminar. Si era un rango de varios días, se quitan todos juntos.'},
 
   {cat:'Pagos', icono:'💳', p:'¿Cómo proceso el pago de una cita?', r:'Botón "💳 Procesar pago" en la tarjeta de la cita. Puedes cobrar completo, dejar un saldo pendiente, o dividir el pago en dos medios distintos (ej. mitad efectivo, mitad tarjeta).'},
-  {cat:'Pagos', icono:'💳', p:'¿Por qué me sale "Por verificar" en un pago con transferencia?', r:'Es a propósito — a diferencia de tarjeta o efectivo, una transferencia no se confirma en automático, hay que revisar que el dinero sí haya entrado a la cuenta antes de darla por buena. Ese aviso (y el filtro del mismo nombre en Histórico) es para no perder de vista cuáles faltan por confirmar.'},
+  {cat:'Pagos', icono:'💳', p:'¿Por qué me sale "Por verificar" en un pago con transferencia?', r:'Es a propósito — a diferencia de tarjeta o efectivo, una transferencia no se confirma en automático, hay que revisar que el dinero sí haya entrado a la cuenta antes de darla por buena. Ese aviso (y el filtro del mismo nombre en Histórico) es para no perder de vista cuáles faltan por confirmar. <strong>Para quitarlo:</strong> una vez que confirmes que el dinero sí llegó, dale clic directo al aviso "⏳ Por verificar" — se cierra y la cita se ve igual que cualquier otro pago ya confirmado.'},
   {cat:'Pagos', icono:'💳', p:'¿Cómo sé a qué terminal (mía o de CANOPY) va cada pago?', r:'Cada servicio ya tiene configurado a qué terminal va (Consultas/Hospitalización/Cirugías → la doctora; Servicios/Otros → CANOPY). Al procesar el pago con tarjeta, la app sugiere la terminal correcta sola — sigue siendo editable si hace falta.'},
   {cat:'Pagos', icono:'💳', p:'Cobré de más o de menos por error, ¿puedo corregirlo?', r:'El dinero de una cita solo lo puede editar la doctora dueña de esa cita (o recepción, si es un paciente "sin cita"). Ábrela con "✎ Editar" — si ya está pagada, el campo de precio queda bloqueado para todos los demás, justo para evitar cambios accidentales.'},
 
@@ -4518,7 +4520,7 @@ function getFiltradoHistorico(){
   if(soloFacturasPendientes) filtrado = filtrado.filter(c=>c.requiereFactura && !c.facturada);
   if(soloFacturado) filtrado = filtrado.filter(c=>c.facturada);
   if(soloCuentasCobrar) filtrado = filtrado.filter(c=>c.saldoPendiente>0);
-  if(soloPorVerificar) filtrado = filtrado.filter(c=>c.medioPago==='Transferencia' || c.medioPago2==='Transferencia');
+  if(soloPorVerificar) filtrado = filtrado.filter(c=>(c.medioPago==='Transferencia' || c.medioPago2==='Transferencia') && !c.transferenciaVerificada);
   return filtrado;
 }
 
@@ -4537,12 +4539,31 @@ function bPago(c){
   };
   // Una transferencia no se confirma en automático — a diferencia de
   // tarjeta o efectivo, hay que verificar que el dinero sí haya llegado
-  // a la cuenta antes de darla por buena.
-  const alertaVerificar = (c.medioPago==='Transferencia' || c.medioPago2==='Transferencia')
-    ? ' <span class="badge" style="background:#FDF6EC;color:var(--warn);border:1px solid #EDD49A;" title="Confirma que la transferencia sí haya entrado a la cuenta">⏳ Por verificar</span>'
+  // a la cuenta. Una vez verificada, este aviso desaparece y la cita se
+  // ve igual que cualquier otro pago ya confirmado — clic en el aviso
+  // para marcarla.
+  const hayTransferencia = c.medioPago==='Transferencia' || c.medioPago2==='Transferencia';
+  const alertaVerificar = (hayTransferencia && !c.transferenciaVerificada)
+    ? ` <span class="badge" style="background:#FDF6EC;color:var(--warn);border:1px solid #EDD49A;cursor:pointer;" onclick="event.stopPropagation();marcarTransferenciaVerificada(${c.id})" title="Clic para marcarla como verificada, una vez que confirmes que el dinero sí entró a la cuenta">⏳ Por verificar</span>`
     : '';
   if(c.medioPago2) return badgeUno(c.medioPago)+' '+badgeUno(c.medioPago2)+alertaVerificar;
   return badgeUno(c.medioPago)+alertaVerificar;
+}
+
+function marcarTransferenciaVerificada(id){
+  const c = citas.find(x=>x.id===id);
+  if(!c) return;
+  mostrarConfirm({
+    titulo:'¿Marcar como verificada?',
+    mensaje:`Se va a quitar el aviso "Por verificar" de <strong>${esc(c.paciente)}</strong> — confirma que ya revisaste que el dinero de esta transferencia sí entró a la cuenta.`,
+    textoConfirmar:'Sí, ya la verifiqué', icono:'✓'
+  }, ()=>{
+    c.transferenciaVerificada = true;
+    guardarLocal(c);
+    render();
+    if(document.getElementById('section-historico').style.display!=='none') renderHistorico();
+    toast('✓ Transferencia marcada como verificada');
+  });
 }
 
 function initHistServicioSelect(){
