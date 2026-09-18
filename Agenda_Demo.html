@@ -87,8 +87,8 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .cita-doctora{font-size:10.5px;padding:2px 9px;border-radius:99px;font-weight:600;background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-border);}
 .cita-servicio{font-size:11.5px;color:var(--gray-400);font-weight:400;line-height:1.2;}
 .cita-hora .ico{color:var(--gold);}
-.cita-actions{display:flex;gap:6px;flex-basis:100%;justify-content:flex-start;margin-bottom:14px;}
-.btn-sm{padding:5px 12px;font-size:11.5px;border-radius:5px;cursor:pointer;border:none;font-weight:500;display:inline-flex;align-items:center;gap:4px;transition:all .15s;}
+.cita-actions{display:flex;align-items:flex-start;gap:6px;flex-basis:100%;justify-content:flex-start;margin-bottom:14px;}
+.btn-sm{padding:5px 12px;font-size:11.5px;border-radius:5px;cursor:pointer;border:none;font-weight:500;display:inline-flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap;}
 .btn-sm-edit{background:#EEF5FC;color:#1B5C9E;border:1px solid #BDD5F0;}.btn-sm-edit:hover{background:#D8EAF9;}
 .btn-sm-del{background:#FDF6EC;color:var(--danger);border:1px solid #EDD49A;}.btn-sm-del:hover{background:#FCE0DF;}
 .btn-sm-cancel{background:var(--gray-100);color:var(--gray-600);border:1px solid var(--gray-200);}.btn-sm-cancel:hover{background:var(--gray-200);}
@@ -1226,7 +1226,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-18-59';
+const APP_VERSION = '2026-09-18-60';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2359,10 +2359,10 @@ function render(){
         </div>
         <div class="cita-actions">
           ${(sesionActual==='recepcion' || c.doctora===sesionActual) ? `
-          ${(!c.cancelada && !c.pagado && !c.noLlego)?`<button class="btn-sm" style="background:#EEF8F1;color:var(--success);border:1px solid #A8D8B4;" onclick="abrirPagoModal(${c.id})">💳 Procesar pago</button>`:''}
+          ${(!c.cancelada && !c.pagado && !c.noLlego)?`<button class="btn-sm" style="background:#EEF8F1;color:var(--success);border:1px solid #A8D8B4;" onclick="abrirPagoModal(${c.id})">💳 Procesar<br>pago</button>`:''}
           <button class="btn-sm btn-sm-edit" onclick="abrirModal(${c.id})">✎ Editar</button>
           ${!c.cancelada?`<button class="btn-sm btn-sm-cancel" onclick="cancelarCita(${c.id})">⊘ Cancelar</button>`:''}
-          ${(!c.cancelada && !c.noLlego && !c.pagado)?`<button class="btn-sm" style="background:#F5EEF8;color:#7D3C98;border:1px solid #D9B3D9;" onclick="marcarNoLlego(${c.id})">👻 No llegó</button>`:''}
+          ${(!c.cancelada && !c.noLlego && !c.pagado)?`<button class="btn-sm" style="background:#F5EEF8;color:#7D3C98;border:1px solid #D9B3D9;" onclick="marcarNoLlego(${c.id})">👻 No<br>llegó</button>`:''}
           ${c.cancelada?`<button class="btn-sm btn-save" onclick="reactivarCita(${c.id})">↺ Reactivar</button>`:''}
           ${sesionActual==='recepcion'
             ? `<button class="btn-sm btn-sm-del" onclick="eliminarCita(${c.id})">🗑 Eliminar</button>`
