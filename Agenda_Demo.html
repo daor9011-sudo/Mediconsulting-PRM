@@ -522,6 +522,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 
   <div class="main-tabs">
     <button id="tab-agenda" class="active" onclick="cambiarSeccion('agenda')">📅 Agenda</button>
+    <button id="tab-directorio" onclick="cambiarSeccion('directorio')">🗂️ Directorio</button>
     <button id="tab-historico" onclick="cambiarSeccion('historico')">📁 Histórico</button>
     <button id="tab-cierre" onclick="cambiarSeccion('cierre')">📊 Cierre</button>
     <button id="tab-prm" onclick="cambiarSeccion('prm')">🎯 PRM</button>
@@ -584,6 +585,17 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   </div>
 
   <!-- ═══ CIERRE ═══ -->
+  <div id="section-directorio" style="display:none">
+    <div class="filter-bar" style="align-items:flex-end;">
+      <div class="form-group" style="margin:0;flex:1;">
+        <label class="hist-filter-label">Buscar paciente, tutor o teléfono</label>
+        <input type="text" id="dir-buscar" placeholder="Escribe un nombre o número..." oninput="renderDirectorio()">
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--gray-400);margin:6px 0 14px;" id="dir-contador"></div>
+    <div id="dir-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+
   <div id="section-cierre" style="display:none">
 
     <div class="day-nav">
@@ -973,9 +985,10 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 <div class="modal-overlay" id="bloqueo-modal-overlay">
   <div class="modal" style="max-width:480px;">
     <h3>🚫 Bloquear agenda</h3>
+    <div class="form-group"><label>Dra./Dr.</label><select id="bq-doctora"></select></div>
     <div class="form-row">
-      <div class="form-group"><label>Dra./Dr.</label><select id="bq-doctora"></select></div>
-      <div class="form-group"><label>Fecha</label><input type="date" id="bq-fecha"></div>
+      <div class="form-group"><label>Desde</label><input type="date" id="bq-fecha"></div>
+      <div class="form-group"><label>Hasta <span style="font-weight:400;color:var(--gray-400);">(opcional — para varios días)</span></label><input type="date" id="bq-fecha-hasta"></div>
     </div>
     <div class="form-group" style="display:flex;align-items:center;gap:8px;">
       <input type="checkbox" id="bq-todo-dia" onchange="toggleBloqueoHoras()" style="width:auto;">
@@ -1194,7 +1207,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-43';
+const APP_VERSION = '2026-09-14-44';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1866,9 +1879,9 @@ async function cargarBloqueos(){
   if(error){ toast('⚠ Error cargando bloqueos: '+error.message); bloqueos = []; return; }
   bloqueos = (data||[]).map(bloqueoDesdeDb);
 }
-async function guardarBloqueos(){
-  if(!bloqueos.length) return;
-  const filas = bloqueos.map(bloqueoHaciaDb);
+async function guardarBloqueos(lista){
+  const filas = (lista||bloqueos).map(bloqueoHaciaDb);
+  if(!filas.length) return;
   const { error } = await sb.from('bloqueos_agenda').upsert(filas, { onConflict:'id' });
   if(error) toast('⚠ No se pudo guardar el bloqueo: '+error.message);
 }
@@ -3102,6 +3115,7 @@ function abrirBloqueoModal(){
   sel.innerHTML = DOCTORAS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
   if(sesionActual!=='recepcion') sel.value = sesionActual; // si es una doctora, se preselecciona a sí misma
   document.getElementById('bq-fecha').value = fechaActual;
+  document.getElementById('bq-fecha-hasta').value = '';
   document.getElementById('bq-todo-dia').checked = false;
   document.getElementById('bq-hora-inicio').value = '';
   document.getElementById('bq-hora-fin').value = '';
@@ -3120,26 +3134,71 @@ function toggleBloqueoHoras(){
 
 function guardarBloqueo(){
   const doctora = document.getElementById('bq-doctora').value;
-  const fecha = document.getElementById('bq-fecha').value;
+  const fechaDesde = document.getElementById('bq-fecha').value;
+  const fechaHastaInput = document.getElementById('bq-fecha-hasta').value;
+  const fechaHasta = fechaHastaInput || fechaDesde;
   const todoDia = document.getElementById('bq-todo-dia').checked;
   const horaInicio = todoDia ? '' : document.getElementById('bq-hora-inicio').value;
   const horaFin = todoDia ? '' : document.getElementById('bq-hora-fin').value;
   const motivo = document.getElementById('bq-motivo').value.trim();
-  if(!doctora || !fecha || !motivo){ toast('⚠ Completa doctora, fecha y motivo'); return; }
+  if(!doctora || !fechaDesde || !motivo){ toast('⚠ Completa doctora, fecha y motivo'); return; }
   if(!todoDia && (!horaInicio || !horaFin)){ toast('⚠ Indica la hora de inicio y fin del bloqueo'); return; }
+  if(fechaHasta < fechaDesde){ toast('⚠ La fecha "Hasta" no puede ser antes que "Desde"'); return; }
 
-  bloqueos.push({id:Date.now(), doctora, fecha, todoDia, horaInicio, horaFin, motivo, creadoPor:sesionActual, creadoEn:fechaLocalISO()});
-  guardarBloqueos();
+  // Un rango de fechas (ej. vacaciones de una semana) se guarda como un
+  // bloqueo POR CADA DÍA del rango — así el resto de la app (que ya
+  // revisa bloqueos comparando una fecha exacta) no necesita cambiar
+  // nada para entender "varios días".
+  const dias = [];
+  let d = new Date(fechaDesde+'T00:00:00');
+  const fin = new Date(fechaHasta+'T00:00:00');
+  while(d <= fin){
+    dias.push(fechaLocalISO(d));
+    d.setDate(d.getDate()+1);
+  }
+  if(dias.length > 60){ toast('⚠ Ese rango es de más de 60 días — revisa las fechas'); return; }
+
+  const nuevosBloqueos = dias.map((fecha,i)=>({
+    id: Date.now()+i, doctora, fecha, todoDia, horaInicio, horaFin, motivo,
+    creadoPor:sesionActual, creadoEn:fechaLocalISO()
+  }));
+  bloqueos.push(...nuevosBloqueos);
+  guardarBloqueos(nuevosBloqueos);
   renderListaBloqueos();
   render();
-  toast('✓ Bloqueo registrado');
+  toast(dias.length>1 ? `✓ Bloqueados ${dias.length} días` : '✓ Bloqueo registrado');
 }
 
-function eliminarBloqueo(id){
-  mostrarConfirm({titulo:'¿Quitar este bloqueo?', mensaje:'La doctora volverá a estar disponible en ese horario.', textoConfirmar:'Sí, quitar', icono:'🚫'}, async ()=>{
-    const { error } = await sb.from('bloqueos_agenda').delete().eq('id', id);
+// Agrupa bloqueos consecutivos de la misma doctora+motivo+horario en un
+// solo renglón — así una semana de vacaciones no se ve como 7 líneas
+// idénticas, sino una sola con el rango completo.
+function esDiaSiguiente(fechaA, fechaB){
+  const da = new Date(fechaA+'T00:00:00');
+  da.setDate(da.getDate()+1);
+  return fechaLocalISO(da) === fechaB;
+}
+function agruparBloqueosConsecutivos(lista){
+  const grupos = [];
+  lista.forEach(b=>{
+    const ultimo = grupos[grupos.length-1];
+    const esConsecutivo = ultimo && ultimo.doctora===b.doctora && ultimo.motivo===b.motivo &&
+      ultimo.todoDia===b.todoDia && ultimo.horaInicio===b.horaInicio && ultimo.horaFin===b.horaFin &&
+      esDiaSiguiente(ultimo.fechaFin, b.fecha);
+    if(esConsecutivo){ ultimo.fechaFin = b.fecha; ultimo.ids.push(b.id); }
+    else grupos.push({...b, fechaFin:b.fecha, ids:[b.id]});
+  });
+  return grupos;
+}
+function eliminarBloqueosGrupo(idsJson){
+  const ids = JSON.parse(idsJson);
+  const varios = ids.length > 1;
+  mostrarConfirm({
+    titulo: varios ? `¿Quitar este bloqueo de ${ids.length} días?` : '¿Quitar este bloqueo?',
+    mensaje:'La doctora volverá a estar disponible en ese horario.', textoConfirmar:'Sí, quitar', icono:'🚫'
+  }, async ()=>{
+    const { error } = await sb.from('bloqueos_agenda').delete().in('id', ids);
     if(error){ toast('⚠ No se pudo quitar el bloqueo: '+error.message); return; }
-    bloqueos = bloqueos.filter(b=>b.id!==id);
+    bloqueos = bloqueos.filter(b=>!ids.includes(b.id));
     renderListaBloqueos();
     render();
     toast('✓ Bloqueo eliminado');
@@ -3151,13 +3210,14 @@ function renderListaBloqueos(){
   const hoyStr = fechaLocalISO();
   const vigentes = bloqueos.filter(b=>b.fecha>=hoyStr).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   if(!vigentes.length){ el.innerHTML = '<div style="font-size:12px;color:var(--gray-400);padding:6px 0;">Sin bloqueos próximos.</div>'; return; }
-  el.innerHTML = vigentes.map(b=>`
+  const grupos = agruparBloqueosConsecutivos(vigentes);
+  el.innerHTML = grupos.map(b=>`
     <div class="doc-pac-row" style="padding:7px 0;">
       <span>
-        <span style="font-weight:700;color:var(--gray-800);">${fmtDDMMYYYY(b.fecha)} — ${esc(b.doctora)}</span><br>
+        <span style="font-weight:700;color:var(--gray-800);">${fmtDDMMYYYY(b.fecha)}${b.fechaFin!==b.fecha?' al '+fmtDDMMYYYY(b.fechaFin):''} — ${esc(b.doctora)}</span><br>
         <span style="font-size:11px;color:var(--gray-400);">${b.todoDia?'Todo el día':esc(b.horaInicio)+'–'+esc(b.horaFin)} · ${esc(b.motivo)}</span>
       </span>
-      <span style="font-size:11px;color:var(--danger);cursor:pointer;font-weight:600;" onclick="eliminarBloqueo(${b.id})">✕ Quitar</span>
+      <span style="font-size:11px;color:var(--danger);cursor:pointer;font-weight:600;" onclick='eliminarBloqueosGrupo(${JSON.stringify(JSON.stringify(b.ids))})'>✕ Quitar</span>
     </div>`).join('');
 }
 
@@ -4071,13 +4131,16 @@ function toggleDocCard(key){
 
 function cambiarSeccion(sec){
   document.getElementById('tab-agenda').classList.toggle('active', sec==='agenda');
+  document.getElementById('tab-directorio').classList.toggle('active', sec==='directorio');
   document.getElementById('tab-cierre').classList.toggle('active', sec==='cierre');
   document.getElementById('tab-historico').classList.toggle('active', sec==='historico');
   document.getElementById('tab-prm').classList.toggle('active', sec==='prm');
   document.getElementById('section-agenda').style.display = sec==='agenda' ? '' : 'none';
+  document.getElementById('section-directorio').style.display = sec==='directorio' ? '' : 'none';
   document.getElementById('section-cierre').style.display = sec==='cierre' ? '' : 'none';
   document.getElementById('section-historico').style.display = sec==='historico' ? '' : 'none';
   document.getElementById('section-prm').style.display = sec==='prm' ? '' : 'none';
+  if(sec==='directorio') renderDirectorio();
   if(sec==='cierre') renderCierre();
   if(sec==='historico') renderHistorico();
   if(sec==='prm') renderPRM();
@@ -4773,6 +4836,77 @@ function agregarGestion(){
 // ═══════════════════════════════════════════
 // PRM — pacientes que no nos visitan hace tiempo (basado en el patrón de CUIVAN)
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+// DIRECTORIO DE PACIENTES — se arma solo, agrupando lo que ya hay en
+// citas (no necesita una tabla nueva). Un renglón por cada niño/a
+// distinto, con el contacto (tutor/tel/correo) de su cita más reciente.
+// ═══════════════════════════════════════════
+function obtenerDirectorioPacientes(){
+  const mapa = new Map();
+  activeCitas().forEach(c=>{
+    if(!c.paciente || !c.paciente.trim()) return;
+    const key = c.paciente.trim().toLowerCase();
+    if(!mapa.has(key)) mapa.set(key, {paciente:c.paciente, nombreTutor:'', tel:'', email:'', ultimaFecha:'', ultimaFechaHora:'', totalCitas:0});
+    const reg = mapa.get(key);
+    reg.totalCitas++;
+    const fh = c.fecha+c.hora;
+    if(fh >= reg.ultimaFechaHora){
+      reg.ultimaFechaHora = fh;
+      reg.ultimaFecha = c.fecha;
+      reg.paciente = c.paciente; // conserva cómo está escrito en la cita más reciente
+      if(c.nombreTutor) reg.nombreTutor = c.nombreTutor;
+      if(c.tel) reg.tel = c.tel;
+      if(c.email) reg.email = c.email;
+    }
+  });
+  return [...mapa.values()].sort((a,b)=>a.paciente.localeCompare(b.paciente,'es'));
+}
+
+function renderDirectorio(){
+  const q = document.getElementById('dir-buscar').value.trim().toLowerCase();
+  let lista = obtenerDirectorioPacientes();
+  if(q){
+    lista = lista.filter(p=>
+      p.paciente.toLowerCase().includes(q) ||
+      (p.nombreTutor||'').toLowerCase().includes(q) ||
+      (p.tel||'').includes(q)
+    );
+  }
+  document.getElementById('dir-contador').textContent = `${lista.length} paciente${lista.length!==1?'s':''}${q?' encontrado'+(lista.length!==1?'s':''):' en total'}`;
+  const el = document.getElementById('dir-lista');
+  if(!lista.length){
+    el.innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--gray-400);font-size:13px;">Sin resultados para esa búsqueda.</div>`;
+    return;
+  }
+  el.innerHTML = lista.map(p=>`
+    <div class="cita-card" style="border-left-color:var(--gold);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="min-width:0;">
+          <div style="font-weight:700;font-size:14.5px;color:var(--text);">${esc(p.paciente)}</div>
+          <div style="font-size:12px;color:var(--gray-600);margin-top:2px;">
+            ${p.nombreTutor?`tutor: ${esc(p.nombreTutor)} · `:''}📞 ${esc(p.tel||'sin teléfono')}${p.email?' · '+esc(p.email):''}
+          </div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:3px;">
+            ${p.totalCitas} cita${p.totalCitas!==1?'s':''} registrada${p.totalCitas!==1?'s':''} · última: ${fmtDDMMYYYY(p.ultimaFecha)}
+          </div>
+        </div>
+        <button class="btn btn-gold" style="flex-shrink:0;" onclick='agendarDesdeDirectorio(${JSON.stringify(JSON.stringify(p))})'>+ Nueva cita</button>
+      </div>
+    </div>`).join('');
+}
+
+// Abre "Nueva cita" ya con los datos del paciente elegido — la doctora y
+// el servicio se siguen escogiendo a mano, cada visita puede ser distinta.
+function agendarDesdeDirectorio(pJson){
+  const p = JSON.parse(pJson);
+  cambiarSeccion('agenda');
+  abrirModal();
+  document.getElementById('m-tutor').value = p.nombreTutor || '';
+  document.getElementById('m-paciente').value = p.paciente || '';
+  document.getElementById('m-tel').value = p.tel || '';
+  document.getElementById('m-email').value = p.email || '';
+}
+
 function renderPRM(){
   const esRecepcion = sesionActual === 'recepcion';
   const aviso = document.getElementById('prm-aviso-rol');
