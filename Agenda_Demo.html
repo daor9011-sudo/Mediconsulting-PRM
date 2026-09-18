@@ -593,6 +593,10 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
         <label class="hist-filter-label">Buscar paciente, tutor o teléfono</label>
         <input type="text" id="dir-buscar" placeholder="Escribe un nombre o número..." oninput="renderDirectorio()">
       </div>
+      <div class="form-group" style="margin:0;">
+        <label class="hist-filter-label">Dra./Dr.</label>
+        <select id="dir-doctora" onchange="renderDirectorio()"></select>
+      </div>
     </div>
     <div style="font-size:12px;color:var(--gray-400);margin:6px 0 14px;" id="dir-contador"></div>
     <div id="dir-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
@@ -1209,7 +1213,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-45';
+const APP_VERSION = '2026-09-14-46';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -4843,9 +4847,18 @@ function agregarGestion(){
 // citas (no necesita una tabla nueva). Un renglón por cada niño/a
 // distinto, con el contacto (tutor/tel/correo) de su cita más reciente.
 // ═══════════════════════════════════════════
-function obtenerDirectorioPacientes(){
+function initDirDoctoraSelect(){
+  const sel = document.getElementById('dir-doctora');
+  if(sel.dataset.init) return; // solo una vez — para no perder la selección en cada render
+  sel.innerHTML = `<option value="">Todas las Dras./Dres.</option>` + DOCTORAS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  sel.dataset.init = '1';
+}
+
+function obtenerDirectorioPacientes(filtroDoctora){
   const mapa = new Map();
-  activeCitas().forEach(c=>{
+  let citasBase = activeCitas();
+  if(filtroDoctora) citasBase = citasBase.filter(c=>c.doctora===filtroDoctora);
+  citasBase.forEach(c=>{
     if(!c.paciente || !c.paciente.trim()) return;
     const key = c.paciente.trim().toLowerCase();
     if(!mapa.has(key)) mapa.set(key, {paciente:c.paciente, nombreTutor:'', tel:'', email:'', ultimaFecha:'', ultimaFechaHora:'', totalCitas:0});
@@ -4865,8 +4878,10 @@ function obtenerDirectorioPacientes(){
 }
 
 function renderDirectorio(){
+  initDirDoctoraSelect();
   const q = document.getElementById('dir-buscar').value.trim().toLowerCase();
-  let lista = obtenerDirectorioPacientes();
+  const filtroDoctora = document.getElementById('dir-doctora').value;
+  let lista = obtenerDirectorioPacientes(filtroDoctora);
   if(q){
     lista = lista.filter(p=>
       p.paciente.toLowerCase().includes(q) ||
@@ -4874,7 +4889,7 @@ function renderDirectorio(){
       (p.tel||'').includes(q)
     );
   }
-  document.getElementById('dir-contador').textContent = `${lista.length} paciente${lista.length!==1?'s':''}${q?' encontrado'+(lista.length!==1?'s':''):' en total'}`;
+  document.getElementById('dir-contador').textContent = `${lista.length} paciente${lista.length!==1?'s':''}${q||filtroDoctora?' encontrado'+(lista.length!==1?'s':''):' en total'}`;
   const el = document.getElementById('dir-lista');
   if(!lista.length){
     el.innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--gray-400);font-size:13px;">Sin resultados para esa búsqueda.</div>`;
@@ -4892,9 +4907,23 @@ function renderDirectorio(){
             ${p.totalCitas} cita${p.totalCitas!==1?'s':''} registrada${p.totalCitas!==1?'s':''} · última: ${fmtDDMMYYYY(p.ultimaFecha)}
           </div>
         </div>
-        <button class="btn btn-gold" style="flex-shrink:0;" onclick='agendarDesdeDirectorio(${JSON.stringify(JSON.stringify(p))})'>+ Nueva cita</button>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="btn-sm btn-sm-edit" onclick="abrirTrazabilidadDesdeDirectorio('${esc(p.paciente).replace(/'/g,"\\'")}')">📖 Ver historial</button>
+          <button class="btn btn-gold" onclick='agendarDesdeDirectorio(${JSON.stringify(JSON.stringify(p))})'>+ Nueva cita</button>
+        </div>
       </div>
     </div>`).join('');
+}
+
+// abrirTrazabilidad ya existe (se usa en Histórico) — solo avisa si esa
+// persona todavía no tiene ninguna visita PAGADA (por ejemplo, si nada
+// más tiene citas agendadas a futuro), en vez de no hacer nada en
+// silencio.
+function abrirTrazabilidadDesdeDirectorio(nombrePaciente){
+  const antes = document.getElementById('traza-modal-overlay').classList.contains('open');
+  abrirTrazabilidad(nombrePaciente);
+  const despues = document.getElementById('traza-modal-overlay').classList.contains('open');
+  if(!antes && !despues) toast('Ese paciente todavía no tiene visitas pagadas registradas');
 }
 
 // Abre "Nueva cita" ya con los datos del paciente elegido — la doctora y
