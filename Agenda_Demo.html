@@ -1213,7 +1213,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-46';
+const APP_VERSION = '2026-09-14-47';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -4897,20 +4897,18 @@ function renderDirectorio(){
   }
   el.innerHTML = lista.map(p=>`
     <div class="cita-card" style="border-left-color:var(--gold);">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-        <div style="min-width:0;">
-          <div style="font-weight:700;font-size:14.5px;color:var(--text);">${esc(p.paciente)}</div>
-          <div style="font-size:12px;color:var(--gray-600);margin-top:2px;">
-            ${p.nombreTutor?`tutor: ${esc(p.nombreTutor)} · `:''}📞 ${esc(p.tel||'sin teléfono')}${p.email?' · '+esc(p.email):''}
-          </div>
-          <div style="font-size:11px;color:var(--gray-400);margin-top:3px;">
-            ${p.totalCitas} cita${p.totalCitas!==1?'s':''} registrada${p.totalCitas!==1?'s':''} · última: ${fmtDDMMYYYY(p.ultimaFecha)}
-          </div>
+      <div style="min-width:0;">
+        <div style="font-weight:700;font-size:14.5px;color:var(--text);">${esc(p.paciente)}</div>
+        <div style="font-size:12px;color:var(--gray-600);margin-top:2px;">
+          ${p.nombreTutor?`tutor: ${esc(p.nombreTutor)} · `:''}📞 ${esc(p.tel||'sin teléfono')}${p.email?' · '+esc(p.email):''}
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button class="btn-sm btn-sm-edit" onclick="abrirTrazabilidadDesdeDirectorio('${esc(p.paciente).replace(/'/g,"\\'")}')">📖 Ver historial</button>
-          <button class="btn btn-gold" onclick='agendarDesdeDirectorio(${JSON.stringify(JSON.stringify(p))})'>+ Nueva cita</button>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:3px;">
+          ${p.totalCitas} cita${p.totalCitas!==1?'s':''} registrada${p.totalCitas!==1?'s':''} · última: ${fmtDDMMYYYY(p.ultimaFecha)}
         </div>
+      </div>
+      <div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px;">
+        <button class="btn-sm btn-sm-edit" onclick="abrirTrazabilidadDesdeDirectorio('${esc(p.paciente).replace(/'/g,"\\'")}')">📖 Ver historial</button>
+        <button class="btn btn-gold" onclick='agendarDesdeDirectorio(${JSON.stringify(JSON.stringify(p))})'>+ Nueva cita</button>
       </div>
     </div>`).join('');
 }
