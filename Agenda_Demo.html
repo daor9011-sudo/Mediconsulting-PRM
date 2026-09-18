@@ -1213,7 +1213,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-14-47';
+const APP_VERSION = '2026-09-14-48';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -4921,7 +4921,13 @@ function abrirTrazabilidadDesdeDirectorio(nombrePaciente){
   const antes = document.getElementById('traza-modal-overlay').classList.contains('open');
   abrirTrazabilidad(nombrePaciente);
   const despues = document.getElementById('traza-modal-overlay').classList.contains('open');
-  if(!antes && !despues) toast('Ese paciente todavía no tiene visitas pagadas registradas');
+  if(!antes && !despues){
+    mostrarConfirm({
+      titulo:'Sin visitas pagadas todavía',
+      mensaje:`<strong>${esc(nombrePaciente)}</strong> no tiene ninguna visita pagada registrada — puede que solo tenga citas agendadas a futuro, o que su historial de pagos aún no se haya cerrado.`,
+      textoConfirmar:'Entendido', icono:'📖', sinCancelar:true
+    }, ()=>{});
+  }
 }
 
 // Abre "Nueva cita" ya con los datos del paciente elegido — la doctora y
