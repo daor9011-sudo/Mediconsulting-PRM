@@ -1251,7 +1251,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-18-65';
+const APP_VERSION = '2026-09-18-66';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3149,7 +3149,7 @@ function iniciarResetPasswordPersonal(userId, nombre){
 async function refrescarDoctorasSiHaceFalta(rol){
   if(rol!=='doctora') return;
   const { data: perfilesDoctoras } = await sb.from('perfiles').select('nombre').eq('rol','doctora').eq('activo', true);
-  DOCTORAS = (perfilesDoctoras||[]).map(p=>p.nombre);
+  DOCTORAS = (perfilesDoctoras||[]).map(p=>p.nombre).sort((a,b)=>a.localeCompare(b,'es'));
   DOCTORAS.forEach((d,i)=>COLOR_DOCTORA[d]=PALETA_DOTS[i%PALETA_DOTS.length]);
   await cargarHorarios();
   initSelects();
@@ -5463,7 +5463,7 @@ async function iniciarAppDespuesDeLogin(){
   const { data: perfilesDoctoras, error: errDoc } = await sb
     .from('perfiles').select('nombre').eq('rol','doctora').eq('activo', true);
   if(errDoc){ mostrarErrorLogin('No se pudo cargar la lista de doctoras.'); return; }
-  DOCTORAS = (perfilesDoctoras||[]).map(p=>p.nombre);
+  DOCTORAS = (perfilesDoctoras||[]).map(p=>p.nombre).sort((a,b)=>a.localeCompare(b,'es'));
   DOCTORAS.forEach((d,i)=>COLOR_DOCTORA[d]=PALETA_DOTS[i%PALETA_DOTS.length]);
 
   await Promise.all([ cargarCitas(), cargarHorarios(), cargarBloqueos(), cargarGestiones(), cargarCatalogoServicios() ]);
