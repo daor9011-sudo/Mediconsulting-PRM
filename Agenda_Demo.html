@@ -214,6 +214,14 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .week-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--gray-400);}
 .week-legend span{display:inline-flex;align-items:center;gap:4px;}
 .week-legend .dot{width:9px;height:9px;border-radius:3px;display:inline-block;}
+@media(min-width:641px){
+  /* Solo en escritorio: la etiqueta de la doctora va en su propia línea y
+     el botón "mostrar/ocultar canceladas" + la leyenda de colores quedan
+     centrados debajo, en vez de pegados a la derecha. */
+  .week-doctora-label{flex-basis:100%;}
+  .week-toolbar-right{width:100%;justify-content:center;}
+  .week-legend{justify-content:center;}
+}
 .week-grid{display:grid;grid-template-columns:56px repeat(7,1fr);border:1px solid var(--gray-200);border-radius:10px;overflow:hidden;background:#fff;}
 .week-grid-head{background:var(--gray-50);padding:10px 4px;text-align:center;font-size:11.5px;font-weight:700;color:var(--gray-600);border-bottom:1px solid var(--gray-200);border-left:1px solid var(--gray-100);}
 .week-grid-head.today{color:var(--gold);background:var(--gold-bg);}
@@ -1249,7 +1257,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-70';
+const APP_VERSION = '2026-09-19-71';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2520,8 +2528,8 @@ function renderWeek(){
 
   let html = `<div class="week-toolbar">
     <div class="week-doctora-label">🗓️ ${filD ? esc(filD)+' <span style="font-weight:400;color:var(--gray-400);font-size:11.5px;">· '+resumenHorarioSemana(filD)+'</span>' : 'Todas las Dras./Dres.'}</div>
-    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-    <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;" onclick="toggleMostrarCanceladas()">${mostrarCitasCanceladas ? '🙈 Ocultar canceladas' : '👁 Mostrar canceladas'}</button>
+    <div class="week-toolbar-right" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px;" onclick="toggleMostrarCanceladas()">${mostrarCitasCanceladas ? ICONO_OJO_TACHADO+' Ocultar canceladas' : ICONO_OJO+' Mostrar canceladas'}</button>
     <div class="week-legend">
       ${modoTodas
         ? doctorasAMostrar.map(d=>`<span><span class="dot" style="background:${COLOR_DOCTORA[d]||'var(--gray-400)'};"></span> ${esc(d.replace('Dra. ','').replace('Dr. ',''))}</span>`).join('')
