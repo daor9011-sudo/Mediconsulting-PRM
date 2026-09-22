@@ -1258,7 +1258,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-72';
+const APP_VERSION = '2026-09-19-73';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2227,7 +2227,10 @@ let modalEditId = null;
 let vistaActual = 'semana'; // 'dia' | 'semana' | 'mes'
 let mesActual = (()=>{ const d=new Date(fechaActual+'T00:00:00'); return {y:d.getFullYear(),m:d.getMonth()}; })();
 const COLOR_DOCTORA = {}; // se asigna dinámicamente por índice de DOCTORAS
-const PALETA_DOTS = ['#2ABFBF','#5B4FCF','#E67E22','#2E9E6B','#6D4C41','#8E44AD'];
+// 16 colores elegidos para verse distintos entre sí incluso en franjas
+// pequeñas (puntos del calendario, borde de tarjeta) — con más de 16
+// doctoras activas el color vuelve a repetirse, pero hoy (13) no pasa.
+const PALETA_DOTS = ['#2ABFBF','#5B4FCF','#E67E22','#2E9E6B','#6D4C41','#8E44AD','#C0392B','#2980B9','#D4A017','#E84393','#7F8C8D','#B8460E','#34495E','#A83264','#556B2F','#16A085'];
 DOCTORAS.forEach((d,i)=>COLOR_DOCTORA[d]=PALETA_DOTS[i%PALETA_DOTS.length]);
 
 function fmtFechaLabel(f){
