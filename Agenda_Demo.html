@@ -287,6 +287,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .form-group.field-error input,.form-group.field-error select{border-color:var(--danger);background:#FDF6EC;}
 .field-error-msg{font-size:11px;color:var(--danger);margin-top:3px;display:none;}
 .form-group.field-error .field-error-msg{display:block;}
+.field-hint-msg{font-size:11px;color:var(--gray-400);margin-top:3px;display:block;}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .modal-footer{display:flex;gap:8px;margin-top:18px;}
 .modal-footer .btn{flex:1;justify-content:center;}
@@ -812,9 +813,9 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
     <h3 id="modal-title">Nueva cita</h3>
-    <div class="form-group" id="fg-fecha"><label>Fecha</label><input type="date" id="m-fecha"><span class="field-error-msg">Falta la fecha</span></div>
+    <div class="form-group" id="fg-fecha"><label>Fecha</label><input type="date" id="m-fecha" onchange="sugerirHoraPorHorario()"><span class="field-error-msg">Falta la fecha</span></div>
     <div class="form-row">
-      <div class="form-group" id="fg-hora"><label>Hora</label><input type="time" id="m-hora" step="900"><span class="field-error-msg">Falta la hora</span></div>
+      <div class="form-group" id="fg-hora"><label>Hora</label><input type="time" id="m-hora" step="900"><span class="field-error-msg">Falta la hora</span><span class="field-hint-msg" id="hint-hora"></span></div>
       <div class="form-group"><label>Duración</label>
         <select id="m-duracion">
           <option value="15">15 min</option>
@@ -826,7 +827,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
         </select>
       </div>
     </div>
-    <div class="form-group" id="fg-doctora"><label>Dra./Dr.</label><select id="m-doctora"></select><span class="field-error-msg">Selecciona Dra./Dr.</span></div>
+    <div class="form-group" id="fg-doctora"><label>Dra./Dr.</label><select id="m-doctora" onchange="sugerirHoraPorHorario()"></select><span class="field-error-msg">Selecciona Dra./Dr.</span></div>
     <div class="form-group" id="fg-tutor"><label>Nombre del padre/madre o tutor</label><input type="text" id="m-tutor" list="dl-tutores" placeholder="Nombre completo" onblur="autocompletarPorNombre('tutor')"><datalist id="dl-tutores"></datalist></div>
     <div class="form-group" id="fg-paciente"><label>Paciente (niño/niña)</label><input type="text" id="m-paciente" list="dl-pacientes" placeholder="Nombre completo" onblur="autocompletarPorNombre('paciente')"><datalist id="dl-pacientes"></datalist><span class="field-error-msg">Falta el nombre del paciente</span></div>
     <div class="form-row">
@@ -1257,7 +1258,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-71';
+const APP_VERSION = '2026-09-19-72';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2689,6 +2690,7 @@ function abrirNuevaCitaEnSlot(fecha, hora, doctora){
   document.getElementById('m-fecha').value = fecha;
   document.getElementById('m-hora').value = hora;
   document.getElementById('m-doctora').value = doctora;
+  sugerirHoraPorHorario();
 }
 
 function avanzarEstado(id, estadoClic){
@@ -3596,6 +3598,7 @@ function abrirModal(id, sinCita){
     document.getElementById('btn-cancelar-cita-modal').style.display = 'none';
   }
   toggleCortesiaForm();
+  sugerirHoraPorHorario();
   document.getElementById('modal-overlay').classList.add('open');
 }
 function cerrarModal(){
@@ -3668,6 +3671,35 @@ function limpiarErroresForm(){
   });
 }
 
+// Sugiere la hora de inicio del horario de la doctora al elegir fecha+doctora
+// en una cita nueva (no pisa una hora que la persona ya haya escrito), y
+// muestra un texto de ayuda con el horario de ese día.
+function sugerirHoraPorHorario(){
+  const doctora = document.getElementById('m-doctora').value;
+  const fecha = document.getElementById('m-fecha').value;
+  const hint = document.getElementById('hint-hora');
+  if(!doctora || !fecha){ hint.textContent = ''; return; }
+  const dia = new Date(fecha+'T00:00:00').getDay();
+  const horario = horarioDe(doctora, dia);
+  const horaInput = document.getElementById('m-hora');
+  if(!horario){
+    hint.textContent = esc(doctora)+' no tiene horario configurado ese día.';
+    return;
+  }
+  hint.textContent = 'Horario: '+horario.inicio+'–'+horario.fin;
+  if(!horaInput.value && !modalEditId) horaInput.value = horario.inicio;
+}
+// true si la hora elegida cae fuera del horario configurado de la doctora
+// ese día (o ese día no labora). Se usa como aviso, no como bloqueo — igual
+// que los empalmes, recepción puede agendar fuera de horario si hace falta.
+function estaFueraDeHorario(doctora, fecha, hora){
+  const dia = new Date(fecha+'T00:00:00').getDay();
+  const horario = horarioDe(doctora, dia);
+  if(!horario) return true;
+  const min = horaAMinutos(hora);
+  return min < horaAMinutos(horario.inicio) || min >= horaAMinutos(horario.fin);
+}
+
 function guardarCita(){
   const fecha = document.getElementById('m-fecha').value;
   const hora = document.getElementById('m-hora').value;
@@ -3707,6 +3739,18 @@ function guardarCita(){
       mostrarConfirm({etiqueta:'⚠ Conflicto de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🗓️'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas}));
       return;
     }
+  }
+
+  // Fuera del horario configurado de la doctora ese día — aviso, no bloqueo
+  // (igual que los empalmes): puede hacer falta agendar fuera de horario.
+  if((!nuevaEsSinCita || modalEditId) && estaFueraDeHorario(doctora, fecha, hora)){
+    const dia = new Date(fecha+'T00:00:00').getDay();
+    const horario = horarioDe(doctora, dia);
+    const mensaje = horario
+      ? `${esc(doctora)} labora de <strong>${horario.inicio} a ${horario.fin}</strong> ese día. La hora elegida queda fuera de su horario.`
+      : `${esc(doctora)} no tiene horario configurado ese día.`;
+    mostrarConfirm({etiqueta:'⚠ Fuera de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🕐'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas}));
+    return;
   }
 
   guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas});
