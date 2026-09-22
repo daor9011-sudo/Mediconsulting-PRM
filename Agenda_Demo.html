@@ -211,7 +211,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 /* Vista semanal por doctora */
 .week-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
 .week-doctora-label{font-size:13px;font-weight:700;color:var(--gray-800);display:flex;align-items:center;gap:8px;}
-.week-legend{display:flex;gap:14px;font-size:11px;color:var(--gray-400);}
+.week-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--gray-400);}
 .week-legend span{display:inline-flex;align-items:center;gap:4px;}
 .week-legend .dot{width:9px;height:9px;border-radius:3px;display:inline-block;}
 .week-grid{display:grid;grid-template-columns:56px repeat(7,1fr);border:1px solid var(--gray-200);border-radius:10px;overflow:hidden;background:#fff;}
@@ -1247,7 +1247,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-67';
+const APP_VERSION = '2026-09-19-68';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
