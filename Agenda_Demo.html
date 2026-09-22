@@ -1060,13 +1060,9 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <label>Dra./Dr.</label>
       <select id="hor-doctora" onchange="cargarHorarioForm()"></select>
     </div>
-    <div class="form-row">
-      <div class="form-group"><label>Hora de inicio</label><input type="time" id="hor-inicio"></div>
-      <div class="form-group"><label>Hora de fin</label><input type="time" id="hor-fin"></div>
-    </div>
     <div class="form-group">
-      <label>Días que labora</label>
-      <div id="hor-dias" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;"></div>
+      <label>Horario por día</label>
+      <div id="hor-dias" style="display:flex;flex-direction:column;gap:8px;margin-top:6px;"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-gold" onclick="guardarHorarioForm()">✓ Guardar horario</button>
@@ -1251,7 +1247,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-18-66';
+const APP_VERSION = '2026-09-19-67';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1493,15 +1489,16 @@ function aplicarCambioRealtimeBloqueo(payload){
   refrescarVistaActual();
 }
 
-// horariosDoctoras es un objeto {doctora: {inicio,fin,dias}}, no un arreglo
-// — por eso este handler es distinto a los demás (no hay "id" que buscar,
-// la doctora misma es la llave).
+// horariosDoctoras es {doctora: {dia: {inicio,fin}}} — la llave es
+// doctora+dia, no un id de fila, por eso este handler es distinto a los demás.
 function aplicarCambioRealtimeHorario(payload){
   if(payload.eventType==='DELETE'){
-    delete horariosDoctoras[payload.old.doctora];
+    const o = payload.old;
+    if(horariosDoctoras[o.doctora]) delete horariosDoctoras[o.doctora][o.dia];
   }else{
     const r = payload.new;
-    horariosDoctoras[r.doctora] = { inicio:(r.hora_inicio||'').slice(0,5), fin:(r.hora_fin||'').slice(0,5), dias:r.dias_laborales||[1,2,3,4,5,6] };
+    if(!horariosDoctoras[r.doctora]) horariosDoctoras[r.doctora] = {};
+    horariosDoctoras[r.doctora][r.dia] = { inicio:(r.hora_inicio||'').slice(0,5), fin:(r.hora_fin||'').slice(0,5) };
   }
   refrescarVistaActual();
 }
@@ -1802,9 +1799,24 @@ const ESTADO_ICON = {agendado:'📅',confirmada:'✓',llego:'🚶',curso:'▶',f
 let citas = [];
 let bloqueos = [];
 let gestiones = [];
-const HORARIO_DEFECTO = {inicio:'09:00', fin:'19:00', dias:[1,2,3,4,5,6]}; // 0=Dom..6=Sáb
+// horariosDoctoras: {doctora: {dia: {inicio,fin}}} — un horario independiente
+// por cada día de la semana (0=Dom..6=Sáb). Si un día no tiene entrada, esa
+// doctora no labora ese día.
+const DIA_DEFECTO = {inicio:'09:00', fin:'19:00'};
+const DIAS_LABORALES_DEFECTO = [1,2,3,4,5,6]; // lun-sáb, para doctoras sin horario configurado aún
 let horariosDoctoras = {};
-function horarioDe(doctora){ return horariosDoctoras[doctora] || HORARIO_DEFECTO; }
+function horarioDefectoDoctora(){
+  const h = {};
+  DIAS_LABORALES_DEFECTO.forEach(d=>h[d]={...DIA_DEFECTO});
+  return h;
+}
+// Horario de una doctora en un día específico (0=Dom..6=Sáb) — null si no labora ese día.
+function horarioDe(doctora, dia){
+  const h = horariosDoctoras[doctora] || horarioDefectoDoctora();
+  return h[dia] || null;
+}
+// Rango completo de una doctora (para mostrar un resumen) — un objeto por día que sí labora.
+function horarioSemanaDe(doctora){ return horariosDoctoras[doctora] || horarioDefectoDoctora(); }
 // Citas activas — excluye las que están en la papelera (deleted:true)
 function activeCitas(){ return citas.filter(c=>!c.deleted); }
 
@@ -1893,19 +1905,25 @@ async function guardarLocal(citaOCitas){
 async function cargarHorarios(){
   const { data, error } = await sb.from('horarios_doctoras').select('*');
   horariosDoctoras = {};
-  if(error){ toast('⚠ Error cargando horarios: '+error.message); }
+  if(error){ toast('⚠ Error cargando horarios: '+error.message); return; }
   (data||[]).forEach(r=>{
-    horariosDoctoras[r.doctora] = { inicio:(r.hora_inicio||'').slice(0,5), fin:(r.hora_fin||'').slice(0,5), dias:r.dias_laborales||[1,2,3,4,5,6] };
+    if(!horariosDoctoras[r.doctora]) horariosDoctoras[r.doctora] = {};
+    horariosDoctoras[r.doctora][r.dia] = { inicio:(r.hora_inicio||'').slice(0,5), fin:(r.hora_fin||'').slice(0,5) };
   });
-  // Cualquier doctora sin fila propia usa el horario por defecto (no se escribe hasta que lo editen)
-  DOCTORAS.forEach(d=>{ if(!horariosDoctoras[d]) horariosDoctoras[d] = {...HORARIO_DEFECTO}; });
+  // Cualquier doctora sin ninguna fila propia usa el horario por defecto
+  // (no se escribe a la base hasta que alguien lo edite y guarde).
+  DOCTORAS.forEach(d=>{ if(!horariosDoctoras[d]) horariosDoctoras[d] = horarioDefectoDoctora(); });
 }
-async function guardarHorarios(){
-  const filas = DOCTORAS.map(d=>{
-    const h = horariosDoctoras[d] || HORARIO_DEFECTO;
-    return { doctora:d, hora_inicio:h.inicio, hora_fin:h.fin, dias_laborales:h.dias };
-  });
-  const { error } = await sb.from('horarios_doctoras').upsert(filas, { onConflict:'doctora' });
+// Guarda el horario de UNA doctora: reemplaza todas sus filas por las que
+// tiene ahora mismo en memoria (borra + inserta, así los días que se
+// desmarcaron también desaparecen de la base, no solo los que se agregaron).
+async function guardarHorarioDoctora(doctora){
+  const dias = horariosDoctoras[doctora] || {};
+  const { error: errDel } = await sb.from('horarios_doctoras').delete().eq('doctora', doctora);
+  if(errDel){ toast('⚠ No se pudo guardar el horario: '+errDel.message); return; }
+  const filas = Object.keys(dias).map(dia=>({ doctora, dia:parseInt(dia), hora_inicio:dias[dia].inicio, hora_fin:dias[dia].fin }));
+  if(!filas.length) return;
+  const { error } = await sb.from('horarios_doctoras').insert(filas);
   if(error) toast('⚠ No se pudo guardar el horario: '+error.message);
 }
 
@@ -2475,10 +2493,12 @@ function renderWeek(){
   document.getElementById('day-label').textContent =
     'Semana del '+fmtDDMMYYYY(fechaLocalISO(diasSemana[0]))+' al '+fmtDDMMYYYY(fechaLocalISO(diasSemana[6]));
 
-  // Franja horaria: la unión de los horarios de todas las doctoras a mostrar, en bloques de 1 hora.
-  const horariosAMostrar = doctorasAMostrar.map(d=>horarioDe(d));
-  const hIni = Math.min(...horariosAMostrar.map(h=>parseInt(h.inicio.split(':')[0])));
-  const hFin = Math.max(...horariosAMostrar.map(h=>parseInt(h.fin.split(':')[0])));
+  // Franja horaria: la unión de los horarios de todas las doctoras a mostrar,
+  // considerando que cada día puede tener su propio rango, en bloques de 1 hora.
+  const rangosSemana = [];
+  doctorasAMostrar.forEach(d=>{ Object.values(horarioSemanaDe(d)).forEach(r=>rangosSemana.push(r)); });
+  const hIni = rangosSemana.length ? Math.min(...rangosSemana.map(r=>parseInt(r.inicio.split(':')[0]))) : 9;
+  const hFin = rangosSemana.length ? Math.max(...rangosSemana.map(r=>parseInt(r.fin.split(':')[0]))) : 19;
   const horas = [];
   for(let h=hIni; h<hFin; h++){ horas.push(String(h).padStart(2,'0')+':00'); }
 
@@ -2486,8 +2506,18 @@ function renderWeek(){
 
   const ROW_PX = 68; // px por hora — usado para calcular el alto/posición proporcional de cada cita
 
+  // Resumen del horario para el encabezado — si todos los días laborales
+  // comparten el mismo rango se muestra una sola vez; si varía, se avisa.
+  function resumenHorarioSemana(doctora){
+    const dias = horarioSemanaDe(doctora);
+    const rangos = Object.values(dias);
+    if(!rangos.length) return 'sin horario configurado';
+    const iguales = rangos.every(r=>r.inicio===rangos[0].inicio && r.fin===rangos[0].fin);
+    return iguales ? rangos[0].inicio+'–'+rangos[0].fin : 'horario varía por día';
+  }
+
   let html = `<div class="week-toolbar">
-    <div class="week-doctora-label">🗓️ ${filD ? esc(filD)+' <span style="font-weight:400;color:var(--gray-400);font-size:11.5px;">· horario '+horarioDe(filD).inicio+'–'+horarioDe(filD).fin+'</span>' : 'Todas las Dras./Dres.'}</div>
+    <div class="week-doctora-label">🗓️ ${filD ? esc(filD)+' <span style="font-weight:400;color:var(--gray-400);font-size:11.5px;">· '+resumenHorarioSemana(filD)+'</span>' : 'Todas las Dras./Dres.'}</div>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
     <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;" onclick="toggleMostrarCanceladas()">${mostrarCitasCanceladas ? '🙈 Ocultar canceladas' : '👁 Mostrar canceladas'}</button>
     <div class="week-legend">
@@ -2525,14 +2555,14 @@ function renderWeek(){
 
       if(modoTodas){
         const algunaLabora = doctorasAMostrar.some(doc=>{
-          const h = horarioDe(doc);
-          return slotIni>=horaAMinutos(h.inicio) && slotIni<horaAMinutos(h.fin) && h.dias.includes(diaSemanaNum);
+          const h = horarioDe(doc, diaSemanaNum);
+          return h && slotIni>=horaAMinutos(h.inicio) && slotIni<horaAMinutos(h.fin);
         });
         html += `<div class="week-cell ${algunaLabora?'':'no-labora'}" style="grid-row:${filaGrid};grid-column:${colGrid};" onclick="${algunaLabora?`abrirSelectorDoctoraSlot('${dStr}','${hora}')`:''}" title="${algunaLabora?'Disponible — clic para agendar':'Nadie labora'}"></div>`;
       }else{
         const doctora = doctorasAMostrar[0];
-        const horario = horarioDe(doctora);
-        const dentro = slotIni>=horaAMinutos(horario.inicio) && slotIni<horaAMinutos(horario.fin) && horario.dias.includes(diaSemanaNum);
+        const horario = horarioDe(doctora, diaSemanaNum);
+        const dentro = !!horario && slotIni>=horaAMinutos(horario.inicio) && slotIni<horaAMinutos(horario.fin);
         html += `<div class="week-cell ${dentro?'':'no-labora'}" style="grid-row:${filaGrid};grid-column:${colGrid};" onclick="${dentro?`abrirNuevaCitaEnSlot('${dStr}','${hora}','${esc(doctora).replace(/'/g,"\\'")}')`:''}" title="${dentro?'Disponible — clic para agendar':esc(doctora)+' no labora este horario'}"></div>`;
       }
     });
@@ -2550,7 +2580,7 @@ function renderWeek(){
     const doctorasDelDia = modoTodas ? doctorasAMostrar : [doctorasAMostrar[0]];
     doctorasDelDia.forEach(doctora=>{
       bloqueos.filter(b=>b.doctora===doctora && b.fecha===dStr).forEach(b=>{
-        const horario = horarioDe(doctora);
+        const horario = horarioDe(doctora, d.getDay()) || {inicio:String(hIni).padStart(2,'0')+':00', fin:String(hFin).padStart(2,'0')+':00'};
         const iniMin = b.todoDia ? horaAMinutos(horario.inicio) : horaAMinutos(b.horaInicio);
         const finMin = b.todoDia ? horaAMinutos(horario.fin) : horaAMinutos(b.horaFin);
         eventos.push({tipo:'bloqueo', doctora, iniMin, finMin, motivo:b.motivo});
@@ -3285,31 +3315,46 @@ function cerrarHorariosModal(){
 
 function cargarHorarioForm(){
   const doctora = document.getElementById('hor-doctora').value;
-  const h = horarioDe(doctora);
-  document.getElementById('hor-inicio').value = h.inicio;
-  document.getElementById('hor-fin').value = h.fin;
+  const dias = horarioSemanaDe(doctora);
   const wrap = document.getElementById('hor-dias');
-  wrap.innerHTML = DIAS_SEMANA_LABELS.map(d=>`
-    <label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;background:${h.dias.includes(d.v)?'var(--gold-bg)':'var(--gray-50)'};border:1px solid ${h.dias.includes(d.v)?'var(--gold-border)':'var(--gray-200)'};border-radius:6px;padding:5px 10px;cursor:pointer;" onclick="toggleDiaHorario(this)">
-      <input type="checkbox" value="${d.v}" ${h.dias.includes(d.v)?'checked':''} style="width:auto;margin:0;">${d.l}
-    </label>`).join('');
+  wrap.innerHTML = DIAS_SEMANA_LABELS.map(d=>{
+    const h = dias[d.v];
+    const on = !!h;
+    return `<div class="hor-dia-row" data-dia="${d.v}" style="display:flex;align-items:center;gap:12px;padding:9px 12px;border:1px solid ${on?'var(--gold-border)':'var(--gray-200)'};background:${on?'var(--gold-bg)':'var(--gray-50)'};border-radius:8px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;width:56px;flex-shrink:0;cursor:pointer;">
+        <input type="checkbox" ${on?'checked':''} style="width:auto;margin:0;" onchange="toggleDiaHorario(this)">${d.l}
+      </label>
+      <input type="time" class="hor-dia-inicio" value="${on?h.inicio:DIA_DEFECTO.inicio}" style="width:110px;" ${on?'':'disabled'}>
+      <span style="color:var(--gray-400);font-size:12px;">a</span>
+      <input type="time" class="hor-dia-fin" value="${on?h.fin:DIA_DEFECTO.fin}" style="width:110px;" ${on?'':'disabled'}>
+    </div>`;
+  }).join('');
 }
-function toggleDiaHorario(label){
-  const checkbox = label.querySelector('input');
-  checkbox.checked = !checkbox.checked;
-  label.style.background = checkbox.checked ? 'var(--gold-bg)' : 'var(--gray-50)';
-  label.style.borderColor = checkbox.checked ? 'var(--gold-border)' : 'var(--gray-200)';
+function toggleDiaHorario(checkbox){
+  const row = checkbox.closest('.hor-dia-row');
+  const on = checkbox.checked;
+  row.style.background = on ? 'var(--gold-bg)' : 'var(--gray-50)';
+  row.style.borderColor = on ? 'var(--gold-border)' : 'var(--gray-200)';
+  row.querySelectorAll('input[type=time]').forEach(inp=>inp.disabled = !on);
 }
 
 function guardarHorarioForm(){
   const doctora = document.getElementById('hor-doctora').value;
-  const inicio = document.getElementById('hor-inicio').value;
-  const fin = document.getElementById('hor-fin').value;
-  const dias = [...document.querySelectorAll('#hor-dias input:checked')].map(el=>parseInt(el.value));
-  if(!inicio || !fin){ toast('⚠ Indica hora de inicio y fin'); return; }
-  if(!dias.length){ toast('⚠ Selecciona al menos un día laboral'); return; }
-  horariosDoctoras[doctora] = {inicio, fin, dias};
-  guardarHorarios();
+  const filas = {};
+  let valido = true;
+  document.querySelectorAll('#hor-dias .hor-dia-row').forEach(row=>{
+    const dia = parseInt(row.dataset.dia);
+    const checkbox = row.querySelector('input[type=checkbox]');
+    if(!checkbox.checked) return;
+    const inicio = row.querySelector('.hor-dia-inicio').value;
+    const fin = row.querySelector('.hor-dia-fin').value;
+    if(!inicio || !fin){ valido = false; return; }
+    filas[dia] = {inicio, fin};
+  });
+  if(!valido){ toast('⚠ Indica hora de inicio y fin en cada día marcado'); return; }
+  if(!Object.keys(filas).length){ toast('⚠ Selecciona al menos un día laboral'); return; }
+  horariosDoctoras[doctora] = filas;
+  guardarHorarioDoctora(doctora);
   toast('✓ Horario de '+doctora+' actualizado');
   cerrarHorariosModal();
   if(vistaActual==='semana') render();
