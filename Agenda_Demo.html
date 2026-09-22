@@ -1258,7 +1258,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-73';
+const APP_VERSION = '2026-09-19-74';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2632,7 +2632,7 @@ function renderWeek(){
       if(modoTodas){
         return `<div class="week-cita-block chip ${c.cancelada?'cancelada':''}" style="${posStyle}background:${COLOR_DOCTORA[e.doctora]||'var(--gold)'};" onclick="abrirModal(${c.id})" title="${esc(e.doctora)}: ${esc(c.paciente)}${tituloTutor} — ${c.hora} (${c.duracionMin||60} min)">${esc(c.paciente)}</div>`;
       }
-      return `<div class="week-cita-block ${c.cancelada?'cancelada':''}" style="${posStyle}" onclick="abrirModal(${c.id})" title="${esc(c.paciente)}${tituloTutor} — ${c.hora} (${c.duracionMin||60} min)">
+      return `<div class="week-cita-block ${c.cancelada?'cancelada':''}" style="${posStyle}background:${COLOR_DOCTORA[c.doctora]||'var(--gold)'};" onclick="abrirModal(${c.id})" title="${esc(c.paciente)}${tituloTutor} — ${c.hora} (${c.duracionMin||60} min)">
         <div class="week-cita-block-nombre">${esc(c.paciente)}</div>
         <div class="week-cita-block-detalle">${c.hora}·${c.duracionMin||60}m</div>
         ${alto>=60 && c.nombreTutor ? `<div class="week-cita-block-detalle">tutor: ${esc(c.nombreTutor)}</div>` : ''}
