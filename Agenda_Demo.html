@@ -318,7 +318,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   .main-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;}
   .main-tabs button{padding:9px 12px;font-size:12.5px;white-space:nowrap;flex-shrink:0;}
   .day-summary{grid-template-columns:repeat(2,1fr);}
-  .cita-actions{width:100%;justify-content:flex-start;}
+  .cita-actions{width:100%;justify-content:flex-start;align-items:stretch;}
   .cita-actions br{display:block;} /* en móvil, "Procesar pago"/"No llegó" vuelven a 2 líneas */
   .cita-actions .btn-sm{flex:1 1 0;justify-content:center;text-align:center;min-width:0;padding:5px 4px;gap:2px;}
 }
@@ -1249,7 +1249,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-69';
+const APP_VERSION = '2026-09-19-70';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
