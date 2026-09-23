@@ -1267,7 +1267,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-78';
+const APP_VERSION = '2026-09-19-79';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1856,7 +1856,7 @@ function citaDesdeDb(r){
   return {
     id:r.id, fecha:r.fecha, hora:(r.hora||'').slice(0,5), duracionMin:r.duracion_min,
     doctora:r.doctora, paciente:r.paciente, nombreTutor:r.nombre_tutor||'', tel:r.tel||'', email:r.email||'', servicio:r.servicio||'',
-    precio:Number(r.precio)||0, descuentoPct:Number(r.descuento_pct)||0, cortesia:!!r.cortesia,
+    precio:Number(r.precio)||0, precioDesglose:r.precio_desglose||null, descuentoPct:Number(r.descuento_pct)||0, cortesia:!!r.cortesia,
     notas:r.notas||'', estado:r.estado, sinCita:!!r.sin_cita, cancelada:!!r.cancelada, noLlego:!!r.no_llego,
     pagado:!!r.pagado, montoPagado:Number(r.monto_pagado)||0, medioPago:r.medio_pago||'',
     montoPagado2:r.monto_pagado_2!=null?Number(r.monto_pagado_2):null, medioPago2:r.medio_pago_2||null,
@@ -1871,7 +1871,7 @@ function citaHaciaDb(c){
   return {
     id:c.id, fecha:c.fecha, hora:c.hora, duracion_min:c.duracionMin||60,
     doctora:c.doctora, paciente:c.paciente, nombre_tutor:c.nombreTutor||null, tel:c.tel||null, email:c.email||null, servicio:c.servicio||null,
-    precio:c.precio||0, descuento_pct:c.descuentoPct||0, cortesia:!!c.cortesia,
+    precio:c.precio||0, precio_desglose:c.precioDesglose||null, descuento_pct:c.descuentoPct||0, cortesia:!!c.cortesia,
     notas:c.notas||null, estado:c.estado, sin_cita:!!c.sinCita, cancelada:!!c.cancelada, no_llego:!!c.noLlego,
     pagado:!!c.pagado, monto_pagado:c.montoPagado||0, medio_pago:c.medioPago||null,
     monto_pagado_2:c.montoPagado2||null, medio_pago_2:c.medioPago2||null,
@@ -3668,11 +3668,15 @@ function abrirModal(id, sinCita){
     document.getElementById('m-tel').value = c.tel;
     document.getElementById('m-email').value = c.email||'';
     document.getElementById('m-servicio').value = c.servicio;
-    // Como el precio guardado es un solo total (no por servicio), al editar
-    // se precarga completo en el PRIMER servicio — la doctora puede
-    // redistribuirlo manualmente entre los campos si quiere más detalle.
+    // Se precarga con el desglose real que la doctora guardó por servicio.
+    // Si es una cita vieja (de antes de guardar el desglose), no queda otra
+    // que repartir el total al primer servicio, como se hacía antes.
     const nombresIniciales = c.servicio ? c.servicio.split(' + ').map(s=>s.trim()).filter(Boolean) : [];
-    window._desglosePrecioValores = nombresIniciales.length ? {[nombresIniciales[0]]: c.precio||0} : {};
+    if(c.precioDesglose && Object.keys(c.precioDesglose).length){
+      window._desglosePrecioValores = {...c.precioDesglose};
+    }else{
+      window._desglosePrecioValores = nombresIniciales.length ? {[nombresIniciales[0]]: c.precio||0} : {};
+    }
     renderChipsServicioCita();
     document.getElementById('m-descuento').value = c.descuentoPct||'';
     document.getElementById('m-cortesia').checked = !!c.cortesia;
@@ -3816,6 +3820,7 @@ function guardarCita(){
   const email = document.getElementById('m-email').value.trim();
   const servicio = document.getElementById('m-servicio').value.trim();
   const precio = parseFloat(document.getElementById('m-precio').value)||0;
+  const precioDesglose = {...(window._desglosePrecioValores||{})};
   const descuentoPct = parseFloat(document.getElementById('m-descuento').value)||0;
   const cortesia = document.getElementById('m-cortesia').checked;
   const requiereFactura = document.getElementById('m-requiere-factura').checked;
@@ -3841,7 +3846,7 @@ function guardarCita(){
       const mensaje = conflicto.tipo==='cita'
         ? `${esc(doctora)} ya tiene una cita a esa hora con <strong>${esc(conflicto.detalle)}</strong>. Esta nueva cita quedará empalmada con la existente.`
         : `${esc(doctora)} tiene un bloqueo en ese horario: <strong>${esc(conflicto.detalle)}</strong>. La cita quedará agendada sobre ese bloqueo.`;
-      mostrarConfirm({etiqueta:'⚠ Conflicto de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🗓️'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas}));
+      mostrarConfirm({etiqueta:'⚠ Conflicto de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🗓️'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas}));
       return;
     }
   }
@@ -3854,24 +3859,24 @@ function guardarCita(){
     const mensaje = (bloques && bloques.length)
       ? `${esc(doctora)} labora de <strong>${bloques.map(b=>b.inicio+' a '+b.fin).join(', y de ')}</strong> ese día. La hora elegida queda fuera de su horario.`
       : `${esc(doctora)} no tiene horario configurado ese día.`;
-    mostrarConfirm({etiqueta:'⚠ Fuera de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🕐'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas}));
+    mostrarConfirm({etiqueta:'⚠ Fuera de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🕐'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas}));
     return;
   }
 
-  guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas});
+  guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas});
 }
 
 function guardarCitaFinal(datos){
-  const {fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas} = datos;
+  const {fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas} = datos;
   let citaGuardada;
   if(modalEditId){
     const c = citas.find(x=>x.id===modalEditId);
-    Object.assign(c,{fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,notas});
+    Object.assign(c,{fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,notas});
     if(c.pagado) c.requiereFactura = requiereFactura;
     citaGuardada = c;
     toast('✓ Cita actualizada');
   }else{
-    const nueva = {id:Date.now(),fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,notas,estado:nuevaEsSinCita?'llego':'agendado',sinCita:nuevaEsSinCita,cancelada:false,noLlego:false,pagado:false,montoPagado:0,medioPago:'',montoPagado2:null,medioPago2:null,saldoPendiente:0,requiereFactura:false,facturada:false,numeroFactura:null,terminalPago:null,terminalPago2:null,terminalPorServicio:null};
+    const nueva = {id:Date.now(),fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,notas,estado:nuevaEsSinCita?'llego':'agendado',sinCita:nuevaEsSinCita,cancelada:false,noLlego:false,pagado:false,montoPagado:0,medioPago:'',montoPagado2:null,medioPago2:null,saldoPendiente:0,requiereFactura:false,facturada:false,numeroFactura:null,terminalPago:null,terminalPago2:null,terminalPorServicio:null};
     citas.push(nueva);
     citaGuardada = nueva;
     toast('✓ Cita agendada');
