@@ -1271,7 +1271,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-80';
+const APP_VERSION = '2026-09-19-81';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1554,6 +1554,17 @@ function detenerRealtime(){
 }
 
 let currentUser = null; // { id, rol, nombre }
+// Antes de llamar a una Edge Function sensible (crear/editar accesos,
+// catálogo, etc.), fuerza a refrescar el token de sesión. getSession()
+// por sí solo puede devolver un token ya vencido si la pestaña estuvo
+// mucho tiempo en segundo plano (celular bloqueado, etc.) — eso es lo que
+// causaba el "No autenticado" al guardar aunque la sesión "existiera".
+async function tokenSesionFresco(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(!session) return null;
+  const { data: refrescada } = await sb.auth.refreshSession();
+  return (refrescada && refrescada.session) ? refrescada.session : session;
+}
 let mfaFactorIdPendiente = null;
 let mfaChallengeIdPendiente = null;
 
@@ -1738,7 +1749,7 @@ async function verificarMfa(){
 }
 
 async function completarLoginYArrancarApp(){
-  const { data: { session } } = await sb.auth.getSession();
+  const session = await tokenSesionFresco();
   if(!session){ ocultarPantallaCargaLogin(); mostrarErrorLogin('No se pudo iniciar sesión.'); return; }
 
   const { data: perfil, error: errPerfil } = await sb
@@ -2969,7 +2980,7 @@ async function toggleActivoPersonalSwitch(userId){
   await guardarCambioActivoPersonal(userId, p.nombre, p.rol, p.es_admin, p.puede_servicios, nuevoActivo, nuevoActivo ? '↺ Reactivada: ' : '⏸ Inactivada: ');
 }
 async function guardarCambioActivoPersonal(userId, nombre, rol, esAdmin, puedeServicios, activo, mensajeExito){
-  const { data: { session } } = await sb.auth.getSession();
+  const session = await tokenSesionFresco();
   if(!session){ toast('⚠ Sesión expirada, vuelve a iniciar sesión'); return; }
   try{
     const resp = await fetch(`${SUPABASE_URL}/functions/v1/editar-perfil-personal`, {
@@ -2998,7 +3009,7 @@ function iniciarEliminarPersonal(userId, nombre){
     mensaje:`<strong>${esc(nombre)}</strong> perderá el acceso por completo y no podrá volver a iniciar sesión — esto no se puede deshacer. Su historial de citas, gestiones y auditoría <strong>no se ve afectado</strong>, se queda igual.`,
     textoConfirmar:'Sí, eliminar para siempre', icono:'🗑'
   }, async ()=>{
-    const { data: { session } } = await sb.auth.getSession();
+    const session = await tokenSesionFresco();
     if(!session){ toast('⚠ Sesión expirada, vuelve a iniciar sesión'); return; }
     try{
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/eliminar-perfil-personal`, {
@@ -3066,7 +3077,7 @@ async function crearPerfilPersonal(){
   if(!nombre || !correo || !password){ elError.textContent = 'Completa nombre, correo y contraseña.'; return; }
   if(password.length < 6){ elError.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return; }
 
-  const { data: { session } } = await sb.auth.getSession();
+  const session = await tokenSesionFresco();
   if(!session){ elError.textContent = 'Sesión expirada, vuelve a iniciar sesión.'; return; }
 
   try{
@@ -3101,7 +3112,7 @@ async function guardarEdicionPersonal(){
 
   if(!nombre){ elError.textContent = 'El nombre no puede quedar vacío.'; return; }
 
-  const { data: { session } } = await sb.auth.getSession();
+  const session = await tokenSesionFresco();
   if(!session){ elError.textContent = 'Sesión expirada, vuelve a iniciar sesión.'; return; }
 
   try{
@@ -3227,7 +3238,7 @@ function iniciarResetPasswordPersonal(userId, nombre){
     if(!nuevaPassword || nuevaPassword.trim()===''){ return; }
     if(nuevaPassword.length < 6){ toast('⚠ La contraseña debe tener al menos 6 caracteres'); return; }
 
-    const { data: { session } } = await sb.auth.getSession();
+    const session = await tokenSesionFresco();
     if(!session){ toast('⚠ Sesión expirada, vuelve a iniciar sesión'); return; }
 
     try{
@@ -3524,7 +3535,7 @@ function eliminarCitaDefinitivo(id){
     // La validación del código y el borrado en sí ya NO ocurren aquí — este
     // navegador nunca ve el código correcto. Solo le pide a la Edge Function
     // de Supabase que lo verifique y borre, del lado del servidor.
-    const { data: { session } } = await sb.auth.getSession();
+    const session = await tokenSesionFresco();
     if(!session){ toast('⚠ Sesión expirada, vuelve a iniciar sesión'); return; }
 
     let resultado;
@@ -5722,7 +5733,7 @@ async function iniciarAppDespuesDeLogin(){
 
 // Si ya había una sesión abierta (recargaste la página), entra directo.
 (async function arrancar(){
-  const { data: { session } } = await sb.auth.getSession();
+  const session = await tokenSesionFresco();
   if(session && !enFlujoRecuperacion){
     mostrarPantallaCargaLogin();
     await completarLoginYArrancarApp();
