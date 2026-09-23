@@ -1271,7 +1271,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-81';
+const APP_VERSION = '2026-09-19-82';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1562,7 +1562,17 @@ let currentUser = null; // { id, rol, nombre }
 async function tokenSesionFresco(){
   const { data: { session } } = await sb.auth.getSession();
   if(!session) return null;
-  const { data: refrescada } = await sb.auth.refreshSession();
+  const { data: refrescada, error: errRefresh } = await sb.auth.refreshSession();
+  if(errRefresh){
+    // El refresh token ya no es válido en el servidor (sesión muy vieja,
+    // revocada, o abierta desde otro lado) — no hay forma de recuperarla
+    // desde aquí. Se cierra sesión y se manda de vuelta al login con un
+    // aviso claro, en vez de quedarse atorado en "No autenticado".
+    alert('Tu sesión ya no es válida en el servidor — necesitas iniciar sesión de nuevo.');
+    await sb.auth.signOut();
+    location.reload();
+    return null;
+  }
   return (refrescada && refrescada.session) ? refrescada.session : session;
 }
 let mfaFactorIdPendiente = null;
