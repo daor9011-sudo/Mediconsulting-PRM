@@ -1267,7 +1267,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-77';
+const APP_VERSION = '2026-09-19-78';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2218,8 +2218,9 @@ async function crearServicioCatalogo(){
   elError.textContent = '';
   if(!nombre){ elError.textContent = 'Escribe el nombre del servicio.'; return; }
 
-  const nuevoId = Date.now();
-  const { error } = await sb.from('catalogo_servicios').insert({ id:nuevoId, categoria, nombre, precio, terminal_preferida:terminalPreferida, activo:true });
+  // El id de catalogo_servicios se autogenera en la base (a diferencia de
+  // citas/bloqueos/horarios) — no se manda aquí, o Postgres lo rechaza.
+  const { error } = await sb.from('catalogo_servicios').insert({ categoria, nombre, precio, terminal_preferida:terminalPreferida, activo:true });
   if(error){ elError.textContent = error.message; return; }
   toast('✓ Servicio agregado: '+nombre);
   resetFormularioServicio();
