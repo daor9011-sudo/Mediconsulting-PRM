@@ -1271,7 +1271,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-82';
+const APP_VERSION = '2026-09-19-83';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2280,12 +2280,43 @@ let fechaActual = fechaLocalISO();
 let modalEditId = null;
 let vistaActual = 'semana'; // 'dia' | 'semana' | 'mes'
 let mesActual = (()=>{ const d=new Date(fechaActual+'T00:00:00'); return {y:d.getFullYear(),m:d.getMonth()}; })();
-const COLOR_DOCTORA = {}; // se asigna dinámicamente por índice de DOCTORAS
+const COLOR_DOCTORA = {}; // se asigna por nombre fijo — ver colorParaDoctora()
 // 16 colores elegidos para verse distintos entre sí incluso en franjas
-// pequeñas (puntos del calendario, borde de tarjeta) — con más de 16
-// doctoras activas el color vuelve a repetirse, pero hoy (13) no pasa.
+// pequeñas (puntos del calendario, borde de tarjeta).
 const PALETA_DOTS = ['#2ABFBF','#5B4FCF','#E67E22','#2E9E6B','#6D4C41','#8E44AD','#C0392B','#2980B9','#D4A017','#E84393','#7F8C8D','#B8460E','#34495E','#A83264','#556B2F','#16A085'];
-DOCTORAS.forEach((d,i)=>COLOR_DOCTORA[d]=PALETA_DOTS[i%PALETA_DOTS.length]);
+// Colores FIJOS por nombre para las doctoras de hoy — antes se calculaban
+// por posición alfabética en la lista, así que agregar o quitar a
+// cualquiera corría el color de todas las que venían después de ella en
+// orden alfabético (así fue como Dra. Mabel Peinado perdió su rosa el día
+// que se recreó la cuenta de Dra. Gabriela Chacon, que alfabéticamente
+// queda justo antes). Con este mapa, el color de cada quien ya no depende
+// de quién más esté en la lista.
+const COLOR_DOCTORA_FIJO = {
+  'Dr. Amaury González': '#2ABFBF',
+  'Dr. Luis Kieffer': '#5B4FCF',
+  'Dr. Octavio Rodriguez': '#E67E22',
+  'Dra. Blanca Campos': '#2E9E6B',
+  'Dra. Citlalli Casillas': '#6D4C41',
+  'Dra. Diana Orozco': '#8E44AD',
+  'Dra. Inés Alvarez': '#C0392B',
+  'Dra. Irene Botas': '#2980B9',
+  'Dra. Karina Maya': '#D4A017',
+  'Dra. Mabel Peinado': '#E84393',
+  'Dra. Martha Sandoval': '#7F8C8D',
+  'Dra. Nancy Cruz': '#B8460E',
+  'Dra. Olivia Ortiz': '#34495E',
+  'Dra. Gabriela Chacon': '#A83264',
+};
+function colorParaDoctora(nombre){
+  if(COLOR_DOCTORA_FIJO[nombre]) return COLOR_DOCTORA_FIJO[nombre];
+  // Doctora nueva sin color fijo en el mapa de arriba: se calcula un
+  // color estable a partir de su nombre (siempre el mismo para ella,
+  // sin importar cuántas más se agreguen o se quiten después).
+  let hash = 0;
+  for(let i=0;i<nombre.length;i++) hash = (hash*31 + nombre.charCodeAt(i)) >>> 0;
+  return PALETA_DOTS[hash % PALETA_DOTS.length];
+}
+DOCTORAS.forEach(d=>COLOR_DOCTORA[d]=colorParaDoctora(d));
 
 function fmtFechaLabel(f){
   const d = new Date(f+'T00:00:00');
@@ -3271,7 +3302,7 @@ async function refrescarDoctorasSiHaceFalta(rol){
   if(rol!=='doctora') return;
   const { data: perfilesDoctoras } = await sb.from('perfiles').select('nombre').eq('rol','doctora').eq('activo', true);
   DOCTORAS = (perfilesDoctoras||[]).map(p=>p.nombre).sort((a,b)=>a.localeCompare(b,'es'));
-  DOCTORAS.forEach((d,i)=>COLOR_DOCTORA[d]=PALETA_DOTS[i%PALETA_DOTS.length]);
+  DOCTORAS.forEach(d=>COLOR_DOCTORA[d]=colorParaDoctora(d));
   await cargarHorarios();
   initSelects();
   render();
@@ -5715,7 +5746,7 @@ async function iniciarAppDespuesDeLogin(){
     .from('perfiles').select('nombre').eq('rol','doctora').eq('activo', true);
   if(errDoc){ mostrarErrorLogin('No se pudo cargar la lista de doctoras.'); return; }
   DOCTORAS = (perfilesDoctoras||[]).map(p=>p.nombre).sort((a,b)=>a.localeCompare(b,'es'));
-  DOCTORAS.forEach((d,i)=>COLOR_DOCTORA[d]=PALETA_DOTS[i%PALETA_DOTS.length]);
+  DOCTORAS.forEach(d=>COLOR_DOCTORA[d]=colorParaDoctora(d));
 
   await Promise.all([ cargarCitas(), cargarHorarios(), cargarBloqueos(), cargarGestiones(), cargarCatalogoServicios() ]);
   // A las doctoras "de práctica" (sin perfil real, solo texto en las citas)
