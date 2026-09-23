@@ -954,8 +954,12 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     <div id="pago-cortesia-aviso" style="display:none;background:#F5F0FC;border:1px solid #D2B4DE;color:#7D3C98;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;font-weight:600;">
       🎁 Este servicio fue marcado como cortesía por la doctora — sin cobro.
     </div>
+    <div class="form-group" id="pago-desglose-wrap" style="display:none;">
+      <label>Precio por servicio — definido por la doctora</label>
+      <div id="pago-desglose" style="margin:6px 0 4px;"></div>
+    </div>
     <div class="form-group" id="pago-monto-wrap">
-      <label>Monto a cobrar — definido por la doctora</label>
+      <label id="pago-monto-label">Monto a cobrar — definido por la doctora</label>
       <div id="pago-monto-display" style="font-size:22px;font-weight:700;color:var(--gray-800);padding:6px 0;">$0.00</div>
       <div style="font-size:10.5px;color:var(--gray-400);">Este monto no se puede editar desde recepción.</div>
     </div>
@@ -1267,7 +1271,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-79';
+const APP_VERSION = '2026-09-19-80';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -4038,6 +4042,23 @@ function abrirPagoModal(id){
   document.getElementById('pago-paciente-label').textContent = c.paciente;
   document.getElementById('pago-servicio-label').textContent = c.servicio+' · '+c.doctora;
   document.getElementById('pago-monto-display').textContent = '$'+montoFinal.toLocaleString('es-MX',{minimumFractionDigits:2})+(c.descuentoPct>0&&!c.cortesia?' (con '+c.descuentoPct+'% dcto.)':'');
+
+  // Desglose por servicio — mismo precio que la doctora capturó y que ya
+  // quedó guardado en la cita, para que recepción pueda verificar antes de
+  // cobrar (no es editable desde aquí).
+  const desgloseWrap = document.getElementById('pago-desglose-wrap');
+  const desglose = c.precioDesglose;
+  if(desglose && Object.keys(desglose).length > 1 && !c.cortesia){
+    document.getElementById('pago-desglose').innerHTML = Object.entries(desglose).map(([nombre,monto])=>
+      `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--gray-100);font-size:12px;">
+        <span style="color:var(--gray-600);">${esc(nombre)}</span><span style="font-weight:700;">$${Number(monto).toLocaleString('es-MX',{minimumFractionDigits:2})}</span>
+      </div>`).join('');
+    desgloseWrap.style.display = '';
+    document.getElementById('pago-monto-label').textContent = 'Monto a cobrar';
+  }else{
+    desgloseWrap.style.display = 'none';
+    document.getElementById('pago-monto-label').textContent = 'Monto a cobrar — definido por la doctora';
+  }
   document.getElementById('pago-cortesia-aviso').style.display = c.cortesia ? 'block' : 'none';
   document.getElementById('pago-medio').value = c.medioPago && c.medioPago!=='Cortesía' ? c.medioPago : '';
   // Reinicia el estado de "dividir en dos medios" cada vez que se abre
