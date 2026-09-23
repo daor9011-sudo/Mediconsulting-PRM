@@ -212,6 +212,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .week-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
 .week-doctora-label{font-size:13px;font-weight:700;color:var(--gray-800);display:flex;align-items:center;gap:8px;}
 .week-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--gray-400);}
+.week-legend-hint{display:none;}
 .week-legend span{display:inline-flex;align-items:center;gap:4px;}
 .week-legend .dot{width:9px;height:9px;border-radius:3px;display:inline-block;}
 @media(min-width:641px){
@@ -330,6 +331,14 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   .cita-actions{width:100%;justify-content:flex-start;align-items:stretch;}
   .cita-actions br{display:block;} /* en móvil, "Procesar pago"/"No llegó" vuelven a 2 líneas */
   .cita-actions .btn-sm{flex:1 1 0;justify-content:center;text-align:center;min-width:0;padding:5px 4px;gap:2px;}
+
+  /* Leyenda de colores por doctora en la vista Semana: en vez de envolver
+     a 3 líneas apretadas, una sola fila que se desliza en horizontal —
+     mismo patrón que las pestañas principales. */
+  .week-legend{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:16px;padding-bottom:2px;}
+  .week-legend span{flex-shrink:0;}
+  .week-legend .dot{width:9px;height:9px;border-radius:3px;flex-shrink:0;}
+  .week-legend-hint{display:block;font-size:10px;color:var(--gray-400);text-align:center;margin-top:4px;}
 }
 
 /* ═══════════════════════════════════════════
@@ -1258,7 +1267,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-75';
+const APP_VERSION = '2026-09-19-76';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2542,6 +2551,7 @@ function renderWeek(){
            <span><span class="dot" style="background:repeating-linear-gradient(45deg,#F5F8FB,#F5F8FB 3px,#EFEFEF 3px,#EFEFEF 6px);"></span> No labora</span>
            <span><span class="dot" style="background:#fff;border:1px solid var(--gray-200);"></span> Disponible</span>`}
     </div>
+    ${modoTodas ? '<div class="week-legend-hint">← desliza para ver a todas →</div>' : ''}
     </div>
   </div>`;
 
