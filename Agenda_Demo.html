@@ -1271,7 +1271,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-83';
+const APP_VERSION = '2026-09-19-84';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2594,17 +2594,23 @@ function renderWeek(){
 
   // Franja horaria: la unión de los horarios de todas las doctoras a mostrar,
   // considerando que cada día puede tener uno o más bloques (turnos
-  // partidos), en bloques de 1 hora.
+  // partidos), en intervalos de 30 minutos. Nunca se corta antes de las
+  // 8pm, aunque los horarios configurados terminen más temprano — deja
+  // margen para agendar fuera de horario si hace falta.
   const rangosSemana = [];
   doctorasAMostrar.forEach(d=>{ Object.values(horarioSemanaDe(d)).forEach(bloques=>bloques.forEach(r=>rangosSemana.push(r))); });
   const hIni = rangosSemana.length ? Math.min(...rangosSemana.map(r=>parseInt(r.inicio.split(':')[0]))) : 9;
-  const hFin = rangosSemana.length ? Math.max(...rangosSemana.map(r=>parseInt(r.fin.split(':')[0]))) : 19;
+  const hFinCalculado = rangosSemana.length ? Math.max(...rangosSemana.map(r=>{
+    const [hh,mm] = r.fin.split(':').map(Number);
+    return mm>0 ? hh+1 : hh; // si termina a media hora, hay que mostrar esa hora completa
+  })) : 19;
+  const hFin = Math.max(20, hFinCalculado); // piso de las 8:00pm
   const horas = [];
-  for(let h=hIni; h<hFin; h++){ horas.push(String(h).padStart(2,'0')+':00'); }
+  for(let m=hIni*60; m<hFin*60; m+=30){ horas.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')); }
 
   const dowNombres = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
 
-  const ROW_PX = 68; // px por hora — usado para calcular el alto/posición proporcional de cada cita
+  const ROW_PX = 68; // px por HORA — el alto de fila real es la mitad (intervalos de 30 min); se usa tal cual para calcular el alto/posición proporcional de cada cita
 
   // Resumen del horario para el encabezado — si todos los días laborales
   // comparten exactamente los mismos bloques se muestra una sola vez
@@ -2636,7 +2642,7 @@ function renderWeek(){
     </div>
   </div>`;
 
-  html += `<div class="week-grid" style="grid-template-columns:56px repeat(7,1fr);grid-template-rows:auto repeat(${horas.length},${ROW_PX}px);">`;
+  html += `<div class="week-grid" style="grid-template-columns:56px repeat(7,1fr);grid-template-rows:auto repeat(${horas.length},${ROW_PX/2}px);">`;
   html += '<div class="week-grid-head" style="grid-row:1;grid-column:1;"></div>';
   diasSemana.forEach((d, dayIdx)=>{
     const dStr = fechaLocalISO(d);
@@ -2672,7 +2678,7 @@ function renderWeek(){
   // ── Overlay: una capa por día, con las citas/bloqueos posicionados por
   // minuto exacto y con alto proporcional a su duración (como Google Calendar).
   const rangoIniMin = horaAMinutos(horas[0]);
-  const rangoFinMin = rangoIniMin + horas.length*60;
+  const rangoFinMin = rangoIniMin + horas.length*30;
 
   diasSemana.forEach((d, dayIdx)=>{
     const dStr = fechaLocalISO(d);
