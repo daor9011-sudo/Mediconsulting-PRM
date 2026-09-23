@@ -1267,7 +1267,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-76';
+const APP_VERSION = '2026-09-19-77';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1509,16 +1509,20 @@ function aplicarCambioRealtimeBloqueo(payload){
   refrescarVistaActual();
 }
 
-// horariosDoctoras es {doctora: {dia: {inicio,fin}}} — la llave es
-// doctora+dia, no un id de fila, por eso este handler es distinto a los demás.
-function aplicarCambioRealtimeHorario(payload){
-  if(payload.eventType==='DELETE'){
-    const o = payload.old;
-    if(horariosDoctoras[o.doctora]) delete horariosDoctoras[o.doctora][o.dia];
-  }else{
-    const r = payload.new;
-    if(!horariosDoctoras[r.doctora]) horariosDoctoras[r.doctora] = {};
-    horariosDoctoras[r.doctora][r.dia] = { inicio:(r.hora_inicio||'').slice(0,5), fin:(r.hora_fin||'').slice(0,5) };
+// horariosDoctoras ahora puede tener varios bloques por día — más simple
+// y confiable recargar el horario completo de esa doctora que tratar de
+// parchear un solo bloque dentro del arreglo.
+async function aplicarCambioRealtimeHorario(payload){
+  const doctora = (payload.new && payload.new.doctora) || (payload.old && payload.old.doctora);
+  if(doctora){
+    const { data } = await sb.from('horarios_doctoras').select('*').eq('doctora', doctora);
+    const dias = {};
+    (data||[]).forEach(r=>{
+      if(!dias[r.dia]) dias[r.dia] = [];
+      dias[r.dia].push({ inicio:(r.hora_inicio||'').slice(0,5), fin:(r.hora_fin||'').slice(0,5) });
+    });
+    Object.values(dias).forEach(bloques=>bloques.sort((a,b)=>a.inicio.localeCompare(b.inicio)));
+    horariosDoctoras[doctora] = dias;
   }
   refrescarVistaActual();
 }
@@ -1819,23 +1823,30 @@ const ESTADO_ICON = {agendado:'📅',confirmada:'✓',llego:'🚶',curso:'▶',f
 let citas = [];
 let bloqueos = [];
 let gestiones = [];
-// horariosDoctoras: {doctora: {dia: {inicio,fin}}} — un horario independiente
-// por cada día de la semana (0=Dom..6=Sáb). Si un día no tiene entrada, esa
-// doctora no labora ese día.
+// horariosDoctoras: {doctora: {dia: [{inicio,fin}, ...]}} — uno o más
+// bloques de horario por cada día de la semana (0=Dom..6=Sáb), para
+// permitir turnos partidos (ej. 09:00–12:00 y 16:00–19:00 el mismo día).
+// Si un día no tiene entrada, esa doctora no labora ese día.
 const DIA_DEFECTO = {inicio:'09:00', fin:'19:00'};
 const DIAS_LABORALES_DEFECTO = [1,2,3,4,5,6]; // lun-sáb, para doctoras sin horario configurado aún
 let horariosDoctoras = {};
 function horarioDefectoDoctora(){
   const h = {};
-  DIAS_LABORALES_DEFECTO.forEach(d=>h[d]={...DIA_DEFECTO});
+  DIAS_LABORALES_DEFECTO.forEach(d=>h[d]=[{...DIA_DEFECTO}]);
   return h;
 }
-// Horario de una doctora en un día específico (0=Dom..6=Sáb) — null si no labora ese día.
+// Bloques de una doctora en un día específico (0=Dom..6=Sáb) — null si no labora ese día.
 function horarioDe(doctora, dia){
   const h = horariosDoctoras[doctora] || horarioDefectoDoctora();
   return h[dia] || null;
 }
-// Rango completo de una doctora (para mostrar un resumen) — un objeto por día que sí labora.
+// true si esa hora (string "HH:MM") cae dentro de alguno de los bloques del día.
+function horaDentroDeAlgunBloque(bloques, hhmm){
+  if(!bloques) return false;
+  const min = horaAMinutos(hhmm);
+  return bloques.some(b=>min>=horaAMinutos(b.inicio) && min<horaAMinutos(b.fin));
+}
+// Rango completo de una doctora (para mostrar un resumen) — arreglo de bloques por día que sí labora.
 function horarioSemanaDe(doctora){ return horariosDoctoras[doctora] || horarioDefectoDoctora(); }
 // Citas activas — excluye las que están en la papelera (deleted:true)
 function activeCitas(){ return citas.filter(c=>!c.deleted); }
@@ -1928,20 +1939,28 @@ async function cargarHorarios(){
   if(error){ toast('⚠ Error cargando horarios: '+error.message); return; }
   (data||[]).forEach(r=>{
     if(!horariosDoctoras[r.doctora]) horariosDoctoras[r.doctora] = {};
-    horariosDoctoras[r.doctora][r.dia] = { inicio:(r.hora_inicio||'').slice(0,5), fin:(r.hora_fin||'').slice(0,5) };
+    if(!horariosDoctoras[r.doctora][r.dia]) horariosDoctoras[r.doctora][r.dia] = [];
+    horariosDoctoras[r.doctora][r.dia].push({ inicio:(r.hora_inicio||'').slice(0,5), fin:(r.hora_fin||'').slice(0,5) });
+  });
+  Object.values(horariosDoctoras).forEach(dias=>{
+    Object.values(dias).forEach(bloques=>bloques.sort((a,b)=>a.inicio.localeCompare(b.inicio)));
   });
   // Cualquier doctora sin ninguna fila propia usa el horario por defecto
   // (no se escribe a la base hasta que alguien lo edite y guarde).
   DOCTORAS.forEach(d=>{ if(!horariosDoctoras[d]) horariosDoctoras[d] = horarioDefectoDoctora(); });
 }
 // Guarda el horario de UNA doctora: reemplaza todas sus filas por las que
-// tiene ahora mismo en memoria (borra + inserta, así los días que se
-// desmarcaron también desaparecen de la base, no solo los que se agregaron).
+// tiene ahora mismo en memoria (borra + inserta, así los días o bloques
+// que se quitaron también desaparecen de la base, no solo los que se
+// agregaron). Cada bloque de un mismo día se numera 0,1,2... en "bloque".
 async function guardarHorarioDoctora(doctora){
   const dias = horariosDoctoras[doctora] || {};
   const { error: errDel } = await sb.from('horarios_doctoras').delete().eq('doctora', doctora);
   if(errDel){ toast('⚠ No se pudo guardar el horario: '+errDel.message); return; }
-  const filas = Object.keys(dias).map(dia=>({ doctora, dia:parseInt(dia), hora_inicio:dias[dia].inicio, hora_fin:dias[dia].fin }));
+  const filas = [];
+  Object.keys(dias).forEach(dia=>{
+    (dias[dia]||[]).forEach((b,i)=>filas.push({ doctora, dia:parseInt(dia), bloque:i, hora_inicio:b.inicio, hora_fin:b.fin }));
+  });
   if(!filas.length) return;
   const { error } = await sb.from('horarios_doctoras').insert(filas);
   if(error) toast('⚠ No se pudo guardar el horario: '+error.message);
@@ -2517,9 +2536,10 @@ function renderWeek(){
     'Semana del '+fmtDDMMYYYY(fechaLocalISO(diasSemana[0]))+' al '+fmtDDMMYYYY(fechaLocalISO(diasSemana[6]));
 
   // Franja horaria: la unión de los horarios de todas las doctoras a mostrar,
-  // considerando que cada día puede tener su propio rango, en bloques de 1 hora.
+  // considerando que cada día puede tener uno o más bloques (turnos
+  // partidos), en bloques de 1 hora.
   const rangosSemana = [];
-  doctorasAMostrar.forEach(d=>{ Object.values(horarioSemanaDe(d)).forEach(r=>rangosSemana.push(r)); });
+  doctorasAMostrar.forEach(d=>{ Object.values(horarioSemanaDe(d)).forEach(bloques=>bloques.forEach(r=>rangosSemana.push(r))); });
   const hIni = rangosSemana.length ? Math.min(...rangosSemana.map(r=>parseInt(r.inicio.split(':')[0]))) : 9;
   const hFin = rangosSemana.length ? Math.max(...rangosSemana.map(r=>parseInt(r.fin.split(':')[0]))) : 19;
   const horas = [];
@@ -2530,13 +2550,17 @@ function renderWeek(){
   const ROW_PX = 68; // px por hora — usado para calcular el alto/posición proporcional de cada cita
 
   // Resumen del horario para el encabezado — si todos los días laborales
-  // comparten el mismo rango se muestra una sola vez; si varía, se avisa.
+  // comparten exactamente los mismos bloques se muestra una sola vez
+  // (incluyendo turnos partidos: "09:00–12:00, 16:00–19:00"); si varía
+  // de un día a otro, se avisa en vez de mostrar algo engañoso.
   function resumenHorarioSemana(doctora){
     const dias = horarioSemanaDe(doctora);
-    const rangos = Object.values(dias);
-    if(!rangos.length) return 'sin horario configurado';
-    const iguales = rangos.every(r=>r.inicio===rangos[0].inicio && r.fin===rangos[0].fin);
-    return iguales ? rangos[0].inicio+'–'+rangos[0].fin : 'horario varía por día';
+    const diasConHorario = Object.values(dias);
+    if(!diasConHorario.length) return 'sin horario configurado';
+    const firma = bloques=>bloques.map(b=>b.inicio+'-'+b.fin).join(',');
+    const primera = firma(diasConHorario[0]);
+    const iguales = diasConHorario.every(bloques=>firma(bloques)===primera);
+    return iguales ? diasConHorario[0].map(b=>b.inicio+'–'+b.fin).join(', ') : 'horario varía por día';
   }
 
   let html = `<div class="week-toolbar">
@@ -2578,15 +2602,11 @@ function renderWeek(){
       const colGrid = dayIdx+2;
 
       if(modoTodas){
-        const algunaLabora = doctorasAMostrar.some(doc=>{
-          const h = horarioDe(doc, diaSemanaNum);
-          return h && slotIni>=horaAMinutos(h.inicio) && slotIni<horaAMinutos(h.fin);
-        });
+        const algunaLabora = doctorasAMostrar.some(doc=>horaDentroDeAlgunBloque(horarioDe(doc, diaSemanaNum), hora));
         html += `<div class="week-cell ${algunaLabora?'':'no-labora'}" style="grid-row:${filaGrid};grid-column:${colGrid};" onclick="${algunaLabora?`abrirSelectorDoctoraSlot('${dStr}','${hora}')`:''}" title="${algunaLabora?'Disponible — clic para agendar':'Nadie labora'}"></div>`;
       }else{
         const doctora = doctorasAMostrar[0];
-        const horario = horarioDe(doctora, diaSemanaNum);
-        const dentro = !!horario && slotIni>=horaAMinutos(horario.inicio) && slotIni<horaAMinutos(horario.fin);
+        const dentro = horaDentroDeAlgunBloque(horarioDe(doctora, diaSemanaNum), hora);
         html += `<div class="week-cell ${dentro?'':'no-labora'}" style="grid-row:${filaGrid};grid-column:${colGrid};" onclick="${dentro?`abrirNuevaCitaEnSlot('${dStr}','${hora}','${esc(doctora).replace(/'/g,"\\'")}')`:''}" title="${dentro?'Disponible — clic para agendar':esc(doctora)+' no labora este horario'}"></div>`;
       }
     });
@@ -2606,7 +2626,11 @@ function renderWeek(){
     const gruposGeneralesVistos = new Set();
     doctorasDelDia.forEach(doctora=>{
       bloqueos.filter(b=>b.doctora===doctora && b.fecha===dStr).forEach(b=>{
-        const horario = horarioDe(doctora, d.getDay()) || {inicio:String(hIni).padStart(2,'0')+':00', fin:String(hFin).padStart(2,'0')+':00'};
+        const bloquesDia = horarioDe(doctora, d.getDay());
+        const horario = (bloquesDia && bloquesDia.length)
+          ? { inicio: bloquesDia.reduce((m,x)=>x.inicio<m?x.inicio:m, bloquesDia[0].inicio),
+              fin: bloquesDia.reduce((m,x)=>x.fin>m?x.fin:m, bloquesDia[0].fin) }
+          : {inicio:String(hIni).padStart(2,'0')+':00', fin:String(hFin).padStart(2,'0')+':00'};
         const iniMin = b.todoDia ? horaAMinutos(horario.inicio) : horaAMinutos(b.horaInicio);
         const finMin = b.todoDia ? horaAMinutos(horario.fin) : horaAMinutos(b.horaFin);
         // En "Todas", un bloqueo general (grupoId compartido por todas las
@@ -3376,17 +3400,45 @@ function cargarHorarioForm(){
   const dias = horarioSemanaDe(doctora);
   const wrap = document.getElementById('hor-dias');
   wrap.innerHTML = DIAS_SEMANA_LABELS.map(d=>{
-    const h = dias[d.v];
-    const on = !!h;
-    return `<div class="hor-dia-row" data-dia="${d.v}" style="display:flex;align-items:center;gap:12px;padding:9px 12px;border:1px solid ${on?'var(--gold-border)':'var(--gray-200)'};background:${on?'var(--gold-bg)':'var(--gray-50)'};border-radius:8px;">
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;width:56px;flex-shrink:0;cursor:pointer;">
+    const bloques = dias[d.v];
+    const on = !!bloques;
+    return `<div class="hor-dia-row" data-dia="${d.v}" style="display:flex;align-items:flex-start;gap:12px;padding:9px 12px;border:1px solid ${on?'var(--gold-border)':'var(--gray-200)'};background:${on?'var(--gold-bg)':'var(--gray-50)'};border-radius:8px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;width:56px;flex-shrink:0;cursor:pointer;padding-top:5px;">
         <input type="checkbox" ${on?'checked':''} style="width:auto;margin:0;" onchange="toggleDiaHorario(this)">${d.l}
       </label>
-      <input type="time" class="hor-dia-inicio" value="${on?h.inicio:DIA_DEFECTO.inicio}" style="width:110px;" ${on?'':'disabled'}>
-      <span style="color:var(--gray-400);font-size:12px;">a</span>
-      <input type="time" class="hor-dia-fin" value="${on?h.fin:DIA_DEFECTO.fin}" style="width:110px;" ${on?'':'disabled'}>
+      <div class="hor-dia-bloques" style="flex:1;display:flex;flex-direction:column;gap:6px;">
+        ${(on?bloques:[DIA_DEFECTO]).map(b=>bloqueHorarioHtml(b.inicio, b.fin, !on)).join('')}
+        <div class="hor-agregar-bloque" style="font-size:11.5px;font-weight:700;color:var(--gold);cursor:pointer;${on?'':'display:none;'}" onclick="agregarBloqueHorario(this)">+ Agregar otro horario ese día</div>
+      </div>
     </div>`;
   }).join('');
+}
+function bloqueHorarioHtml(inicio, fin, disabled){
+  const dis = disabled ? 'disabled' : '';
+  return `<div class="hor-bloque" style="display:flex;align-items:center;gap:8px;">
+    <input type="time" class="hor-dia-inicio" value="${inicio}" style="width:110px;" ${dis}>
+    <span style="color:var(--gray-400);font-size:12px;">a</span>
+    <input type="time" class="hor-dia-fin" value="${fin}" style="width:110px;" ${dis}>
+    <span class="hor-bloque-borrar" style="color:var(--danger);cursor:pointer;font-size:13px;padding:2px 4px;" onclick="quitarBloqueHorario(this)">🗑</span>
+  </div>`;
+}
+function agregarBloqueHorario(btn){
+  const div = document.createElement('div');
+  div.innerHTML = bloqueHorarioHtml(DIA_DEFECTO.inicio, DIA_DEFECTO.fin);
+  btn.parentElement.insertBefore(div.firstElementChild, btn);
+}
+function quitarBloqueHorario(icono){
+  const bloquesWrap = icono.closest('.hor-dia-bloques');
+  const bloque = icono.closest('.hor-bloque');
+  const quedan = bloquesWrap.querySelectorAll('.hor-bloque').length;
+  if(quedan<=1){
+    // era el único bloque del día — lo más claro es desmarcar el día entero
+    const row = icono.closest('.hor-dia-row');
+    row.querySelector('input[type=checkbox]').checked = false;
+    toggleDiaHorario(row.querySelector('input[type=checkbox]'));
+    return;
+  }
+  bloque.remove();
 }
 function toggleDiaHorario(checkbox){
   const row = checkbox.closest('.hor-dia-row');
@@ -3394,6 +3446,7 @@ function toggleDiaHorario(checkbox){
   row.style.background = on ? 'var(--gold-bg)' : 'var(--gray-50)';
   row.style.borderColor = on ? 'var(--gold-border)' : 'var(--gray-200)';
   row.querySelectorAll('input[type=time]').forEach(inp=>inp.disabled = !on);
+  row.querySelector('.hor-agregar-bloque').style.display = on ? '' : 'none';
 }
 
 function guardarHorarioForm(){
@@ -3404,12 +3457,18 @@ function guardarHorarioForm(){
     const dia = parseInt(row.dataset.dia);
     const checkbox = row.querySelector('input[type=checkbox]');
     if(!checkbox.checked) return;
-    const inicio = row.querySelector('.hor-dia-inicio').value;
-    const fin = row.querySelector('.hor-dia-fin').value;
-    if(!inicio || !fin){ valido = false; return; }
-    filas[dia] = {inicio, fin};
+    const bloques = [];
+    row.querySelectorAll('.hor-bloque').forEach(b=>{
+      const inicio = b.querySelector('.hor-dia-inicio').value;
+      const fin = b.querySelector('.hor-dia-fin').value;
+      if(!inicio || !fin){ valido = false; return; }
+      if(inicio>=fin){ valido = false; return; }
+      bloques.push({inicio, fin});
+    });
+    bloques.sort((a,b)=>a.inicio.localeCompare(b.inicio));
+    filas[dia] = bloques;
   });
-  if(!valido){ toast('⚠ Indica hora de inicio y fin en cada día marcado'); return; }
+  if(!valido){ toast('⚠ Revisa que cada bloque tenga hora de inicio y fin, y que el fin sea después del inicio'); return; }
   if(!Object.keys(filas).length){ toast('⚠ Selecciona al menos un día laboral'); return; }
   horariosDoctoras[doctora] = filas;
   guardarHorarioDoctora(doctora);
@@ -3726,24 +3785,23 @@ function sugerirHoraPorHorario(){
   const hint = document.getElementById('hint-hora');
   if(!doctora || !fecha){ hint.textContent = ''; return; }
   const dia = new Date(fecha+'T00:00:00').getDay();
-  const horario = horarioDe(doctora, dia);
+  const bloques = horarioDe(doctora, dia);
   const horaInput = document.getElementById('m-hora');
-  if(!horario){
+  if(!bloques || !bloques.length){
     hint.textContent = esc(doctora)+' no tiene horario configurado ese día.';
     return;
   }
-  hint.textContent = 'Horario: '+horario.inicio+'–'+horario.fin;
-  if(!horaInput.value && !modalEditId) horaInput.value = horario.inicio;
+  hint.textContent = 'Horario: '+bloques.map(b=>b.inicio+'–'+b.fin).join(', ');
+  if(!horaInput.value && !modalEditId) horaInput.value = bloques[0].inicio;
 }
-// true si la hora elegida cae fuera del horario configurado de la doctora
-// ese día (o ese día no labora). Se usa como aviso, no como bloqueo — igual
-// que los empalmes, recepción puede agendar fuera de horario si hace falta.
+// true si la hora elegida cae fuera de TODOS los bloques configurados de la
+// doctora ese día (o ese día no labora). Se usa como aviso, no como bloqueo
+// — igual que los empalmes, recepción puede agendar fuera de horario si hace falta.
 function estaFueraDeHorario(doctora, fecha, hora){
   const dia = new Date(fecha+'T00:00:00').getDay();
-  const horario = horarioDe(doctora, dia);
-  if(!horario) return true;
-  const min = horaAMinutos(hora);
-  return min < horaAMinutos(horario.inicio) || min >= horaAMinutos(horario.fin);
+  const bloques = horarioDe(doctora, dia);
+  if(!bloques || !bloques.length) return true;
+  return !horaDentroDeAlgunBloque(bloques, hora);
 }
 
 function guardarCita(){
@@ -3791,9 +3849,9 @@ function guardarCita(){
   // (igual que los empalmes): puede hacer falta agendar fuera de horario.
   if((!nuevaEsSinCita || modalEditId) && estaFueraDeHorario(doctora, fecha, hora)){
     const dia = new Date(fecha+'T00:00:00').getDay();
-    const horario = horarioDe(doctora, dia);
-    const mensaje = horario
-      ? `${esc(doctora)} labora de <strong>${horario.inicio} a ${horario.fin}</strong> ese día. La hora elegida queda fuera de su horario.`
+    const bloques = horarioDe(doctora, dia);
+    const mensaje = (bloques && bloques.length)
+      ? `${esc(doctora)} labora de <strong>${bloques.map(b=>b.inicio+' a '+b.fin).join(', y de ')}</strong> ese día. La hora elegida queda fuera de su horario.`
       : `${esc(doctora)} no tiene horario configurado ese día.`;
     mostrarConfirm({etiqueta:'⚠ Fuera de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🕐'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,descuentoPct,cortesia,requiereFactura,notas}));
     return;
