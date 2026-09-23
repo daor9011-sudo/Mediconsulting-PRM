@@ -1271,7 +1271,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-84';
+const APP_VERSION = '2026-09-19-86';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2604,9 +2604,9 @@ function renderWeek(){
     const [hh,mm] = r.fin.split(':').map(Number);
     return mm>0 ? hh+1 : hh; // si termina a media hora, hay que mostrar esa hora completa
   })) : 19;
-  const hFin = Math.max(20, hFinCalculado); // piso de las 8:00pm
+  const hFin = Math.max(21, hFinCalculado); // piso de las 9:00pm
   const horas = [];
-  for(let m=hIni*60; m<hFin*60; m+=30){ horas.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')); }
+  for(let m=hIni*60; m<=hFin*60; m+=30){ horas.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')); }
 
   const dowNombres = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
 
