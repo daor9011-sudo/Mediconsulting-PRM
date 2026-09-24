@@ -1295,7 +1295,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-89';
+const APP_VERSION = '2026-09-19-90';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -5039,8 +5039,14 @@ function actualizarCobrarPendienteTerminal(){
   const medio = document.getElementById('cobrar-pendiente-medio').value;
   const wrap = document.getElementById('cobrar-pendiente-terminal-wrap');
   if(c && esMedioTarjeta(medio)){
-    document.getElementById('cobrar-pendiente-terminal').innerHTML =
-      `<option value="">Seleccionar...</option><option value="${esc(c.doctora)}">${esc(c.doctora)}</option><option value="CANOPY PEDIATRICS">CANOPY PEDIATRICS</option>`;
+    // Misma sugerencia que usa "Procesar pago": según el catálogo, para
+    // los servicios de esta cita, ¿la terminal preferida es la de la
+    // doctora o la de CANOPY PEDIATRICS? Sigue siendo editable.
+    const sugerida = sugerirTerminalCita(c);
+    const sel = document.getElementById('cobrar-pendiente-terminal');
+    sel.innerHTML = `<option value="">Seleccionar...</option><option value="${esc(c.doctora)}">${esc(c.doctora)}</option><option value="CANOPY PEDIATRICS">CANOPY PEDIATRICS</option>`;
+    if(sugerida==='doctora') sel.value = c.doctora;
+    else if(sugerida==='canopy') sel.value = 'CANOPY PEDIATRICS';
     wrap.style.display = '';
   }else{
     wrap.style.display = 'none';
