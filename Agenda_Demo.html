@@ -417,6 +417,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 </style>
 </head>
 <body>
+<div id="version-footer" style="position:fixed;bottom:4px;right:8px;font-size:9px;color:var(--gray-400);opacity:0.6;z-index:500;pointer-events:none;">v</div>
 
 <!-- ═══════════════════════════════════════════
      PANTALLA DE LOGIN (email + password + MFA)
@@ -1294,7 +1295,8 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-88';
+const APP_VERSION = '2026-09-19-89';
+document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -4989,7 +4991,7 @@ function bPago(c){
   // Saldo pendiente de cobro (total o parcial) — mismo patrón que "Por
   // verificar": aviso visible, clic para registrar el cobro.
   const alertaPendiente = c.saldoPendiente>0
-    ? ` <span class="badge" style="background:#FDF6EC;color:var(--danger);border:1px solid #EDD49A;cursor:pointer;" onclick="event.stopPropagation();abrirCobrarPendienteModal(${c.id})" title="Clic para registrar el cobro de este saldo pendiente">💰 Pendiente $${Number(c.saldoPendiente).toLocaleString('es-MX',{minimumFractionDigits:2})}</span>`
+    ? ` <span class="badge" style="background:#FDF6EC;color:var(--danger);border:1px solid #EDD49A;cursor:pointer;" onclick="event.stopPropagation();abrirCobrarPendienteModal(${c.id})" title="Clic para registrar el cobro de este saldo pendiente">💰 Pendiente</span>`
     : '';
   let medios = '';
   if(c.medioPago) medios += badgeUno(c.medioPago);
