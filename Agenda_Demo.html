@@ -983,7 +983,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <label>Medio de pago</label>
       <select id="pago-medio" onchange="actualizarPagoSplit()">
         <option value="">Seleccionar...</option>
-        <option>Efectivo</option><option>Tarjeta</option><option>Transferencia</option>
+        <option>Efectivo</option><option>Tarjeta Crédito</option><option>Tarjeta Débito</option><option>Amex</option><option>Transferencia</option>
       </select>
     </div>
     <div class="form-group" id="pago-terminal1-wrap" style="display:none;">
@@ -1013,7 +1013,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
           <label style="font-size:11.5px;">Segundo medio</label>
           <select id="pago-split-medio2" onchange="actualizarPagoSplit()">
             <option value="">Seleccionar...</option>
-            <option>Efectivo</option><option>Tarjeta</option><option>Transferencia</option>
+            <option>Efectivo</option><option>Tarjeta Crédito</option><option>Tarjeta Débito</option><option>Amex</option><option>Transferencia</option>
           </select>
         </div>
         <div class="form-group" style="flex:1;">
@@ -1271,7 +1271,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-86';
+const APP_VERSION = '2026-09-19-87';
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1915,8 +1915,8 @@ function medioPagoTexto(c){
   if(c.medioPago2){
     // Si ambas partes son Tarjeta (a terminales distintas), se aclara cuál
     // es cuál — si no, "Tarjeta + Tarjeta" no dice nada útil.
-    const t1 = (c.medioPago==='Tarjeta' && c.terminalPago) ? ` (${c.terminalPago})` : '';
-    const t2 = (c.medioPago2==='Tarjeta' && c.terminalPago2) ? ` (${c.terminalPago2})` : '';
+    const t1 = (esMedioTarjeta(c.medioPago) && c.terminalPago) ? ` (${c.terminalPago})` : '';
+    const t2 = (esMedioTarjeta(c.medioPago2) && c.terminalPago2) ? ` (${c.terminalPago2})` : '';
     return `${c.medioPago}${t1} + ${c.medioPago2}${t2}`;
   }
   return c.medioPago || '';
@@ -1928,6 +1928,16 @@ function montoPorMedio(lista, medio){
     let sub = 0;
     if(c.medioPago===medio) sub += Number(c.montoPagado||0);
     if(c.medioPago2===medio) sub += Number(c.montoPagado2||0);
+    return s+sub;
+  },0);
+}
+// Suma los 3 tipos de tarjeta juntos (Crédito, Débito, Amex) — para vistas
+// compactas donde no hace falta desglosarlos por separado.
+function montoPorTarjeta(lista){
+  return lista.reduce((s,c)=>{
+    let sub = 0;
+    if(esMedioTarjeta(c.medioPago)) sub += Number(c.montoPagado||0);
+    if(esMedioTarjeta(c.medioPago2)) sub += Number(c.montoPagado2||0);
     return s+sub;
   },0);
 }
@@ -4039,6 +4049,13 @@ function cerrarSelectorDoctoraModal(){
 }
 
 // Convierte "HH:MM" a minutos desde medianoche, para comparar rangos horarios
+// Los 3 "tipos de tarjeta" (Crédito, Débito, Amex) se tratan como una sola
+// categoría para todo lo que tenga que ver con terminales — misma lógica
+// que antes tenía el único valor "Tarjeta". Efectivo y Transferencia no
+// cambian.
+function esMedioTarjeta(medio){
+  return medio==='Tarjeta Crédito' || medio==='Tarjeta Débito' || medio==='Amex';
+}
 function horaAMinutos(hhmm){
   if(!hhmm) return 0;
   const [h,m] = hhmm.split(':').map(Number);
@@ -4220,11 +4237,11 @@ function actualizarTerminalesVisibles(){
   // Sin dividir + Tarjeta: se puede asignar una terminal a cada servicio
   // por separado. Dividiendo el pago: se usa el selector único de siempre
   // para esa parte (mezclar las dos cosas complicaría demasiado el form).
-  const mostrarPorServicio = medio1==='Tarjeta' && !dividiendo;
-  document.getElementById('pago-terminal1-wrap').style.display = (medio1==='Tarjeta' && dividiendo) ? 'block' : 'none';
+  const mostrarPorServicio = esMedioTarjeta(medio1) && !dividiendo;
+  document.getElementById('pago-terminal1-wrap').style.display = (esMedioTarjeta(medio1) && dividiendo) ? 'block' : 'none';
   document.getElementById('pago-terminal-por-servicio-wrap').style.display = mostrarPorServicio ? 'block' : 'none';
   if(mostrarPorServicio) renderTerminalesPorServicio();
-  document.getElementById('pago-terminal2-wrap').style.display = (dividiendo && medio2==='Tarjeta') ? 'block' : 'none';
+  document.getElementById('pago-terminal2-wrap').style.display = (dividiendo && esMedioTarjeta(medio2)) ? 'block' : 'none';
 }
 function renderTerminalesPorServicio(){
   const c = citas.find(x=>x.id===pagoModalId);
@@ -4298,7 +4315,7 @@ function actualizarPagoSplit(){
 // (si se está dividiendo el pago en dos medios) o una por cada servicio
 // (caso normal). Devuelve {ok:false} y ya muestra el toast si falta algo.
 function leerTerminalTarjeta(medio, dividiendo){
-  if(medio !== 'Tarjeta') return {ok:true, terminal1:null, terminalPorServicio:null};
+  if(!esMedioTarjeta(medio)) return {ok:true, terminal1:null, terminalPorServicio:null};
   if(dividiendo){
     const terminal1 = document.getElementById('pago-terminal1').value;
     if(!terminal1){ toast('⚠ Selecciona la terminal por donde entró el pago'); return {ok:false}; }
@@ -4371,16 +4388,18 @@ function confirmarPago(){
     monto2 = Math.max(0, montoFinal - monto1);
     if(!medio2){ toast('⚠ Selecciona el segundo medio de pago'); return; }
     // Antes esto bloqueaba SIEMPRE el mismo medio dos veces. Ahora sí se
-    // permite Tarjeta + Tarjeta (ej. un servicio a la terminal de la
-    // doctora, otro a la de CANOPY PEDIATRICS) — mientras las terminales
-    // sean distintas. Cualquier otra combinación repetida (Efectivo+Efectivo,
+    // permite el mismo tipo de tarjeta dos veces (ej. un servicio a la
+    // terminal de la doctora, otro a la de CANOPY PEDIATRICS) — mientras
+    // las terminales sean distintas. Dos tipos de tarjeta DISTINTOS (ej.
+    // Crédito + Débito) ya cuentan como medios distintos de por sí.
+    // Cualquier otra combinación repetida (Efectivo+Efectivo,
     // Transferencia+Transferencia) sigue sin tener sentido, se bloquea.
-    if(medio===medio2 && medio!=='Tarjeta'){ toast('⚠ Elige dos medios de pago distintos'); return; }
+    if(medio===medio2 && !esMedioTarjeta(medio)){ toast('⚠ Elige dos medios de pago distintos'); return; }
     if(monto1<=0 || monto2<=0){ toast('⚠ Ambos montos deben ser mayores a $0 — si es un solo medio, desmarca "Dividir en dos medios"'); return; }
     if(monto1>montoFinal){ toast('⚠ El monto del primer medio no puede ser mayor al total'); return; }
-    terminal2 = medio2==='Tarjeta' ? document.getElementById('pago-terminal2').value : null;
-    if(medio2==='Tarjeta' && !terminal2){ toast('⚠ Selecciona la terminal del segundo medio'); return; }
-    if(medio==='Tarjeta' && medio2==='Tarjeta' && terminal1 && terminal1===terminal2){ toast('⚠ Si ambos son Tarjeta, deben ir a terminales distintas — si no, no hace falta dividir'); return; }
+    terminal2 = esMedioTarjeta(medio2) ? document.getElementById('pago-terminal2').value : null;
+    if(esMedioTarjeta(medio2) && !terminal2){ toast('⚠ Selecciona la terminal del segundo medio'); return; }
+    if(medio===medio2 && esMedioTarjeta(medio) && terminal1 && terminal1===terminal2){ toast('⚠ Si ambos pagos son del mismo tipo de tarjeta, deben ir a terminales distintas — si no, no hace falta dividir'); return; }
   }
 
   const datos = {monto1, medio1:medio, monto2, medio2, terminal1, terminal2, terminalPorServicio:terminalLeida.terminalPorServicio, saldoPendiente:0, requiereFactura};
@@ -4732,7 +4751,7 @@ function renderCierre(){
     const abierto = docCardAbierto[key] !== false; // abierto por default
 
     const efectivo = montoPorMedio(sub, 'Efectivo');
-    const tarjeta = montoPorMedio(sub, 'Tarjeta');
+    const tarjeta = montoPorTarjeta(sub);
     const transferencia = montoPorMedio(sub, 'Transferencia');
 
     let pillsHtml = '';
@@ -4776,7 +4795,9 @@ function renderCierrePorMedio(el, del_dia, total){
   const MEDIOS_INFO = {
     'Efectivo':{color:'#2E7D4F',bg:'#EAF7EE',border:'#A8D8B4',icon:'💵'},
     'Transferencia':{color:'#1A7A5E',bg:'#FDF6EC',border:'#EDD49A',icon:'🏦'},
-    'Tarjeta':{color:'#1B5C9E',bg:'#EEF5FC',border:'#BDD5F0',icon:'💳'}
+    'Tarjeta Crédito':{color:'#1B5C9E',bg:'#EEF5FC',border:'#BDD5F0',icon:'💳'},
+    'Tarjeta Débito':{color:'#2980B9',bg:'#EAF4FB',border:'#AED6F1',icon:'💳'},
+    'Amex':{color:'#5B4FCF',bg:'#F0EEFC',border:'#C7C0F0',icon:'💳'}
   };
   let cardsHtml = '';
   let algunaConDatos = false;
@@ -5095,7 +5116,7 @@ function exportarExcelHistorico(){
     const cMap={};
     filtrado.forEach(c=>{
       if(!cMap[c.fecha])cMap[c.fecha]={};
-      if(!cMap[c.fecha][c.doctora])cMap[c.fecha][c.doctora]={Efectivo:0,Tarjeta:0,Transferencia:0,total:0,servicios:0,pacientes:new Set()};
+      if(!cMap[c.fecha][c.doctora])cMap[c.fecha][c.doctora]={Efectivo:0,'Tarjeta Crédito':0,'Tarjeta Débito':0,Amex:0,Transferencia:0,total:0,servicios:0,pacientes:new Set()};
       const bucket=cMap[c.fecha][c.doctora];
       if(!c.cortesia){
         bucket[c.medioPago]=(bucket[c.medioPago]||0)+Number(c.montoPagado||0);
@@ -5105,15 +5126,15 @@ function exportarExcelHistorico(){
       bucket.servicios+=1;
       bucket.pacientes.add(c.paciente);
     });
-    const cData=[['Fecha','Dra./Dr.','Servicios','Pacientes','Efectivo','Tarjeta','Transferencia','Total']];
+    const cData=[['Fecha','Dra./Dr.','Servicios','Pacientes','Efectivo','Tarjeta Crédito','Tarjeta Débito','Amex','Transferencia','Total']];
     Object.keys(cMap).sort().forEach(fecha=>{
       Object.keys(cMap[fecha]).forEach(d=>{
         const x=cMap[fecha][d];
-        cData.push([fmtDDMMYYYY(fecha),d,x.servicios,x.pacientes.size,x['Efectivo']||0,x['Tarjeta']||0,x['Transferencia']||0,x.total]);
+        cData.push([fmtDDMMYYYY(fecha),d,x.servicios,x.pacientes.size,x['Efectivo']||0,x['Tarjeta Crédito']||0,x['Tarjeta Débito']||0,x['Amex']||0,x['Transferencia']||0,x.total]);
       });
     });
     const wsCierre=XLSX.utils.aoa_to_sheet(cData);
-    wsCierre['!cols']=[{wch:12},{wch:22},{wch:10},{wch:10},{wch:12},{wch:12},{wch:14},{wch:12}];
+    wsCierre['!cols']=[{wch:12},{wch:22},{wch:10},{wch:10},{wch:12},{wch:14},{wch:14},{wch:12},{wch:14},{wch:12}];
     applyStyles(wsCierre,cData[0],cData.slice(1));
     XLSX.utils.book_append_sheet(wb,wsCierre,'Cierres por día');
   }
