@@ -1300,7 +1300,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-92';
+const APP_VERSION = '2026-09-19-93';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -3904,7 +3904,7 @@ function abrirModal(id, sinCita){
     document.getElementById('m-fecha').value = fechaActual;
     document.getElementById('m-hora').value = nuevaEsSinCita ? ahora.toTimeString().slice(0,5) : '';
     document.getElementById('m-duracion').value = 60;
-    document.getElementById('m-doctora').value = DOCTORAS[0]||'';
+    document.getElementById('m-doctora').value = (sesionActual!=='recepcion' && DOCTORAS.includes(sesionActual)) ? sesionActual : (DOCTORAS[0]||'');
     document.getElementById('m-tutor').value = '';
     document.getElementById('m-paciente').value = '';
     document.getElementById('m-tel').value = '';
