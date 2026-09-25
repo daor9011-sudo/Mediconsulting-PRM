@@ -1300,7 +1300,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-93';
+const APP_VERSION = '2026-09-19-94';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -2658,7 +2658,8 @@ function renderWeek(){
   // margen para agendar fuera de horario si hace falta.
   const rangosSemana = [];
   doctorasAMostrar.forEach(d=>{ Object.values(horarioSemanaDe(d)).forEach(bloques=>bloques.forEach(r=>rangosSemana.push(r))); });
-  const hIni = rangosSemana.length ? Math.min(...rangosSemana.map(r=>parseInt(r.inicio.split(':')[0]))) : 9;
+  const hIniCalculado = rangosSemana.length ? Math.min(...rangosSemana.map(r=>parseInt(r.inicio.split(':')[0]))) : 9;
+  const hIni = Math.max(7, hIniCalculado); // nunca arranca antes de las 7:00am, aunque algún horario configurado empiece más temprano
   const hFinCalculado = rangosSemana.length ? Math.max(...rangosSemana.map(r=>{
     const [hh,mm] = r.fin.split(':').map(Number);
     return mm>0 ? hh+1 : hh; // si termina a media hora, hay que mostrar esa hora completa
