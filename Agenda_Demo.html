@@ -1300,7 +1300,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-95';
+const APP_VERSION = '2026-09-19-96';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -2170,6 +2170,13 @@ function renderChipsServicioCita(){
     `<span class="chip-servicio">${esc(n)} <span class="chip-x" onclick="quitarServicioChip('${esc(n).replace(/'/g,"\\'")}')">✕</span></span>`
   ).join('');
   renderDesglosePrecioServicios(nombres);
+  // La consulta subsecuente, ella sola, dura 30 min por default (no 60) —
+  // para todas las doctoras. Solo aplica a citas NUEVAS — si ya es una cita
+  // existente que se está editando, se respeta la duración que ya tenía
+  // guardada (modalEditId sigue el mismo patrón que el resto de la app).
+  if(!modalEditId && nombres.length===1 && nombres[0]==='Consulta de pediatría subsecuente'){
+    document.getElementById('m-duracion').value = 30;
+  }
 }
 
 // Genera un campo de precio por cada servicio elegido, y suma el total
