@@ -1300,7 +1300,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-96';
+const APP_VERSION = '2026-09-25-97';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -1585,13 +1585,19 @@ function detenerRealtime(){
 
 let currentUser = null; // { id, rol, nombre }
 // Antes de llamar a una Edge Function sensible (crear/editar accesos,
-// catálogo, etc.), fuerza a refrescar el token de sesión. getSession()
-// por sí solo puede devolver un token ya vencido si la pestaña estuvo
-// mucho tiempo en segundo plano (celular bloqueado, etc.) — eso es lo que
-// causaba el "No autenticado" al guardar aunque la sesión "existiera".
+// catálogo, etc.), se asegura de tener un token vigente. Importante: NO
+// se refresca a la fuerza en cada llamada — eso metía un viaje extra al
+// servidor en cada clic (agendar, cobrar...) y hacía todo notablemente
+// más lento, sobre todo con internet lento. Solo se refresca si el token
+// actual ya expiró o está por expirar (menos de 60s) — si getSession()
+// devuelve uno ya vencido de plano (celular bloqueado mucho tiempo, etc.),
+// este mismo camino lo cubre igual.
 async function tokenSesionFresco(){
   const { data: { session } } = await sb.auth.getSession();
   if(!session) return null;
+  const expiraEnSeg = (session.expires_at||0) - Math.floor(Date.now()/1000);
+  if(expiraEnSeg > 60) return session; // todavía vigente por buen rato, no hace falta tocar el servidor
+
   const { data: refrescada, error: errRefresh } = await sb.auth.refreshSession();
   if(errRefresh){
     // El refresh token ya no es válido en el servidor (sesión muy vieja,
