@@ -1300,7 +1300,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-91';
+const APP_VERSION = '2026-09-19-92';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -3226,18 +3226,30 @@ async function conectarGoogleCalendarPersonal(){
   }
 }
 
-// Si Google acaba de regresar de la pantalla de permiso, se avisa aquí.
+// Si Google acaba de regresar de la pantalla de permiso, se avisa aquí —
+// con una ventana que hay que cerrar a propósito (no un toast que
+// desaparece solo), porque es una confirmación importante.
 (function revisarRegresoGoogleCalendar(){
   const params = new URLSearchParams(location.search);
   const gcal = params.get('gcal');
   if(!gcal) return;
-  if(gcal==='ok'){
-    toast('✓ Google Calendar conectado para '+(params.get('gcal_msg')||''));
-  }else{
-    toast('⚠ No se pudo conectar Google Calendar: '+(params.get('gcal_msg')||'error desconocido'));
-  }
   const urlLimpia = location.pathname;
   window.history.replaceState({}, '', urlLimpia);
+  setTimeout(()=>{
+    if(gcal==='ok'){
+      mostrarConfirm({
+        etiqueta:'Google Calendar', icono:'✓', titulo:'Conexión exitosa',
+        mensaje:`El calendario de <strong>${esc(params.get('gcal_msg')||'')}</strong> ya quedó conectado — de aquí en adelante, sus citas se van a reflejar solas ahí.`,
+        textoConfirmar:'Entendido', sinCancelar:true
+      }, ()=>{});
+    }else{
+      mostrarConfirm({
+        etiqueta:'Google Calendar', icono:'⚠️', titulo:'No se pudo conectar',
+        mensaje:esc(params.get('gcal_msg')||'Ocurrió un error desconocido.'),
+        textoConfirmar:'Entendido', sinCancelar:true
+      }, ()=>{});
+    }
+  }, 400); // le da tiempo a que la app termine de cargar antes de mostrar el modal
 })();
 
 function cancelarEdicionPersonal(){
