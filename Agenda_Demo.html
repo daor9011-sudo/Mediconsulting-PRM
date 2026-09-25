@@ -1169,6 +1169,11 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
         <input type="checkbox" id="personal-activo" checked style="width:auto;flex-shrink:0;"> Cuenta activa (si se desmarca, no podrá iniciar sesión)
       </label>
     </div>
+    <div class="form-group" id="personal-google-wrap" style="display:none;">
+      <label>Google Calendar</label>
+      <div id="personal-google-status" style="font-size:12.5px;color:var(--gray-400);margin-bottom:6px;">Revisando...</div>
+      <button type="button" class="btn btn-outline" id="personal-google-btn" onclick="conectarGoogleCalendarPersonal()" style="font-size:12px;">🔗 Conectar Google Calendar</button>
+    </div>
     <div id="personal-error" style="color:var(--danger);font-size:12px;margin-bottom:8px;"></div>
     <div class="modal-footer">
       <button class="btn btn-gold" id="personal-btn-guardar" onclick="crearPerfilPersonal()">✓ Crear acceso</button>
@@ -1295,7 +1300,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-19-90';
+const APP_VERSION = '2026-09-19-91';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -1600,6 +1605,25 @@ async function tokenSesionFresco(){
   }
   return (refrescada && refrescada.session) ? refrescada.session : session;
 }
+
+// --- Sincronización con Google Calendar (un sentido: Agenda → Google) ---
+// "Fire and forget": nunca bloquea ni truena el flujo normal de agendar/
+// cancelar — si la doctora no tiene Google conectado, o si Google falla
+// por lo que sea, simplemente no pasa nada (se ve en consola, nada más).
+async function sincronizarGoogleCalendar(citaId, action){
+  try{
+    const session = await tokenSesionFresco();
+    if(!session) return;
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/google-calendar-sync`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` },
+      body: JSON.stringify({ citaId, action })
+    });
+    const resultado = await resp.json();
+    if(!resp.ok) console.warn('📅 Google Calendar:', resultado.error||resultado);
+  }catch(e){ console.warn('📅 Google Calendar (sin conexión o error):', e); }
+}
+
 let mfaFactorIdPendiente = null;
 let mfaChallengeIdPendiente = null;
 
@@ -2897,6 +2921,7 @@ function elegirDejarCancelada(){
   cerrarModalCancelar();
   render();
   toast('Cita cancelada');
+  sincronizarGoogleCalendar(c.id, 'delete');
 }
 function elegirReprogramar(){
   const id = citaCancelarId;
@@ -3014,6 +3039,8 @@ function resetFormularioPersonal(){
   document.getElementById('personal-admin-wrap').style.display = 'none';
   document.getElementById('personal-servicios-wrap').style.display = 'none';
   document.getElementById('personal-activo-wrap').style.display = 'none';
+  document.getElementById('personal-google-wrap').style.display = 'none';
+  personalEditandoDoctoraNombre = null;
   document.getElementById('personal-btn-guardar').textContent = '✓ Crear acceso';
   document.getElementById('personal-btn-guardar').onclick = crearPerfilPersonal;
   document.getElementById('personal-btn-cancelar-edicion').style.display = 'none';
@@ -3140,7 +3167,78 @@ async function iniciarEdicionPersonal(userId){
   document.getElementById('personal-btn-guardar').textContent = '✓ Guardar cambios';
   document.getElementById('personal-btn-guardar').onclick = guardarEdicionPersonal;
   document.getElementById('personal-btn-cancelar-edicion').style.display = '';
+
+  // Google Calendar solo aplica a doctoras (son las únicas que agendan
+  // pacientes) — se muestra nada más en ese caso, y se revisa si ya está
+  // conectada para mostrar el estado correcto.
+  const wrapGoogle = document.getElementById('personal-google-wrap');
+  if(p.rol === 'doctora'){
+    wrapGoogle.style.display = '';
+    personalEditandoDoctoraNombre = p.nombre;
+    await actualizarEstadoGoogleCalendarPersonal(p.nombre);
+  }else{
+    wrapGoogle.style.display = 'none';
+  }
 }
+
+let personalEditandoDoctoraNombre = null;
+async function actualizarEstadoGoogleCalendarPersonal(nombreDoctora){
+  const statusEl = document.getElementById('personal-google-status');
+  const btnEl = document.getElementById('personal-google-btn');
+  statusEl.textContent = 'Revisando...';
+  const { data, error } = await sb.from('google_calendar_tokens').select('conectado_en').eq('doctora', nombreDoctora).maybeSingle();
+  if(error){ statusEl.textContent = 'No se pudo revisar el estado.'; return; }
+  if(data){
+    statusEl.innerHTML = `✓ Conectado desde el ${fmtDDMMYYYY(data.conectado_en.slice(0,10))}`;
+    statusEl.style.color = 'var(--success)';
+    btnEl.textContent = '🔄 Reconectar';
+  }else{
+    statusEl.textContent = 'No conectado — las citas de esta doctora no se están mandando a ningún Google Calendar.';
+    statusEl.style.color = 'var(--gray-400)';
+    btnEl.textContent = '🔗 Conectar Google Calendar';
+  }
+}
+async function conectarGoogleCalendarPersonal(){
+  const nombreDoctora = personalEditandoDoctoraNombre;
+  if(!nombreDoctora) return;
+  const session = await tokenSesionFresco();
+  if(!session){ toast('⚠ Sesión expirada, vuelve a iniciar sesión'); return; }
+  try{
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/google-calendar-connect`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` },
+      body: JSON.stringify({ doctora: nombreDoctora })
+    });
+    const resultado = await resp.json();
+    if(!resp.ok || !resultado.url){ toast('⚠ '+(resultado.error||'No se pudo iniciar la conexión')); return; }
+    // Si la que está conectando es la propia doctora, se abre en la misma
+    // pestaña (se regresa sola a la app). Si es recepción conectando a
+    // nombre de otra, mejor una pestaña nueva — recepción no debe perder
+    // lo que tenía abierto, y el link de Google lo puede reenviar a la doctora.
+    if(sesionActual === nombreDoctora){
+      window.location.href = resultado.url;
+    }else{
+      window.open(resultado.url, '_blank');
+      toast('Se abrió una pestaña nueva — compártele ese link a '+nombreDoctora+' si prefieres que ella misma acepte el permiso desde su cuenta.');
+    }
+  }catch(e){
+    toast('⚠ Error de conexión: '+e.message);
+  }
+}
+
+// Si Google acaba de regresar de la pantalla de permiso, se avisa aquí.
+(function revisarRegresoGoogleCalendar(){
+  const params = new URLSearchParams(location.search);
+  const gcal = params.get('gcal');
+  if(!gcal) return;
+  if(gcal==='ok'){
+    toast('✓ Google Calendar conectado para '+(params.get('gcal_msg')||''));
+  }else{
+    toast('⚠ No se pudo conectar Google Calendar: '+(params.get('gcal_msg')||'error desconocido'));
+  }
+  const urlLimpia = location.pathname;
+  window.history.replaceState({}, '', urlLimpia);
+})();
 
 function cancelarEdicionPersonal(){
   resetFormularioPersonal();
@@ -3585,6 +3683,7 @@ function eliminarCita(id){
     c.deletedBy = sesionActual;
     guardarLocal(c);render();
     toast('Cita eliminada (disponible en la Papelera)');
+    sincronizarGoogleCalendar(id, 'delete');
   });
 }
 
@@ -3608,6 +3707,7 @@ function restaurarCita(id){
   renderPapeleraAgenda();
   render();
   toast('✓ Cita restaurada');
+  if(!c.cancelada) sincronizarGoogleCalendar(id, 'upsert');
 }
 
 function eliminarCitaDefinitivo(id){
@@ -3619,6 +3719,10 @@ function eliminarCitaDefinitivo(id){
     // de Supabase que lo verifique y borre, del lado del servidor.
     const session = await tokenSesionFresco();
     if(!session){ toast('⚠ Sesión expirada, vuelve a iniciar sesión'); return; }
+
+    // Antes de mandar a borrar la cita de la base (donde ya no habrá de
+    // dónde leerla), se le avisa a Google Calendar que borre su evento.
+    await sincronizarGoogleCalendar(id, 'delete');
 
     let resultado;
     try{
@@ -3963,7 +4067,7 @@ function guardarCita(){
   guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas});
 }
 
-function guardarCitaFinal(datos){
+async function guardarCitaFinal(datos){
   const {fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas} = datos;
   let citaGuardada;
   if(modalEditId){
@@ -3978,10 +4082,11 @@ function guardarCitaFinal(datos){
     citaGuardada = nueva;
     toast('✓ Cita agendada');
   }
-  guardarLocal(citaGuardada);
+  await guardarLocal(citaGuardada);
   cerrarModal();
   fechaActual = fecha;
   render();
+  if(!citaGuardada.cancelada) sincronizarGoogleCalendar(citaGuardada.id, 'upsert');
 }
 
 function mostrarAvisoLegal(){
