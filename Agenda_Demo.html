@@ -714,6 +714,11 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
         <span class="hist-filter-fmt">&nbsp;</span>
       </div>
       <div class="form-group" style="margin:0;">
+        <label class="hist-filter-label">Médico tratante</label>
+        <select id="hist-tratante" onchange="renderHistorico()"></select>
+        <span class="hist-filter-fmt">&nbsp;</span>
+      </div>
+      <div class="form-group" style="margin:0;">
         <label class="hist-filter-label">Servicio</label>
         <select id="hist-servicio" onchange="renderHistorico()"></select>
         <span class="hist-filter-fmt">&nbsp;</span>
@@ -838,6 +843,11 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       </div>
     </div>
     <div class="form-group" id="fg-doctora"><label>Dra./Dr.</label><select id="m-doctora" onchange="sugerirHoraPorHorario()"></select><span class="field-error-msg">Selecciona Dra./Dr.</span></div>
+    <div class="form-group" id="fg-medico-tratante" style="background:#F5F0FC;border:1px solid #D2B4DE;border-radius:8px;padding:10px 12px;">
+      <label style="color:#7D3C98;">Médico tratante <span style="font-weight:400;color:var(--gray-400);">(si es distinto al de arriba)</span></label>
+      <select id="m-medico-tratante" style="border-color:#D2B4DE;"></select>
+      <div style="font-size:10.5px;color:#7D3C98;margin-top:5px;">Para cuando una doctora atiende al paciente de otra — así queda mapeado de quién es en realidad.</div>
+    </div>
     <div class="form-group" id="fg-tutor"><label>Nombre del padre/madre o tutor</label><input type="text" id="m-tutor" list="dl-tutores" placeholder="Nombre completo" onblur="autocompletarPorNombre('tutor')"><datalist id="dl-tutores"></datalist></div>
     <div class="form-group" id="fg-paciente"><label>Paciente (niño/niña)</label><input type="text" id="m-paciente" list="dl-pacientes" placeholder="Nombre completo" onblur="autocompletarPorNombre('paciente')"><datalist id="dl-pacientes"></datalist><span class="field-error-msg">Falta el nombre del paciente</span></div>
     <div class="form-row">
@@ -1300,7 +1310,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-25-97';
+const APP_VERSION = '2026-09-25-99';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -1935,7 +1945,7 @@ function activeCitas(){ return citas.filter(c=>!c.deleted); }
 function citaDesdeDb(r){
   return {
     id:r.id, fecha:r.fecha, hora:(r.hora||'').slice(0,5), duracionMin:r.duracion_min,
-    doctora:r.doctora, paciente:r.paciente, nombreTutor:r.nombre_tutor||'', tel:r.tel||'', email:r.email||'', servicio:r.servicio||'',
+    doctora:r.doctora, medicoTratante:r.medico_tratante||null, paciente:r.paciente, nombreTutor:r.nombre_tutor||'', tel:r.tel||'', email:r.email||'', servicio:r.servicio||'',
     precio:Number(r.precio)||0, precioDesglose:r.precio_desglose||null, descuentoPct:Number(r.descuento_pct)||0, cortesia:!!r.cortesia,
     notas:r.notas||'', estado:r.estado, sinCita:!!r.sin_cita, cancelada:!!r.cancelada, noLlego:!!r.no_llego,
     pagado:!!r.pagado, montoPagado:Number(r.monto_pagado)||0, medioPago:r.medio_pago||'',
@@ -1950,7 +1960,7 @@ function citaDesdeDb(r){
 function citaHaciaDb(c){
   return {
     id:c.id, fecha:c.fecha, hora:c.hora, duracion_min:c.duracionMin||60,
-    doctora:c.doctora, paciente:c.paciente, nombre_tutor:c.nombreTutor||null, tel:c.tel||null, email:c.email||null, servicio:c.servicio||null,
+    doctora:c.doctora, medico_tratante:c.medicoTratante||null, paciente:c.paciente, nombre_tutor:c.nombreTutor||null, tel:c.tel||null, email:c.email||null, servicio:c.servicio||null,
     precio:c.precio||0, precio_desglose:c.precioDesglose||null, descuento_pct:c.descuentoPct||0, cortesia:!!c.cortesia,
     notas:c.notas||null, estado:c.estado, sin_cita:!!c.sinCita, cancelada:!!c.cancelada, no_llego:!!c.noLlego,
     pagado:!!c.pagado, monto_pagado:c.montoPagado||0, medio_pago:c.medioPago||null,
@@ -2188,6 +2198,11 @@ function renderChipsServicioCita(){
 // Genera un campo de precio por cada servicio elegido, y suma el total
 // automáticamente en el campo oculto m-precio (que es el que usa todo el
 // resto de la app — Cierre, Histórico, etc. no cambian, solo la captura).
+// "Día de Hospitalización" (y su variante de terapia intensiva) se cobran
+// por día — en vez de un precio libre, se elige cuántos días y el sistema
+// multiplica solo por el precio por día que ya está en el catálogo.
+function esServicioPorDia(nombre){ return /hospitalizaci/i.test(nombre||''); }
+
 function renderDesglosePrecioServicios(nombres){
   const cont = document.getElementById('m-precio-desglose');
   if(!nombres || !nombres.length){
@@ -2203,12 +2218,48 @@ function renderDesglosePrecioServicios(nombres){
     const catEntry = CATALOGO_SERVICIOS.find(s=>s.nombre===n);
     const sugerido = catEntry ? (Number(catEntry.precio)||0) : 0;
     const valorInicial = previos[n] ?? sugerido;
+    const borde = i<nombres.length-1 ? 'border-bottom:1px solid var(--gray-100);' : '';
+
+    if(esServicioPorDia(n) && sugerido>0){
+      // Si ya había un monto guardado, se infiere cuántos días fueron
+      // (monto ÷ precio por día, redondeado) — solo para no partir siempre
+      // de "1 día" al reabrir una cita que ya tenía varios capturados.
+      const diasInicial = Math.max(1, Math.min(30, Math.round((previos[n] ?? sugerido) / sugerido)));
+      const totalInicial = diasInicial * sugerido;
+      const opciones = Array.from({length:30}, (_,idx)=>idx+1).map(d=>`<option value="${d}" ${d===diasInicial?'selected':''}>${d}</option>`).join('');
+      return `
+      <div style="padding:8px 0;${borde}">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--gray-800);flex:1;min-width:140px;">${esc(n)}</span>
+          <select data-precio-dia="${sugerido}" data-servicio-dias="${esc(n)}" onchange="actualizarDiasHospitalizacion(this)" style="width:70px;flex-shrink:0;padding:5px 4px;font-size:12px;">${opciones}</select>
+          <span style="font-size:11px;color:var(--gray-400);">día(s)</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--gray-400);">
+          <span>$${sugerido.toLocaleString('es-MX',{minimumFractionDigits:2})} / día</span>
+          <span id="total-dias-${i}" style="font-size:13px;font-weight:800;color:var(--gray-800);">$${totalInicial.toLocaleString('es-MX',{minimumFractionDigits:2})}</span>
+        </div>
+        <input type="hidden" data-servicio="${esc(n)}" value="${totalInicial}">
+      </div>`;
+    }
+
     return `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;${i<nombres.length-1?'border-bottom:1px solid var(--gray-100);':''}">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;${borde}">
       <span style="font-size:12px;color:var(--gray-800);">${esc(n)}</span>
       <input type="number" min="0" step="0.01" data-servicio="${esc(n)}" value="${valorInicial}" oninput="actualizarPrecioDesdeDesglose()" style="width:100px;text-align:right;padding:5px 7px;font-size:12px;">
     </div>`;
   }).join('');
+  actualizarPrecioDesdeDesglose();
+}
+function actualizarDiasHospitalizacion(sel){
+  const nombre = sel.dataset.servicioDias;
+  const precioDia = Number(sel.dataset.precioDia)||0;
+  const dias = Number(sel.value)||1;
+  const total = dias*precioDia;
+  const hidden = sel.closest('div[style*="padding:8px 0"]').querySelector(`input[data-servicio]`);
+  if(hidden) hidden.value = total;
+  const idxMatch = [...document.querySelectorAll('#m-precio-desglose select[data-servicio-dias]')].indexOf(sel);
+  const totalDisplay = document.getElementById('total-dias-'+idxMatch);
+  if(totalDisplay) totalDisplay.textContent = '$'+total.toLocaleString('es-MX',{minimumFractionDigits:2});
   actualizarPrecioDesdeDesglose();
 }
 function actualizarPrecioDesdeDesglose(){
@@ -2459,9 +2510,12 @@ function initSelects(){
   // las opciones se irían duplicando cada vez.
   filD.innerHTML = '<option value="">Todas las Dras./Dres.</option>';
   modD.innerHTML = '';
+  const modT = document.getElementById('m-medico-tratante');
+  modT.innerHTML = '<option value="">— Mismo que Dra./Dr. arriba —</option>';
   DOCTORAS.forEach(d=>{
     filD.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
     modD.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
+    modT.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
   });
   // El filtro de la Agenda (para VER, no para crear citas nuevas) también
   // incluye a las doctoras "de práctica" que solo existen en las citas
@@ -3890,6 +3944,7 @@ function abrirModal(id, sinCita){
     document.getElementById('m-hora').value = c.hora;
     document.getElementById('m-duracion').value = c.duracionMin || 60;
     document.getElementById('m-doctora').value = c.doctora;
+    document.getElementById('m-medico-tratante').value = c.medicoTratante || '';
     document.getElementById('m-tutor').value = c.nombreTutor||'';
     document.getElementById('m-paciente').value = c.paciente;
     document.getElementById('m-tel').value = c.tel;
@@ -3919,6 +3974,7 @@ function abrirModal(id, sinCita){
     document.getElementById('m-hora').value = nuevaEsSinCita ? ahora.toTimeString().slice(0,5) : '';
     document.getElementById('m-duracion').value = 60;
     document.getElementById('m-doctora').value = (sesionActual!=='recepcion' && DOCTORAS.includes(sesionActual)) ? sesionActual : (DOCTORAS[0]||'');
+    document.getElementById('m-medico-tratante').value = '';
     document.getElementById('m-tutor').value = '';
     document.getElementById('m-paciente').value = '';
     document.getElementById('m-tel').value = '';
@@ -4041,6 +4097,7 @@ function guardarCita(){
   const hora = document.getElementById('m-hora').value;
   const duracionMin = parseInt(document.getElementById('m-duracion').value) || 60;
   const doctora = document.getElementById('m-doctora').value;
+  const medicoTratante = document.getElementById('m-medico-tratante').value || null;
   const nombreTutor = document.getElementById('m-tutor').value.trim();
   const paciente = document.getElementById('m-paciente').value.trim();
   const tel = document.getElementById('m-tel').value.trim();
@@ -4073,7 +4130,7 @@ function guardarCita(){
       const mensaje = conflicto.tipo==='cita'
         ? `${esc(doctora)} ya tiene una cita a esa hora con <strong>${esc(conflicto.detalle)}</strong>. Esta nueva cita quedará empalmada con la existente.`
         : `${esc(doctora)} tiene un bloqueo en ese horario: <strong>${esc(conflicto.detalle)}</strong>. La cita quedará agendada sobre ese bloqueo.`;
-      mostrarConfirm({etiqueta:'⚠ Conflicto de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🗓️'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas}));
+      mostrarConfirm({etiqueta:'⚠ Conflicto de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🗓️'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,medicoTratante,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas}));
       return;
     }
   }
@@ -4086,24 +4143,24 @@ function guardarCita(){
     const mensaje = (bloques && bloques.length)
       ? `${esc(doctora)} labora de <strong>${bloques.map(b=>b.inicio+' a '+b.fin).join(', y de ')}</strong> ese día. La hora elegida queda fuera de su horario.`
       : `${esc(doctora)} no tiene horario configurado ese día.`;
-    mostrarConfirm({etiqueta:'⚠ Fuera de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🕐'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas}));
+    mostrarConfirm({etiqueta:'⚠ Fuera de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🕐'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,medicoTratante,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas}));
     return;
   }
 
-  guardarCitaFinal({fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas});
+  guardarCitaFinal({fecha,hora,duracionMin,doctora,medicoTratante,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas});
 }
 
 async function guardarCitaFinal(datos){
-  const {fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas} = datos;
+  const {fecha,hora,duracionMin,doctora,medicoTratante,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas} = datos;
   let citaGuardada;
   if(modalEditId){
     const c = citas.find(x=>x.id===modalEditId);
-    Object.assign(c,{fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,notas});
+    Object.assign(c,{fecha,hora,duracionMin,doctora,medicoTratante,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,notas});
     if(c.pagado) c.requiereFactura = requiereFactura;
     citaGuardada = c;
     toast('✓ Cita actualizada');
   }else{
-    const nueva = {id:Date.now(),fecha,hora,duracionMin,doctora,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,notas,estado:nuevaEsSinCita?'llego':'agendado',sinCita:nuevaEsSinCita,cancelada:false,noLlego:false,pagado:false,montoPagado:0,medioPago:'',montoPagado2:null,medioPago2:null,saldoPendiente:0,requiereFactura:false,facturada:false,numeroFactura:null,terminalPago:null,terminalPago2:null,terminalPorServicio:null};
+    const nueva = {id:Date.now(),fecha,hora,duracionMin,doctora,medicoTratante,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,notas,estado:nuevaEsSinCita?'llego':'agendado',sinCita:nuevaEsSinCita,cancelada:false,noLlego:false,pagado:false,montoPagado:0,medioPago:'',montoPagado2:null,medioPago2:null,saldoPendiente:0,requiereFactura:false,facturada:false,numeroFactura:null,terminalPago:null,terminalPago2:null,terminalPorServicio:null};
     citas.push(nueva);
     citaGuardada = nueva;
     toast('✓ Cita agendada');
@@ -4212,6 +4269,10 @@ function cerrarSelectorDoctoraModal(){
 function esMedioTarjeta(medio){
   return medio==='Tarjeta Crédito' || medio==='Tarjeta Débito' || medio==='Amex';
 }
+// El médico tratante: de quién es el paciente en realidad, aunque lo haya
+// visto otra doctora ese día. Si no se especificó nada distinto, el
+// tratante es la misma doctora de la cita — el caso normal, casi siempre.
+function tratanteEfectivo(c){ return c.medicoTratante || c.doctora; }
 function horaAMinutos(hhmm){
   if(!hhmm) return 0;
   const [h,m] = hhmm.split(':').map(Number);
@@ -5027,6 +5088,16 @@ function initHistDoctoraSelect(){
     sel.disabled = true;
   }
 }
+// Filtro por médico tratante — de quién es el paciente en realidad, no
+// necesariamente quién lo agendó/vio esta vez. A diferencia del filtro de
+// "Dra./Dr.", este no se bloquea por rol: a cualquiera le sirve encontrar,
+// dentro de lo que ya puede ver, los casos marcados con un tratante distinto.
+function initHistTratanteSelect(){
+  const sel = document.getElementById('hist-tratante');
+  if(sel.dataset.listo) return; // no repoblar en cada render, solo la primera vez
+  sel.innerHTML = `<option value="">Todos los médicos tratantes</option>` + DOCTORAS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  sel.dataset.listo = '1';
+}
 
 function defaultsHistorico(){
   const hoy = new Date();
@@ -5070,6 +5141,7 @@ function getFiltradoHistorico(){
   const desde = document.getElementById('hist-desde').value;
   const hasta = document.getElementById('hist-hasta').value;
   const filDoc = esRecepcion ? document.getElementById('hist-doctora').value : sesionActual;
+  const filTrat = document.getElementById('hist-tratante').value;
   const filServ = document.getElementById('hist-servicio').value;
   const filPac = document.getElementById('hist-paciente').value.trim().toLowerCase();
   const soloFacturasPendientes = document.getElementById('hist-solo-facturas-pendientes').checked;
@@ -5088,6 +5160,7 @@ function getFiltradoHistorico(){
   if(desde) filtrado = filtrado.filter(c=>c.fecha>=desde);
   if(hasta) filtrado = filtrado.filter(c=>c.fecha<=hasta);
   if(filDoc) filtrado = filtrado.filter(c=>c.doctora===filDoc);
+  if(filTrat) filtrado = filtrado.filter(c=>tratanteEfectivo(c)===filTrat);
   if(filServ) filtrado = filtrado.filter(c=>c.servicio && c.servicio.split(' + ').map(s=>s.trim()).includes(filServ));
   if(filPac) filtrado = filtrado.filter(c=>c.paciente.toLowerCase().includes(filPac) || (c.nombreTutor||'').toLowerCase().includes(filPac));
   if(soloFacturasPendientes) filtrado = filtrado.filter(c=>c.requiereFactura && !c.facturada);
@@ -5223,6 +5296,7 @@ function initHistServicioSelect(){
 
 function renderHistorico(){
   initHistDoctoraSelect();
+  initHistTratanteSelect();
   initHistServicioSelect();
   const esRecepcion = sesionActual === 'recepcion';
   const aviso = document.getElementById('hist-aviso-rol');
@@ -5276,6 +5350,7 @@ function renderHistorico(){
       <td>${fmtDDMMYYYY(c.fecha)}</td>
       <td>${c.hora}</td>
       <td>${bDoctora(c.doctora)}</td>
+      <td>${c.medicoTratante ? bDoctora(c.medicoTratante) : '<span style="color:var(--gray-300);">—</span>'}</td>
       <td><strong>${esc(c.paciente)}</strong>${c.sinCita?' <span style="font-size:10px;color:var(--gray-400)">(sin cita)</span>':''}${c.nombreTutor?`<br><span style="font-size:10.5px;font-weight:500;color:var(--gray-400);">tutor: ${esc(c.nombreTutor)}</span>`:''}</td>
       <td>${esc(c.servicio)}</td>
       <td>${bPago(c)}</td>
@@ -5288,7 +5363,7 @@ function renderHistorico(){
       </td>
     </tr>`).join('');
   tablaEl.innerHTML = `<div style="overflow-x:auto"><table class="tx-table"><thead><tr>
-      <th>Fecha</th><th>Hora</th><th>Dra./Dr.</th>
+      <th>Fecha</th><th>Hora</th><th>Dra./Dr.</th><th>Médico tratante</th>
       <th>Paciente</th><th>Servicio</th><th>Medio de pago</th><th>Monto</th><th>Factura</th><th>Saldo</th><th></th>
     </tr></thead>
     <tbody>${rows}</tbody>
@@ -5313,14 +5388,14 @@ function exportarExcelHistorico(){
   }
 
   // Hoja 1: Citas
-  const txData=[['Fecha','Hora','Dra./Dr.','Paciente','Tutor','Servicio','Medio de pago','Terminal','Monto','Factura','Sin cita','Notas']];
+  const txData=[['Fecha','Hora','Dra./Dr.','Médico tratante','Paciente','Tutor','Servicio','Medio de pago','Terminal','Monto','Factura','Sin cita','Notas']];
   [...filtrado].sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora)).forEach(c=>{
     const terminalTexto = [c.terminalPago, c.terminalPago2].filter(Boolean).join(' + ');
     const facturaTexto = !c.requiereFactura ? '' : (c.facturada ? 'Facturada'+(c.numeroFactura?' - '+c.numeroFactura:'') : 'Pendiente');
-    txData.push([fmtDDMMYYYY(c.fecha),c.hora,c.doctora,c.paciente,c.nombreTutor||'',c.servicio,medioPagoTexto(c),terminalTexto,montoTotalPagado(c),facturaTexto,c.sinCita?'Sí':'No',c.notas||'']);
+    txData.push([fmtDDMMYYYY(c.fecha),c.hora,c.doctora,c.medicoTratante||'',c.paciente,c.nombreTutor||'',c.servicio,medioPagoTexto(c),terminalTexto,montoTotalPagado(c),facturaTexto,c.sinCita?'Sí':'No',c.notas||'']);
   });
   const wsTx=XLSX.utils.aoa_to_sheet(txData);
-  wsTx['!cols']=[{wch:12},{wch:8},{wch:22},{wch:26},{wch:26},{wch:26},{wch:16},{wch:16},{wch:12},{wch:12},{wch:10},{wch:28}];
+  wsTx['!cols']=[{wch:12},{wch:8},{wch:22},{wch:22},{wch:26},{wch:26},{wch:26},{wch:16},{wch:16},{wch:12},{wch:12},{wch:10},{wch:28}];
   applyStyles(wsTx,txData[0],txData.slice(1));
   XLSX.utils.book_append_sheet(wb,wsTx,'Citas');
 
@@ -5611,7 +5686,7 @@ function initDirDoctoraSelect(){
 function obtenerDirectorioPacientes(filtroDoctora){
   const mapa = new Map();
   let citasBase = activeCitas();
-  if(filtroDoctora) citasBase = citasBase.filter(c=>c.doctora===filtroDoctora);
+  if(filtroDoctora) citasBase = citasBase.filter(c=>tratanteEfectivo(c)===filtroDoctora);
   citasBase.forEach(c=>{
     if(!c.paciente || !c.paciente.trim()) return;
     const key = c.paciente.trim().toLowerCase();
