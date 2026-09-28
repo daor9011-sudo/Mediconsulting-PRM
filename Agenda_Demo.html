@@ -414,10 +414,42 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   /* Botones de acción de personal/servicios: que no se aprieten tanto */
   .form-group[id$="-wrap"] label{font-size:12px;}
 }
+
+/* ── Referidos: dueño del paciente / prestador del servicio ── */
+.dueno-box{background:#EAF9F9;border:1px solid #9FDCDC;border-radius:8px;padding:10px 12px;}
+.dueno-box>label{color:#1C8A8A;font-weight:700;display:block;}
+.dueno-box select{border-color:#9FDCDC;width:100%;display:block;margin-top:4px;}
+.prest-box{background:#F5F0FC;border:1px solid #D2B4DE;border-radius:8px;padding:10px 12px;}
+.prest-box>label{color:#7D3C98;font-weight:700;display:block;}
+.prest-box select{border-color:#D2B4DE;width:100%;display:block;margin-top:4px;}
+.rol-sub{font-weight:500;font-size:11px;opacity:.75;}
+.hint-prestador{font-size:11px;color:var(--gray-600);margin-top:6px;}
+.label-dueno{font-size:10.5px;font-weight:700;color:#7D3C98;background:#F5F0FC;border:1px solid #D2B4DE;padding:2px 9px;border-radius:6px;white-space:nowrap;}
+.term-fila{display:flex;align-items:center;gap:8px;margin-top:5px;}
+.term-etq{font-size:10.5px;color:var(--gray-400);font-weight:700;letter-spacing:.3px;white-space:nowrap;}
+.term-sel{width:auto;flex:1;min-width:0;max-width:280px;padding:4px 8px;font-size:11.5px;font-weight:700;}
+.ref-titulo{margin:18px 0 10px;font-size:12.5px;font-weight:800;color:#7D3C98;display:flex;align-items:center;gap:8px;}
+.ref-titulo span{font-weight:600;color:var(--gray-400);font-size:11px;}
+.ref-card{background:#FBF8FE;border:1px dashed #D2B4DE;border-radius:12px;padding:12px 16px;margin-bottom:10px;}
+.ref-card.cancelada{opacity:.55;}
+.ref-l1{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.ref-hora{font-weight:700;color:var(--gray-800);}
+.ref-pac{font-weight:800;color:var(--gray-800);}
+.ref-serv{font-size:12px;color:var(--gray-400);margin:3px 0 6px;}
+.ref-l3{display:flex;align-items:center;gap:8px;font-size:12px;color:#5B2C7A;flex-wrap:wrap;}
+.ref-l3 .ref-acc{margin-left:auto;display:flex;gap:6px;}
+/* Procesar pago: servicios a cobrar resaltados */
+.pago-serv-card{background:#EAF9F9;border:1px solid #9FDCDC;border-radius:10px;padding:2px 14px;}
+.pago-serv-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #CDEBEB;}
+.pago-serv-fila:last-child{border-bottom:none;}
+.pago-serv-nombre{font-weight:700;font-size:13px;color:var(--gray-800);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.pago-serv-monto{font-weight:800;font-size:16px;color:#1C8A8A;white-space:nowrap;}
+.pago-serv-extra{font-size:11.5px;color:#1C8A8A;padding:6px 0 8px;font-weight:600;border-top:1px dashed #9FDCDC;}
+.chip-term{font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid;white-space:nowrap;}
 </style>
 </head>
 <body>
-<div id="version-footer" style="position:fixed;bottom:4px;right:8px;font-size:9px;color:var(--gray-400);opacity:0.6;z-index:500;pointer-events:none;">v</div>
+<div id="version-footer" onclick="sincronizarAhora()" title="Toca para actualizar ahora" style="position:fixed;bottom:4px;right:8px;font-size:10px;color:var(--gray-400);opacity:0.85;z-index:500;cursor:pointer;background:rgba(255,255,255,.75);padding:1px 6px;border-radius:6px;">v</div>
 
 <!-- ═══════════════════════════════════════════
      PANTALLA DE LOGIN (email + password + MFA)
@@ -679,6 +711,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <div class="vista-toggle" style="display:inline-flex;">
         <button id="btn-cierre-vista-doctor" class="active" onclick="cambiarVistaCierre('doctor')">👥 Por Doctor</button>
         <button id="btn-cierre-vista-medio" onclick="cambiarVistaCierre('medio')">💳 Por Medio de Pago</button>
+        <button id="btn-cierre-vista-medicos" onclick="cambiarVistaCierre('medicos')">🤝 Entre médicos</button>
       </div>
       <select id="cierre-fil-doctora" style="display:none;min-width:200px;" onchange="cambiarFiltroCierreDoctora()"></select>
     </div>
@@ -714,7 +747,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
         <span class="hist-filter-fmt">&nbsp;</span>
       </div>
       <div class="form-group" style="margin:0;">
-        <label class="hist-filter-label">Médico tratante</label>
+        <label class="hist-filter-label">Prestador</label>
         <select id="hist-tratante" onchange="renderHistorico()"></select>
         <span class="hist-filter-fmt">&nbsp;</span>
       </div>
@@ -842,12 +875,8 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
         </select>
       </div>
     </div>
-    <div class="form-group" id="fg-doctora"><label>Dra./Dr.</label><select id="m-doctora" onchange="sugerirHoraPorHorario()"></select><span class="field-error-msg">Selecciona Dra./Dr.</span></div>
-    <div class="form-group" id="fg-medico-tratante" style="background:#F5F0FC;border:1px solid #D2B4DE;border-radius:8px;padding:10px 12px;">
-      <label style="color:#7D3C98;">Médico tratante <span style="font-weight:400;color:var(--gray-400);">(si es distinto al de arriba)</span></label>
-      <select id="m-medico-tratante" style="border-color:#D2B4DE;"></select>
-      <div style="font-size:10.5px;color:#7D3C98;margin-top:5px;">Para cuando una doctora atiende al paciente de otra — así queda mapeado de quién es en realidad.</div>
-    </div>
+    <div class="form-group dueno-box" id="fg-doctora"><label>Dra./Dr. <span class="rol-sub">· dueño del paciente</span></label><select id="m-doctora" onchange="onCambioDuenoCita()"></select><span class="field-error-msg">Selecciona Dra./Dr.</span></div>
+    <div class="form-group prest-box" id="fg-prestador"><label>Dra./Dr. <span class="rol-sub">· prestador del servicio</span></label><select id="m-prestador" onchange="onCambioPrestadorCita()"></select><div class="hint-prestador" id="m-prestador-hint"></div></div>
     <div class="form-group" id="fg-tutor"><label>Nombre del padre/madre o tutor</label><input type="text" id="m-tutor" list="dl-tutores" placeholder="Nombre completo" onblur="autocompletarPorNombre('tutor')"><datalist id="dl-tutores"></datalist></div>
     <div class="form-group" id="fg-paciente"><label>Paciente (niño/niña)</label><input type="text" id="m-paciente" list="dl-pacientes" placeholder="Nombre completo" onblur="autocompletarPorNombre('paciente')"><datalist id="dl-pacientes"></datalist><span class="field-error-msg">Falta el nombre del paciente</span></div>
     <div class="form-row">
@@ -861,7 +890,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <div class="campo-elegir-servicio" onclick="abrirSelectorServiciosCita()">+ Agregar servicio</div>
       <span class="field-error-msg">Falta elegir al menos un servicio</span>
     </div>
-    <div id="m-dinero-bloqueado-aviso" style="display:none;background:var(--gray-50);border:1px solid var(--gray-200);color:var(--gray-600);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11.5px;">🔒 Precio, descuento y cortesía solo los edita la doctora (o recepción cuando es un paciente sin cita).</div>
+    <div id="m-dinero-bloqueado-aviso" style="display:none;background:var(--gray-50);border:1px solid var(--gray-200);color:var(--gray-600);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11.5px;">🔒 Precio, descuento y cortesía los editan los médicos (recepción solo cuando es un paciente sin cita).</div>
     <div class="form-group" id="m-precio-desglose-wrap">
       <label>Precio por servicio</label>
       <div id="m-precio-desglose"></div>
@@ -966,13 +995,13 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       🎁 Este servicio fue marcado como cortesía por la doctora — sin cobro.
     </div>
     <div class="form-group" id="pago-desglose-wrap" style="display:none;">
-      <label>Precio por servicio — definido por la doctora</label>
+      <label style="color:#1C8A8A;font-weight:800;">Servicios a cobrar</label>
       <div id="pago-desglose" style="margin:6px 0 4px;"></div>
     </div>
     <div class="form-group" id="pago-monto-wrap">
-      <label id="pago-monto-label">Monto a cobrar — definido por la doctora</label>
+      <label id="pago-monto-label">Monto a cobrar</label>
       <div id="pago-monto-display" style="font-size:22px;font-weight:700;color:var(--gray-800);padding:6px 0;">$0.00</div>
-      <div style="font-size:10.5px;color:var(--gray-400);">Este monto no se puede editar desde recepción.</div>
+      <div style="font-size:10.5px;color:var(--gray-400);">Este monto lo define el médico al editar la cita.</div>
     </div>
     <div class="form-group" id="pago-tipo-wrap">
       <label>¿Cómo queda el pago?</label>
@@ -1107,6 +1136,46 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 </div>
 
 <!-- Modal para cobrar un saldo pendiente registrado antes -->
+<!-- Modal: el dueño del paciente registra un pago al médico que atendió -->
+<div class="modal-overlay" id="pago-colega-modal-overlay">
+  <div class="modal" style="max-width:440px;">
+    <h3>🤝 Registrar pago a colega</h3>
+    <div style="background:var(--gray-50);border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--gray-600);flex-wrap:wrap;"><span id="pc-dueno-badge"></span> le paga a <span id="pc-prestador-badge"></span></div>
+      <div style="font-size:11px;color:var(--gray-400);margin:6px 0 8px;">Se aplica primero a las consultas más antiguas · <span id="pc-nconsultas">0</span> consulta(s) en la cuenta</div>
+      <div style="display:flex;justify-content:space-between;gap:10px;">
+        <div><div style="font-size:9.5px;font-weight:700;color:var(--gray-400);letter-spacing:.4px;">GENERADO</div><div id="pc-generado" style="font-size:14.5px;font-weight:800;">$0.00</div></div>
+        <div><div style="font-size:9.5px;font-weight:700;color:var(--gray-400);letter-spacing:.4px;">YA PAGADO</div><div id="pc-pagado" style="font-size:14.5px;font-weight:800;color:#2E7D4F;">$0.00</div></div>
+        <div><div style="font-size:9.5px;font-weight:700;color:var(--gray-400);letter-spacing:.4px;">SALDO</div><div id="pc-saldo" style="font-size:14.5px;font-weight:800;color:#9A6010;">$0.00</div></div>
+      </div>
+    </div>
+    <div class="form-group"><label>¿Cómo queda este pago?</label>
+      <div style="display:flex;gap:8px;">
+        <div class="opcion-pago-tipo activa" id="pc-tipo-total" onclick="cambiarTipoPagoColega('total')">✓ Pago total<br><span id="pc-tipo-total-monto" style="font-weight:500;font-size:10.5px;">$0.00</span></div>
+        <div class="opcion-pago-tipo" id="pc-tipo-parcial" onclick="cambiarTipoPagoColega('parcial')">◐ Pago parcial<br><span style="font-weight:500;font-size:10.5px;">Otro monto</span></div>
+      </div>
+    </div>
+    <div class="form-group"><label>Monto que pagas ahora</label><input type="number" id="pc-monto" min="0" step="0.01" placeholder="0.00" oninput="actualizarPreviewPagoColega()" style="font-size:16px;font-weight:700;"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Fecha del pago</label><input type="date" id="pc-fecha"></div>
+      <div class="form-group"><label>Medio</label><select id="pc-medio"><option>Efectivo</option><option>Transferencia</option><option>Otro</option></select></div>
+    </div>
+    <div class="form-group"><label>Nota (opcional)</label><input type="text" id="pc-nota" placeholder="Ej. entregado en consultorio"></div>
+    <div style="background:#F3FAF6;border:1px solid #BFE0CE;border-radius:8px;padding:10px 14px;margin-bottom:6px;">
+      <div style="font-size:11px;font-weight:800;color:#2E7D4F;letter-spacing:.3px;margin-bottom:6px;">DESPUÉS DE ESTE PAGO</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div><div style="font-size:9.5px;font-weight:700;color:var(--gray-400);letter-spacing:.4px;">PAGADO</div><div id="pc-desp-pagado" style="font-size:14.5px;font-weight:800;color:#2E7D4F;">$0.00</div></div>
+        <div><div style="font-size:9.5px;font-weight:700;color:var(--gray-400);letter-spacing:.4px;">SALDO</div><div id="pc-desp-saldo" style="font-size:14.5px;font-weight:800;color:#9A6010;">$0.00</div></div>
+        <span id="pc-desp-estado"></span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gold" onclick="guardarPagoColega()">✓ Registrar pago</button>
+      <button class="btn btn-outline" onclick="cerrarPagoColegaModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="cobrar-pendiente-modal-overlay">
   <div class="modal" style="max-width:380px;">
     <h3>💰 Cobrar saldo pendiente</h3>
@@ -1250,7 +1319,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <select id="servicio-terminal-preferida">
         <option value="">Sin preferencia — se elige cada vez</option>
         <option value="doctora">Terminal de la doctora</option>
-        <option value="canopy">CANOPY PEDIATRICS</option>
+        <option value="canopy">Canopy Pediatrics</option>
       </select>
       <div style="font-size:10.5px;color:var(--gray-400);margin-top:3px;">Al procesar el pago, se sugiere sola esta opción para este servicio — se puede cambiar en el momento.</div>
     </div>
@@ -1310,11 +1379,26 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-25-99';
+const APP_VERSION = '2026-09-28-103';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Marca el momento de cualquier escritura local (insert/upsert/update/delete). La sincronización
+// de respaldo espera unos segundos después de una escritura para no leer datos "a medias".
+// Solo anota la hora — no toca la petición, así que no puede duplicar ni alterar guardados.
+let ultimaEscrituraLocal = 0;
+(function(){
+  const desdeOriginal = sb.from.bind(sb);
+  sb.from = function(tabla){
+    const q = desdeOriginal(tabla);
+    ['insert','upsert','update','delete'].forEach(m=>{
+      const f = q[m];
+      if(typeof f === 'function') q[m] = function(...a){ ultimaEscrituraLocal = Date.now(); return f.apply(q, a); };
+    });
+    return q;
+  };
+})();
 
 // IMPORTANTE: este listener se registra apenas se crea el cliente, no más
 // abajo — si se registra tarde, se puede perder el evento de recuperación
@@ -1339,6 +1423,7 @@ let canalCitasRealtime = null;
 let canalBloqueosRealtime = null;
 let canalHorariosRealtime = null;
 let canalGestionesRealtime = null;
+let canalPagosRealtime = null;
 
 // ═══════════════════════════════════════════
 // ACTUALIZACIÓN AUTOMÁTICA — para que nadie tenga que refrescar el link
@@ -1387,11 +1472,160 @@ async function revisarVersionNueva(){
     }
   }catch(e){ console.warn('📡 Revisión de versión falló:', e); }
 }
-setInterval(revisarVersionNueva, 120000); // cada 2 minutos
+setInterval(revisarVersionNueva, 60000); // cada minuto
 setTimeout(revisarVersionNueva, 15000); // primera revisión rápida, no hasta 2 minutos después
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState === 'visible') revisarVersionNueva();
 });
+window.addEventListener('focus', ()=>revisarVersionNueva());
+window.addEventListener('online', ()=>revisarVersionNueva());
+
+// ═══════════════════════════════════════════════════════════════════
+// SINCRONIZACIÓN GARANTIZADA
+// El tiempo real es rápido pero no infalible: si el celular se bloquea, la laptop entra en reposo
+// o el WiFi parpadea, la conexión se corta y los cambios de ese hueco NUNCA llegan (por eso había
+// que recargar a mano). Esta capa lo cubre con cuatro seguros:
+//   1) Cada 30 s (con la app a la vista) vuelve a leer todo y actualiza solo lo que cambió.
+//   2) Al volver a la pestaña / recuperar internet lee todo de inmediato.
+//   3) Si el tiempo real se cae, se reconecta solo y al volver recupera lo perdido.
+//   4) Un indicador (esquina inferior derecha) muestra si está al día; tocarlo fuerza la lectura.
+// Nunca vacía la agenda: si una lectura falla, deja lo que ya había en pantalla.
+// ═══════════════════════════════════════════════════════════════════
+let ultimaSincOk = 0, sincEnCurso = false, fallosSinc = 0;
+let estadoRealtime = 'iniciando', huboCaidaRealtime = false, reconectandoRealtime = false;
+let intentosReconexion = 0, timerReconexion = null, sincIniciada = false;
+const firmaDatos = arr => JSON.stringify(arr, (k,v)=> (typeof k==='string' && k.startsWith('_')) ? undefined : v);
+
+function horariosDesdeFilas(data){
+  const h = {};
+  (data||[]).forEach(r=>{
+    if(!h[r.doctora]) h[r.doctora] = {};
+    if(!h[r.doctora][r.dia]) h[r.doctora][r.dia] = [];
+    h[r.doctora][r.dia].push({ inicio:(r.hora_inicio||'').slice(0,5), fin:(r.hora_fin||'').slice(0,5) });
+  });
+  Object.values(h).forEach(dias=>Object.values(dias).forEach(b=>b.sort((a,c)=>a.inicio.localeCompare(c.inicio))));
+  DOCTORAS.forEach(d=>{ if(!h[d]) h[d] = horarioDefectoDoctora(); });
+  return h;
+}
+
+async function sincronizarTodo(motivo){
+  if(!currentUser || sincEnCurso) return false;
+  // Justo después de guardar algo, espera un poco para no leer datos a medias
+  if(Date.now()-ultimaEscrituraLocal < 5000){ setTimeout(()=>sincronizarTodo(motivo), 2500); return false; }
+  sincEnCurso = true;
+  try{
+    try{ await sb.auth.getSession(); }catch(e){}   // renueva la sesión si ya venció (sin cerrar sesión por un fallo de red)
+    const [rc, rb, rh, rp, rg] = await Promise.all([
+      sb.from('citas_agenda').select('*'),
+      sb.from('bloqueos_agenda').select('*'),
+      sb.from('horarios_doctoras').select('*'),
+      sb.from('pagos_entre_medicos').select('*').order('fecha',{ascending:true}).order('id',{ascending:true}),
+      sb.from('gestiones').select('*')
+    ]);
+    const err = [rc,rb,rh,rp,rg].find(r=>r.error);
+    if(err) throw new Error(err.error.message || 'error de lectura');
+    // Si se guardó algo mientras se leía, estos datos pueden estar viejos: se descartan, la próxima vuelta los toma
+    if(Date.now()-ultimaEscrituraLocal < 3000){ return false; }
+
+    let cambio = false;
+    const nuevasCitas = (rc.data||[]).map(citaDesdeDb);
+    if(firmaDatos(nuevasCitas) !== firmaDatos(citas)){ citas = nuevasCitas; cambio = true; }
+    const nuevosBloqueos = (rb.data||[]).map(bloqueoDesdeDb);
+    if(firmaDatos(nuevosBloqueos) !== firmaDatos(bloqueos)){ bloqueos = nuevosBloqueos; cambio = true; }
+    const nuevosHorarios = horariosDesdeFilas(rh.data);
+    if(firmaDatos(nuevosHorarios) !== firmaDatos(horariosDoctoras)){ horariosDoctoras = nuevosHorarios; cambio = true; }
+    const nuevosPagos = rp.data||[];
+    if(firmaDatos(nuevosPagos) !== firmaDatos(pagosEntreMedicos)){ pagosEntreMedicos = nuevosPagos; pagosCargadosEn = Date.now(); cambio = true; }
+    const nuevasGestiones = (rg.data||[]).map(gestionDesdeDb);
+    if(firmaDatos(nuevasGestiones) !== firmaDatos(gestiones)){ gestiones = nuevasGestiones; cambio = true; }
+
+    ultimaSincOk = Date.now(); fallosSinc = 0;
+    if(cambio){
+      console.log('🔄 Sincronización ('+motivo+'): había cambios, se actualizó la pantalla');
+      refrescarVistaActual();
+      if(document.getElementById('traza-modal-overlay')?.classList.contains('open')) renderGestionesModal();
+    }
+    return true;
+  }catch(e){
+    fallosSinc++;
+    console.warn('🔄 Sincronización ('+motivo+') falló, se conserva lo que hay en pantalla:', e.message||e);
+    return false;
+  }finally{
+    sincEnCurso = false;
+    pintarEstadoSinc();
+  }
+}
+
+// Botón del indicador: lee todo ahora mismo
+async function sincronizarAhora(){
+  const ok = await sincronizarTodo('manual');
+  toast(ok ? '✓ Todo está al día' : (navigator.onLine===false ? '⚠ Sin internet — se actualizará al volver' : '⏳ Actualizando…'));
+}
+
+function pintarEstadoSinc(){
+  const vf = document.getElementById('version-footer');
+  if(!vf) return;
+  let punto = '⏳', color = 'var(--gray-400)', txt = 'conectando';
+  if(navigator.onLine === false){ punto = '●'; color = '#C0392B'; txt = 'sin internet'; }
+  else if(ultimaSincOk){
+    const seg = (Date.now()-ultimaSincOk)/1000;
+    const hh = new Date(ultimaSincOk).toTimeString().slice(0,5);
+    if(seg < 75){ punto = '●'; color = '#2E9E6B'; txt = (estadoRealtime==='SUBSCRIBED' ? 'en vivo' : 'al día')+' · '+hh; }
+    else if(seg < 180){ punto = '●'; color = '#D4A017'; txt = 'actualizando · '+hh; }
+    else { punto = '●'; color = '#C0392B'; txt = 'sin conexión · '+hh; }
+  }
+  vf.innerHTML = `v${APP_VERSION} · <span style="color:${color};font-weight:700;">${punto} ${txt}</span>`;
+}
+
+// ── Reconexión del tiempo real ──
+function manejarEstadoRealtime(estado){
+  if(reconectandoRealtime && estado === 'CLOSED') return;   // ignora solo el "CLOSED" que provoca nuestra propia reconexión
+  estadoRealtime = estado;
+  if(estado === 'SUBSCRIBED'){
+    intentosReconexion = 0;
+    if(huboCaidaRealtime){ huboCaidaRealtime = false; sincronizarTodo('realtime-recuperado'); }
+  }else if(estado === 'CHANNEL_ERROR' || estado === 'TIMED_OUT' || estado === 'CLOSED'){
+    huboCaidaRealtime = true;
+    programarReconexionRealtime();
+  }
+  pintarEstadoSinc();
+}
+function programarReconexionRealtime(){
+  if(timerReconexion || !currentUser) return;
+  const espera = Math.min(30000, 2000*Math.pow(2, intentosReconexion));
+  intentosReconexion++;
+  timerReconexion = setTimeout(()=>{
+    timerReconexion = null;
+    if(!currentUser) return;
+    reconectarRealtime();
+  }, espera);
+}
+function reconectarRealtime(){
+  if(!currentUser) return;
+  console.log('📡 Reconectando el tiempo real…');
+  reconectandoRealtime = true;
+  try{ detenerRealtime(); }catch(e){}
+  try{ iniciarRealtime(); }catch(e){ console.warn('No se pudo reiniciar el tiempo real:', e); }
+  setTimeout(()=>{ reconectandoRealtime = false; }, 1500);
+}
+
+function iniciarSincronizacionGarantizada(){
+  if(sincIniciada) return;
+  sincIniciada = true;
+  const alVolver = ()=>{
+    if(document.visibilityState !== 'visible') return;
+    sincronizarTodo('volvió a la app');
+    if(estadoRealtime !== 'SUBSCRIBED') reconectarRealtime();
+  };
+  setInterval(()=>{ if(document.visibilityState === 'visible') sincronizarTodo('cada 30 s'); }, 30000);
+  document.addEventListener('visibilitychange', alVolver);
+  window.addEventListener('focus', alVolver);
+  window.addEventListener('online', ()=>{ sincronizarTodo('internet recuperado'); reconectarRealtime(); });
+  window.addEventListener('offline', pintarEstadoSinc);
+  setInterval(pintarEstadoSinc, 5000);
+  ultimaSincOk = Date.now();   // acaba de cargar todo al iniciar sesión
+  pintarEstadoSinc();
+}
 
 function iniciarRealtime(){
   canalCitasRealtime = sb.channel('citas-realtime')
@@ -1401,6 +1635,7 @@ function iniciarRealtime(){
     })
     .subscribe((estado)=>{
       console.log('📡 Estado del canal de citas en tiempo real:', estado);
+      manejarEstadoRealtime(estado);
     });
 
   canalBloqueosRealtime = sb.channel('bloqueos-realtime')
@@ -1412,6 +1647,14 @@ function iniciarRealtime(){
   canalHorariosRealtime = sb.channel('horarios-realtime')
     .on('postgres_changes', { event:'*', schema:'public', table:'horarios_doctoras' }, payload=>{
       aplicarCambioRealtimeHorario(payload);
+    })
+    .subscribe();
+
+  canalPagosRealtime = sb.channel('pagos-entre-medicos-realtime')
+    .on('postgres_changes', { event:'*', schema:'public', table:'pagos_entre_medicos' }, payload=>{
+      if(payload.eventType==='DELETE'){ pagosEntreMedicos = pagosEntreMedicos.filter(p=>p.id!==payload.old.id); }
+      else if(!pagosEntreMedicos.some(p=>p.id===payload.new.id)){ pagosEntreMedicos.push(payload.new); notificarPagoRecibido(payload.new); }
+      if(document.getElementById('section-cierre').style.display!=='none' && vistaCierreTab==='medicos') renderCierre();
     })
     .subscribe();
 
@@ -1430,7 +1673,7 @@ function aplicarCambioRealtimeCita(payload){
     // Realtime escucha la TABLA real, no la vista que enmascara — así que
     // si soy doctora y esta cita es de otra, tapo el dinero aquí también
     // (por si el evento llegara a traer la fila sin enmascarar).
-    const veoElDineroDeEsta = sesionActual==='recepcion' || actualizada.doctora===sesionActual;
+    const veoElDineroDeEsta = sesionActual==='recepcion' || actualizada.doctora===sesionActual || actualizada.prestador===sesionActual || !actualizada.pagado;
     if(!veoElDineroDeEsta){
       actualizada = { ...actualizada,
         precio:null, descuentoPct:null, cortesia:null, montoPagado:null, medioPago:'',
@@ -1445,7 +1688,7 @@ function aplicarCambioRealtimeCita(payload){
     // real (no cuando el evento llega por otra razón, ej. editar notas).
     if(payload.eventType==='UPDATE' && anterior){
       if(actualizada.estado==='llego' && anterior.estado!=='llego'){
-        agregarActividad(`🚶 <strong>${esc(actualizada.paciente)}</strong> llegó — ${esc(actualizada.doctora)}`);
+        agregarActividad(`🚶 <strong>${esc(actualizada.paciente)}</strong> llegó — ${esc(agendaDe(actualizada))}`);
       }
       if(veoElDineroDeEsta && actualizada.pagado && !anterior.pagado){
         const monto = montoTotalPagado(actualizada);
@@ -1591,6 +1834,7 @@ function detenerRealtime(){
   if(canalBloqueosRealtime) sb.removeChannel(canalBloqueosRealtime);
   if(canalHorariosRealtime) sb.removeChannel(canalHorariosRealtime);
   if(canalGestionesRealtime) sb.removeChannel(canalGestionesRealtime);
+  if(canalPagosRealtime) sb.removeChannel(canalPagosRealtime);
 }
 
 let currentUser = null; // { id, rol, nombre }
@@ -1911,6 +2155,7 @@ const ESTADO_ICON = {agendado:'📅',confirmada:'✓',llego:'🚶',curso:'▶',f
 // en vez de con localStorage.
 // ═══════════════════════════════════════════
 let citas = [];
+let pagosEntreMedicos = []; // abonos que el dueño del paciente le hace al prestador
 let bloqueos = [];
 let gestiones = [];
 // horariosDoctoras: {doctora: {dia: [{inicio,fin}, ...]}} — uno o más
@@ -1945,7 +2190,7 @@ function activeCitas(){ return citas.filter(c=>!c.deleted); }
 function citaDesdeDb(r){
   return {
     id:r.id, fecha:r.fecha, hora:(r.hora||'').slice(0,5), duracionMin:r.duracion_min,
-    doctora:r.doctora, medicoTratante:r.medico_tratante||null, paciente:r.paciente, nombreTutor:r.nombre_tutor||'', tel:r.tel||'', email:r.email||'', servicio:r.servicio||'',
+    doctora:r.doctora, prestador:r.prestador||null, liquidada:!!r.liquidada, liquidadaEn:r.liquidada_en||null, liquidadaPor:r.liquidada_por||null, paciente:r.paciente, nombreTutor:r.nombre_tutor||'', tel:r.tel||'', email:r.email||'', servicio:r.servicio||'',
     precio:Number(r.precio)||0, precioDesglose:r.precio_desglose||null, descuentoPct:Number(r.descuento_pct)||0, cortesia:!!r.cortesia,
     notas:r.notas||'', estado:r.estado, sinCita:!!r.sin_cita, cancelada:!!r.cancelada, noLlego:!!r.no_llego,
     pagado:!!r.pagado, montoPagado:Number(r.monto_pagado)||0, medioPago:r.medio_pago||'',
@@ -1960,7 +2205,7 @@ function citaDesdeDb(r){
 function citaHaciaDb(c){
   return {
     id:c.id, fecha:c.fecha, hora:c.hora, duracion_min:c.duracionMin||60,
-    doctora:c.doctora, medico_tratante:c.medicoTratante||null, paciente:c.paciente, nombre_tutor:c.nombreTutor||null, tel:c.tel||null, email:c.email||null, servicio:c.servicio||null,
+    doctora:c.doctora, prestador:c.prestador||null, liquidada:!!c.liquidada, liquidada_en:c.liquidadaEn||null, liquidada_por:c.liquidadaPor||null, paciente:c.paciente, nombre_tutor:c.nombreTutor||null, tel:c.tel||null, email:c.email||null, servicio:c.servicio||null,
     precio:c.precio||0, precio_desglose:c.precioDesglose||null, descuento_pct:c.descuentoPct||0, cortesia:!!c.cortesia,
     notas:c.notas||null, estado:c.estado, sin_cita:!!c.sinCita, cancelada:!!c.cancelada, no_llego:!!c.noLlego,
     pagado:!!c.pagado, monto_pagado:c.montoPagado||0, medio_pago:c.medioPago||null,
@@ -2198,6 +2443,23 @@ function renderChipsServicioCita(){
 // Genera un campo de precio por cada servicio elegido, y suma el total
 // automáticamente en el campo oculto m-precio (que es el que usa todo el
 // resto de la app — Cierre, Histórico, etc. no cambian, solo la captura).
+function htmlSelectTerminalForm(nombre){
+  const dueno = document.getElementById('m-doctora').value || '';
+  const valores = window._terminalServicioValores || {};
+  const cat = CATALOGO_SERVICIOS.find(x=>x.nombre===nombre);
+  const v = valores[nombre] || (cat?.terminal_preferida==='canopy' ? 'canopy' : 'doctora');
+  const col = colorTerminal(v, dueno);
+  const bloqueado = (typeof dineroEditablePermitido!=='undefined' && dineroEditablePermitido===false) || window._editandoPagada;
+  return `<div class="term-fila"><span class="term-etq">INGRESA POR</span>
+    <select class="term-sel" data-term-servicio="${esc(nombre)}" ${bloqueado?'disabled':''} onchange="cambioTerminalServicioForm(this)" style="border-color:${col}88;color:${col};background:${col}12;">
+      <option value="doctora" ${v==='doctora'?'selected':''}>Terminal · ${esc(dueno)}</option>
+      <option value="canopy" ${v==='canopy'?'selected':''}>${TERMINAL_CANOPY}</option></select></div>`;
+}
+function cambioTerminalServicioForm(sel){
+  (window._terminalServicioValores = window._terminalServicioValores || {})[sel.dataset.termServicio] = sel.value;
+  colorearTerminalSel(sel, document.getElementById('m-doctora').value);
+}
+
 // "Día de Hospitalización" (y su variante de terapia intensiva) se cobran
 // por día — en vez de un precio libre, se elige cuántos días y el sistema
 // multiplica solo por el precio por día que ya está en el catálogo.
@@ -2211,8 +2473,7 @@ function renderDesglosePrecioServicios(nombres){
     return;
   }
   // Si ya había un valor capturado para ese servicio, se conserva. Si no,
-  // se sugiere el precio configurado en el catálogo (editable, no forzado)
-  // — para eso se cargó el catálogo con precios reales.
+  // se sugiere el precio configurado en el catálogo (editable, no forzado).
   const previos = window._desglosePrecioValores || {};
   cont.innerHTML = nombres.map((n,i)=>{
     const catEntry = CATALOGO_SERVICIOS.find(s=>s.nombre===n);
@@ -2222,15 +2483,14 @@ function renderDesglosePrecioServicios(nombres){
 
     if(esServicioPorDia(n) && sugerido>0){
       // Si ya había un monto guardado, se infiere cuántos días fueron
-      // (monto ÷ precio por día, redondeado) — solo para no partir siempre
-      // de "1 día" al reabrir una cita que ya tenía varios capturados.
+      // (monto ÷ precio por día, redondeado).
       const diasInicial = Math.max(1, Math.min(30, Math.round((previos[n] ?? sugerido) / sugerido)));
       const totalInicial = diasInicial * sugerido;
       const opciones = Array.from({length:30}, (_,idx)=>idx+1).map(d=>`<option value="${d}" ${d===diasInicial?'selected':''}>${d}</option>`).join('');
       return `
       <div style="padding:8px 0;${borde}">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span style="font-size:12px;color:var(--gray-800);flex:1;min-width:140px;">${esc(n)}</span>
+          <span style="font-size:12px;color:var(--gray-800);font-weight:600;flex:1;min-width:140px;">${esc(n)}</span>
           <select data-precio-dia="${sugerido}" data-servicio-dias="${esc(n)}" onchange="actualizarDiasHospitalizacion(this)" style="width:70px;flex-shrink:0;padding:5px 4px;font-size:12px;">${opciones}</select>
           <span style="font-size:11px;color:var(--gray-400);">día(s)</span>
         </div>
@@ -2239,13 +2499,17 @@ function renderDesglosePrecioServicios(nombres){
           <span id="total-dias-${i}" style="font-size:13px;font-weight:800;color:var(--gray-800);">$${totalInicial.toLocaleString('es-MX',{minimumFractionDigits:2})}</span>
         </div>
         <input type="hidden" data-servicio="${esc(n)}" value="${totalInicial}">
+        ${htmlSelectTerminalForm(n)}
       </div>`;
     }
 
     return `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;${borde}">
-      <span style="font-size:12px;color:var(--gray-800);">${esc(n)}</span>
-      <input type="number" min="0" step="0.01" data-servicio="${esc(n)}" value="${valorInicial}" oninput="actualizarPrecioDesdeDesglose()" style="width:100px;text-align:right;padding:5px 7px;font-size:12px;">
+    <div style="padding:8px 0;${borde}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <span style="font-size:12px;color:var(--gray-800);font-weight:600;">${esc(n)}</span>
+        <input type="number" min="0" step="0.01" data-servicio="${esc(n)}" value="${valorInicial}" oninput="actualizarPrecioDesdeDesglose()" style="width:100px;text-align:right;padding:5px 7px;font-size:12px;">
+      </div>
+      ${htmlSelectTerminalForm(n)}
     </div>`;
   }).join('');
   actualizarPrecioDesdeDesglose();
@@ -2332,7 +2596,7 @@ async function renderListaServiciosAdmin(){
         <div style="font-size:12px;font-weight:700;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
           ${esc(s.nombre)} ${s.activo===false?'<span style="font-size:9.5px;font-weight:700;color:var(--danger);background:#FDF6EC;border:1px solid #EDD49A;padding:1px 6px;border-radius:5px;margin-left:5px;">INACTIVO</span>':''}
         </div>
-        <div style="font-size:10.5px;color:var(--gray-400);">$${Number(s.precio).toLocaleString('es-MX',{minimumFractionDigits:2})}${s.terminal_preferida?' · Terminal: '+(s.terminal_preferida==='doctora'?'de la doctora':'CANOPY PEDIATRICS'):''}</div>
+        <div style="font-size:10.5px;color:var(--gray-400);">$${Number(s.precio).toLocaleString('es-MX',{minimumFractionDigits:2})}${s.terminal_preferida?' · Terminal: '+(s.terminal_preferida==='doctora'?'del médico dueño':'Canopy Pediatrics'):''}</div>
       </div>
       <button class="btn btn-outline" style="font-size:10.5px;padding:5px 10px;flex-shrink:0;" onclick="iniciarEdicionServicio(${s.id})">Editar</button>
     </div>`;
@@ -2510,8 +2774,8 @@ function initSelects(){
   // las opciones se irían duplicando cada vez.
   filD.innerHTML = '<option value="">Todas las Dras./Dres.</option>';
   modD.innerHTML = '';
-  const modT = document.getElementById('m-medico-tratante');
-  modT.innerHTML = '<option value="">— Mismo que Dra./Dr. arriba —</option>';
+  const modT = document.getElementById('m-prestador');
+  modT.innerHTML = '<option value="">Igual que el dueño del paciente</option>';
   DOCTORAS.forEach(d=>{
     filD.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
     modD.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
@@ -2542,15 +2806,20 @@ function render(){
   const filE = document.getElementById('fil-estado').value;
 
   let delDia = activeCitas().filter(c=>c.fecha===fechaActual);
-  if(filD) delDia = delDia.filter(c=>c.doctora===filD);
+  // "Pacientes referidos": son del médico que estoy viendo, pero los atiende otro
+  const docVista = filD || (sesionActual!=='recepcion' ? sesionActual : '');
+  const referidosDia = docVista ? delDia.filter(c=>c.doctora===docVista && agendaDe(c)!==docVista) : [];
+  if(filD) delDia = delDia.filter(c=>agendaDe(c)===filD);
+  else if(docVista) delDia = delDia.filter(c=>!(c.doctora===docVista && agendaDe(c)!==docVista));
   if(filE){
     delDia = filE==='cancelada' ? delDia.filter(c=>c.cancelada) : delDia.filter(c=>!c.cancelada && c.estado===filE);
   }
   delDia.sort((a,b)=>a.hora.localeCompare(b.hora));
+  const refHtml = htmlReferidos(referidosDia);
 
   // Resumen (respeta el filtro de doctora, no el de estado — para mostrar el desglose completo)
   let activas = activeCitas().filter(c=>c.fecha===fechaActual && !c.cancelada);
-  if(filD) activas = activas.filter(c=>c.doctora===filD);
+  if(filD) activas = activas.filter(c=>agendaDe(c)===filD);
   const nAgendadas = activas.filter(c=>c.estado==='agendado').length;
   const nConfirmadas = activas.filter(c=>c.estado==='confirmada').length;
   const nCurso = activas.filter(c=>c.estado==='curso').length;
@@ -2583,12 +2852,13 @@ function render(){
 
   const list = document.getElementById('citas-list');
   if(!delDia.length){
-    list.innerHTML = `<div class="empty-state"><div class="ico">📭</div>Sin citas para este filtro</div>`;
+    list.innerHTML = `<div class="empty-state"><div class="ico">📭</div>Sin citas para este filtro</div>` + refHtml;
     return;
   }
 
   list.innerHTML = delDia.map(c=>{
     const idxActual = ESTADOS.indexOf(c.estado);
+    const esMia = sesionActual==='recepcion' || c.doctora===sesionActual || c.prestador===sesionActual;
     const pipelineHtml = ESTADOS.map((st,i)=>{
       const done = i<=idxActual;
       const esActual = i===idxActual;
@@ -2602,7 +2872,7 @@ function render(){
       return stepHtml+lineHtml;
     }).join('');
 
-    return `<div class="cita-card ${c.cancelada?'cancelada':''} ${(c.noLlego && !c.cancelada)?'no-llego':''}" style="border-left-color:${COLOR_DOCTORA[c.doctora]||'#D0DCEA'}">
+    return `<div class="cita-card ${c.cancelada?'cancelada':''} ${(c.noLlego && !c.cancelada)?'no-llego':''}" style="border-left-color:${COLOR_DOCTORA[agendaDe(c)]||'#D0DCEA'}">
       <div class="cita-top">
         <div class="cita-info">
           <span class="cita-hora"><span class="ico">🕐</span>${c.hora}</span>
@@ -2614,7 +2884,7 @@ function render(){
           </div>
           <div class="cita-linea2">
             <span class="cita-servicio">${esc(c.servicio)}</span>
-            <span class="cita-doctora" style="background:${COLOR_DOCTORA[c.doctora]?COLOR_DOCTORA[c.doctora]+'22':'var(--gold-bg)'};color:${COLOR_DOCTORA[c.doctora]||'var(--gold)'};border-color:${COLOR_DOCTORA[c.doctora]?COLOR_DOCTORA[c.doctora]+'55':'var(--gold-border)'}">${esc(c.doctora)}</span>
+            <span class="cita-doctora" style="background:${COLOR_DOCTORA[agendaDe(c)]?COLOR_DOCTORA[agendaDe(c)]+'22':'var(--gold-bg)'};color:${COLOR_DOCTORA[agendaDe(c)]||'var(--gold)'};border-color:${COLOR_DOCTORA[agendaDe(c)]?COLOR_DOCTORA[agendaDe(c)]+'55':'var(--gold-border)'}">${esc(agendaDe(c))}</span>${esReferida(c)?`<span class="label-dueno">🩺 Paciente de ${esc(c.doctora)}</span>`:''}
           </div>
           ${(c.sinCita||c.cancelada||c.noLlego||c.pagado)?`<div class="cita-badges-extra">
           ${c.sinCita?'<span style="font-size:10.5px;font-weight:700;color:#1B5C9E;background:#EEF5FC;border:1px solid #BDD5F0;padding:3px 9px;border-radius:6px;">🚶 Sin cita</span>':''}
@@ -2626,7 +2896,7 @@ function render(){
           </div>
         </div>
         <div class="cita-actions">
-          ${(sesionActual==='recepcion' || c.doctora===sesionActual) ? `
+          ${esMia ? `
           ${(!c.cancelada && !c.pagado && !c.noLlego)?`<button class="btn-sm" style="background:#EEF8F1;color:var(--success);border:1px solid #A8D8B4;" onclick="abrirPagoModal(${c.id})">💳 Procesar <br>pago</button>`:''}
           <button class="btn-sm btn-sm-edit" onclick="abrirModal(${c.id})">✎ Editar</button>
           ${!c.cancelada?`<button class="btn-sm btn-sm-cancel" onclick="cancelarCita(${c.id})">⊘ Cancelar</button>`:''}
@@ -2635,13 +2905,16 @@ function render(){
           ${sesionActual==='recepcion'
             ? `<button class="btn-sm btn-sm-del" onclick="eliminarCita(${c.id})">🗑 Eliminar</button>`
             : `<button class="btn-sm" style="background:#EEF5FC;color:#1B5C9E;border:1px solid #BDD5F0;" onclick="abrirReagendar(${c.id})">📅 Reagendar</button>`}
-          ` : `<span style="font-size:10.5px;color:var(--gray-400);font-style:italic;">🔒 Solo lectura — es de ${esc(c.doctora)}</span>`}
+          ` : `
+          ${(!c.cancelada && !c.pagado && !c.noLlego)?`<button class="btn-sm" style="background:#EEF8F1;color:var(--success);border:1px solid #A8D8B4;" onclick="abrirPagoModal(${c.id})">💳 Procesar <br>pago</button>`:''}
+          <button class="btn-sm btn-sm-edit" onclick="abrirModal(${c.id})">✎ Editar</button>
+          `}
         </div>
         ${c.notas?`<div style="font-size:11.5px;color:var(--gray-400);width:100%;margin-top:-2px;margin-bottom:6px;">${esc(c.notas)}</div>`:''}
       </div>
       <div class="pipeline">${pipelineHtml}</div>
     </div>`;
-  }).join('');
+  }).join('') + refHtml;
 }
 
 function renderCalendar(){
@@ -2668,10 +2941,10 @@ function renderCalendar(){
     const isToday = dStr===hoyStr;
 
     let delDia = activeCitas().filter(c=>c.fecha===dStr && !c.cancelada);
-    if(filD) delDia = delDia.filter(c=>c.doctora===filD);
+    if(filD) delDia = delDia.filter(c=>agendaDe(c)===filD);
     if(filE) delDia = delDia.filter(c=>c.estado===filE);
 
-    const dots = delDia.slice(0,8).map(c=>`<span class="cal-dot" style="background:${COLOR_DOCTORA[c.doctora]||'#8FA8BE'}"></span>`).join('');
+    const dots = delDia.slice(0,8).map(c=>`<span class="cal-dot" style="background:${COLOR_DOCTORA[agendaDe(c)]||'#8FA8BE'}"></span>`).join('');
 
     html += `<div class="cal-day ${otherMonth?'other-month':''} ${isToday?'today':''}" onclick="irADia('${dStr}')">
       <div class="cal-day-num">${d.getDate()}</div>
@@ -2839,7 +3112,7 @@ function renderWeek(){
         }
         eventos.push({tipo:'bloqueo', doctora, iniMin, finMin, motivo:b.motivo});
       });
-      activeCitas().filter(c=>c.doctora===doctora && c.fecha===dStr && (mostrarCitasCanceladas || !c.cancelada)).forEach(c=>{
+      activeCitas().filter(c=>agendaDe(c)===doctora && c.fecha===dStr && (mostrarCitasCanceladas || !c.cancelada)).forEach(c=>{
         const iniMin = horaAMinutos(c.hora);
         const finMin = iniMin + (c.duracionMin||60);
         eventos.push({tipo:'cita', doctora, iniMin, finMin, cita:c});
@@ -2872,7 +3145,7 @@ function renderWeek(){
       if(modoTodas){
         return `<div class="week-cita-block chip ${c.cancelada?'cancelada':''}" style="${posStyle}background:${COLOR_DOCTORA[e.doctora]||'var(--gold)'};" onclick="abrirModal(${c.id})" title="${esc(e.doctora)}: ${esc(c.paciente)}${tituloTutor} — ${c.hora} (${c.duracionMin||60} min)">${esc(c.paciente)}</div>`;
       }
-      return `<div class="week-cita-block ${c.cancelada?'cancelada':''}" style="${posStyle}background:${COLOR_DOCTORA[c.doctora]||'var(--gold)'};" onclick="abrirModal(${c.id})" title="${esc(c.paciente)}${tituloTutor} — ${c.hora} (${c.duracionMin||60} min)">
+      return `<div class="week-cita-block ${c.cancelada?'cancelada':''}" style="${posStyle}background:${COLOR_DOCTORA[agendaDe(c)]||'var(--gold)'};" onclick="abrirModal(${c.id})" title="${esc(c.paciente)}${tituloTutor} — ${c.hora} (${c.duracionMin||60} min)">
         <div class="week-cita-block-nombre">${esc(c.paciente)}</div>
         <div class="week-cita-block-detalle">${c.hora}·${c.duracionMin||60}m</div>
         ${alto>=60 && c.nombreTutor ? `<div class="week-cita-block-detalle">tutor: ${esc(c.nombreTutor)}</div>` : ''}
@@ -2939,10 +3212,6 @@ function abrirNuevaCitaEnSlot(fecha, hora, doctora){
 function avanzarEstado(id, estadoClic){
   const c = citas.find(x=>x.id===id);
   if(!c || c.cancelada) return;
-  if(sesionActual!=='recepcion' && c.doctora!==sesionActual){
-    toast('🔒 Esta cita es de '+c.doctora+' — solo puede modificarla ella o recepción');
-    return;
-  }
   if(c.noLlego && estadoClic!=='llego'){
     toast('⚠ Este paciente fue marcado "No llegó" — solo puede pasar a "Llegó" si se presenta después');
     return;
@@ -3859,10 +4128,9 @@ function renderPapeleraAgenda(){
 
 let nuevaEsSinCita = false;
 
-function puedeEditarDinero(esSinCitaDeLaCita, doctoraDeLaCita){
+function puedeEditarDinero(esSinCitaDeLaCita){
   if(sesionActual === 'recepcion') return esSinCitaDeLaCita; // recepción solo si es sin cita
-  if(!doctoraDeLaCita) return true; // cita nueva: aún no tiene dueña definida
-  return sesionActual === doctoraDeLaCita; // cada doctora solo edita lo suyo
+  return true; // cualquier médico puede editar precios, descuento, cortesía y servicios (guardias)
 }
 
 function aplicarBloqueoDinero(permitido){
@@ -3871,7 +4139,7 @@ function aplicarBloqueoDinero(permitido){
   const desc = document.getElementById('m-descuento');
   const cortesia = document.getElementById('m-cortesia');
   const aviso = document.getElementById('m-dinero-bloqueado-aviso');
-  const inputsDesglose = document.querySelectorAll('#m-precio-desglose input[data-servicio]');
+  const inputsDesglose = document.querySelectorAll('#m-precio-desglose input[data-servicio], #m-precio-desglose select[data-term-servicio]');
   [precio,desc,cortesia,...inputsDesglose].forEach(el=>{
     el.disabled = !permitido;
     el.style.background = permitido ? '' : 'var(--gray-100)';
@@ -3928,11 +4196,6 @@ function autocompletarPorNombre(tipo){
 function abrirModal(id, sinCita){
   limpiarErroresForm();
   if(id){
-    const cExistente = citas.find(x=>x.id===id);
-    if(cExistente && sesionActual!=='recepcion' && cExistente.doctora!==sesionActual){
-      toast('🔒 Esta cita es de '+cExistente.doctora+' — '+cExistente.paciente+', '+cExistente.hora+', '+cExistente.servicio);
-      return;
-    }
   }
   modalEditId = id || null;
   nuevaEsSinCita = !id && !!sinCita;
@@ -3944,7 +4207,7 @@ function abrirModal(id, sinCita){
     document.getElementById('m-hora').value = c.hora;
     document.getElementById('m-duracion').value = c.duracionMin || 60;
     document.getElementById('m-doctora').value = c.doctora;
-    document.getElementById('m-medico-tratante').value = c.medicoTratante || '';
+    document.getElementById('m-prestador').value = c.prestador || '';
     document.getElementById('m-tutor').value = c.nombreTutor||'';
     document.getElementById('m-paciente').value = c.paciente;
     document.getElementById('m-tel').value = c.tel;
@@ -3959,6 +4222,9 @@ function abrirModal(id, sinCita){
     }else{
       window._desglosePrecioValores = nombresIniciales.length ? {[nombresIniciales[0]]: c.precio||0} : {};
     }
+    window._terminalServicioValores = {};
+    if(c.terminalPorServicio) Object.entries(c.terminalPorServicio).forEach(([k,v])=>{ window._terminalServicioValores[k] = esTerminalCanopy(v) ? 'canopy' : 'doctora'; });
+    window._editandoPagada = !!c.pagado;
     renderChipsServicioCita();
     document.getElementById('m-descuento').value = c.descuentoPct||'';
     document.getElementById('m-cortesia').checked = !!c.cortesia;
@@ -3974,13 +4240,15 @@ function abrirModal(id, sinCita){
     document.getElementById('m-hora').value = nuevaEsSinCita ? ahora.toTimeString().slice(0,5) : '';
     document.getElementById('m-duracion').value = 60;
     document.getElementById('m-doctora').value = (sesionActual!=='recepcion' && DOCTORAS.includes(sesionActual)) ? sesionActual : (DOCTORAS[0]||'');
-    document.getElementById('m-medico-tratante').value = '';
+    document.getElementById('m-prestador').value = '';
     document.getElementById('m-tutor').value = '';
     document.getElementById('m-paciente').value = '';
     document.getElementById('m-tel').value = '';
     document.getElementById('m-email').value = '';
     document.getElementById('m-servicio').value = '';
     window._desglosePrecioValores = {};
+    window._terminalServicioValores = {};
+    window._editandoPagada = false;
     renderChipsServicioCita();
     document.getElementById('m-descuento').value = '';
     document.getElementById('m-cortesia').checked = false;
@@ -4068,7 +4336,7 @@ function limpiarErroresForm(){
 // en una cita nueva (no pisa una hora que la persona ya haya escrito), y
 // muestra un texto de ayuda con el horario de ese día.
 function sugerirHoraPorHorario(){
-  const doctora = document.getElementById('m-doctora').value;
+  const doctora = prestadorFormEfectivo();
   const fecha = document.getElementById('m-fecha').value;
   const hint = document.getElementById('hint-hora');
   if(!doctora || !fecha){ hint.textContent = ''; return; }
@@ -4092,12 +4360,39 @@ function estaFueraDeHorario(doctora, fecha, hora){
   return !horaDentroDeAlgunBloque(bloques, hora);
 }
 
-function guardarCita(){
+// Quién atiende según el formulario (prestador; si está vacío, el dueño)
+function prestadorFormEfectivo(){
+  return document.getElementById('m-prestador').value || document.getElementById('m-doctora').value;
+}
+function actualizarHintPrestador(){
+  const dueno = document.getElementById('m-doctora').value;
+  const pr = document.getElementById('m-prestador').value;
+  document.getElementById('m-prestador-hint').textContent =
+    (pr && pr!==dueno) ? '🔀 Paciente referido: la cita aparece en la agenda de '+pr+'.' : '';
+}
+function onCambioDuenoCita(){
+  actualizarHintPrestador();
+  sugerirHoraPorHorario();
+  renderChipsServicioCita(); // refresca las terminales (la del dueño cambió)
+}
+function onCambioPrestadorCita(){
+  actualizarHintPrestador();
+  sugerirHoraPorHorario();
+}
+function leerTerminalesServicioForm(dueno){
+  const res = {};
+  document.querySelectorAll('#m-precio-desglose select[data-term-servicio]').forEach(sel=>{
+    res[sel.dataset.termServicio] = sel.value==='canopy' ? TERMINAL_CANOPY : dueno;
+  });
+  return Object.keys(res).length ? res : null;
+}
+
+function guardarCita(omitirAvisoPrestador){
   const fecha = document.getElementById('m-fecha').value;
   const hora = document.getElementById('m-hora').value;
   const duracionMin = parseInt(document.getElementById('m-duracion').value) || 60;
   const doctora = document.getElementById('m-doctora').value;
-  const medicoTratante = document.getElementById('m-medico-tratante').value || null;
+  const prestadorSel = document.getElementById('m-prestador').value;
   const nombreTutor = document.getElementById('m-tutor').value.trim();
   const paciente = document.getElementById('m-paciente').value.trim();
   const tel = document.getElementById('m-tel').value.trim();
@@ -4122,45 +4417,63 @@ function guardarCita(){
     return;
   }
 
-  // Detección de empalmes: misma doctora, mismo día, horario que se cruza
-  // con otra cita activa o con un bloqueo de agenda de esa doctora.
+  // Un médico que NO es ni el dueño ni el prestador y guarda cambios de una cita ajena
+  // (ej. médico de guardia) queda como prestador — se le avisa antes de guardar.
+  const prestadorPrevio = (prestadorSel && prestadorSel!==doctora) ? prestadorSel : null;
+  if(modalEditId && sesionActual!=='recepcion' && sesionActual!==doctora && sesionActual!==(prestadorPrevio||doctora) && !omitirAvisoPrestador){
+    mostrarConfirm({etiqueta:'Paciente de otro médico', titulo:'Quedarás como prestador',
+      mensaje:`Este paciente es de <strong>${esc(doctora)}</strong>. Al guardar, quedas como <strong>prestador del servicio</strong> en esta consulta.`,
+      textoConfirmar:'Sí, guardar', icono:'🩺'}, ()=>{
+        document.getElementById('m-prestador').value = sesionActual;
+        guardarCita(true);
+      });
+    return;
+  }
+  const prestador = (prestadorSel && prestadorSel!==doctora) ? prestadorSel : null;
+  const quienAtiende = prestador || doctora;
+  const quedoComoPrestador = !!omitirAvisoPrestador;
+  const terminalPorServicio = leerTerminalesServicioForm(doctora);
+
+  // Detección de empalmes: misma agenda (quien atiende), mismo día, horario que se cruza
+  // con otra cita activa o con un bloqueo de agenda de esa persona.
   if(!nuevaEsSinCita || modalEditId){ // los pacientes sin cita entran directo, no pasan por agenda futura
-    const conflicto = hayEmpalme(doctora, fecha, hora, duracionMin, modalEditId);
+    const conflicto = hayEmpalme(quienAtiende, fecha, hora, duracionMin, modalEditId);
     if(conflicto){
       const mensaje = conflicto.tipo==='cita'
-        ? `${esc(doctora)} ya tiene una cita a esa hora con <strong>${esc(conflicto.detalle)}</strong>. Esta nueva cita quedará empalmada con la existente.`
-        : `${esc(doctora)} tiene un bloqueo en ese horario: <strong>${esc(conflicto.detalle)}</strong>. La cita quedará agendada sobre ese bloqueo.`;
-      mostrarConfirm({etiqueta:'⚠ Conflicto de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🗓️'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,medicoTratante,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas}));
+        ? `${esc(quienAtiende)} ya tiene una cita a esa hora con <strong>${esc(conflicto.detalle)}</strong>. Esta nueva cita quedará empalmada con la existente.`
+        : `${esc(quienAtiende)} tiene un bloqueo en ese horario: <strong>${esc(conflicto.detalle)}</strong>. La cita quedará agendada sobre ese bloqueo.`;
+      mostrarConfirm({etiqueta:'⚠ Conflicto de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🗓️'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,prestador,terminalPorServicio,quedoComoPrestador,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas}));
       return;
     }
   }
 
   // Fuera del horario configurado de la doctora ese día — aviso, no bloqueo
   // (igual que los empalmes): puede hacer falta agendar fuera de horario.
-  if((!nuevaEsSinCita || modalEditId) && estaFueraDeHorario(doctora, fecha, hora)){
+  if((!nuevaEsSinCita || modalEditId) && estaFueraDeHorario(quienAtiende, fecha, hora)){
     const dia = new Date(fecha+'T00:00:00').getDay();
-    const bloques = horarioDe(doctora, dia);
+    const bloques = horarioDe(quienAtiende, dia);
     const mensaje = (bloques && bloques.length)
-      ? `${esc(doctora)} labora de <strong>${bloques.map(b=>b.inicio+' a '+b.fin).join(', y de ')}</strong> ese día. La hora elegida queda fuera de su horario.`
-      : `${esc(doctora)} no tiene horario configurado ese día.`;
-    mostrarConfirm({etiqueta:'⚠ Fuera de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🕐'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,medicoTratante,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas}));
+      ? `${esc(quienAtiende)} labora de <strong>${bloques.map(b=>b.inicio+' a '+b.fin).join(', y de ')}</strong> ese día. La hora elegida queda fuera de su horario.`
+      : `${esc(quienAtiende)} no tiene horario configurado ese día.`;
+    mostrarConfirm({etiqueta:'⚠ Fuera de horario', titulo:'¿Agendar de todas formas?', mensaje, textoConfirmar:'Sí, agendar', icono:'🕐'}, ()=>guardarCitaFinal({fecha,hora,duracionMin,doctora,prestador,terminalPorServicio,quedoComoPrestador,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas}));
     return;
   }
 
-  guardarCitaFinal({fecha,hora,duracionMin,doctora,medicoTratante,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas});
+  guardarCitaFinal({fecha,hora,duracionMin,doctora,prestador,terminalPorServicio,quedoComoPrestador,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas});
 }
 
 async function guardarCitaFinal(datos){
-  const {fecha,hora,duracionMin,doctora,medicoTratante,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas} = datos;
+  const {fecha,hora,duracionMin,doctora,prestador,terminalPorServicio,quedoComoPrestador,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,requiereFactura,notas} = datos;
   let citaGuardada;
   if(modalEditId){
     const c = citas.find(x=>x.id===modalEditId);
-    Object.assign(c,{fecha,hora,duracionMin,doctora,medicoTratante,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,notas});
+    Object.assign(c,{fecha,hora,duracionMin,doctora,prestador,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,notas});
+    if(!c.pagado) c.terminalPorServicio = terminalPorServicio;
     if(c.pagado) c.requiereFactura = requiereFactura;
     citaGuardada = c;
-    toast('✓ Cita actualizada');
+    toast(quedoComoPrestador ? '✓ Cita actualizada · quedaste como prestador del servicio' : '✓ Cita actualizada');
   }else{
-    const nueva = {id:Date.now(),fecha,hora,duracionMin,doctora,medicoTratante,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,notas,estado:nuevaEsSinCita?'llego':'agendado',sinCita:nuevaEsSinCita,cancelada:false,noLlego:false,pagado:false,montoPagado:0,medioPago:'',montoPagado2:null,medioPago2:null,saldoPendiente:0,requiereFactura:false,facturada:false,numeroFactura:null,terminalPago:null,terminalPago2:null,terminalPorServicio:null};
+    const nueva = {id:Date.now(),fecha,hora,duracionMin,doctora,prestador,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,notas,estado:nuevaEsSinCita?'llego':'agendado',sinCita:nuevaEsSinCita,cancelada:false,noLlego:false,pagado:false,montoPagado:0,medioPago:'',montoPagado2:null,medioPago2:null,saldoPendiente:0,requiereFactura:false,facturada:false,numeroFactura:null,terminalPago:null,terminalPago2:null,terminalPorServicio:terminalPorServicio};
     citas.push(nueva);
     citaGuardada = nueva;
     toast('✓ Cita agendada');
@@ -4272,7 +4585,46 @@ function esMedioTarjeta(medio){
 // El médico tratante: de quién es el paciente en realidad, aunque lo haya
 // visto otra doctora ese día. Si no se especificó nada distinto, el
 // tratante es la misma doctora de la cita — el caso normal, casi siempre.
-function tratanteEfectivo(c){ return c.medicoTratante || c.doctora; }
+// ── Referidos: "doctora" = DUEÑO del paciente (recibe el dinero); "prestador" = quien lo atiende
+// (su agenda, su Google Calendar). prestador vacío = lo atiende el mismo dueño.
+const TERMINAL_CANOPY = 'Canopy Pediatrics';
+function esTerminalCanopy(v){ return typeof v==='string' && v.trim().toLowerCase()==='canopy pediatrics'; }
+function agendaDe(c){ return c.prestador || c.doctora; }
+function esReferida(c){ return !!c.prestador && c.prestador!==c.doctora; }
+function tratanteEfectivo(c){ return c.doctora; } // compat: el dueño del paciente
+function colorTerminal(valor, dueno){
+  if(!valor) return '';
+  if(valor==='canopy' || esTerminalCanopy(valor)) return '#2E9E6B';
+  return COLOR_DOCTORA[valor==='doctora' ? dueno : valor] || '#E84393';
+}
+function colorearTerminalSel(sel, dueno){
+  const col = colorTerminal(sel.value, dueno);
+  sel.style.borderColor = col ? col+'88' : '';
+  sel.style.color = col || '';
+  sel.style.background = col ? col+'12' : '';
+  sel.style.fontWeight = col ? '700' : '';
+}
+// ¿A qué terminal entra este servicio de la cita? (lo guardado al editar; si no, el catálogo)
+function terminalDestinoServicio(c, nombre){
+  const guardada = c.terminalPorServicio && c.terminalPorServicio[nombre];
+  if(guardada) return esTerminalCanopy(guardada) ? TERMINAL_CANOPY : guardada;
+  const cat = CATALOGO_SERVICIOS.find(x=>x.nombre===nombre);
+  return cat?.terminal_preferida==='canopy' ? TERMINAL_CANOPY : c.doctora;
+}
+function htmlReferidos(lista){
+  if(!lista.length) return '';
+  lista = [...lista].sort((a,b)=>a.hora.localeCompare(b.hora));
+  return `<div class="ref-titulo">↪ PACIENTES REFERIDOS <span>(${lista.length})</span></div>` + lista.map(c=>{
+    const col = COLOR_DOCTORA[agendaDe(c)] || 'var(--gold)';
+    return `<div class="ref-card ${c.cancelada?'cancelada':''}">
+      <div class="ref-l1"><span class="ref-hora">🕐 ${c.hora}</span><span class="ref-pac">${esc(c.paciente)}</span>${c.nombreTutor?`<span class="cita-tutor">tutor: ${esc(c.nombreTutor)}</span>`:''}</div>
+      <div class="ref-serv">${esc(c.servicio)}</div>
+      <div class="ref-l3">→ <strong>Referido a</strong> <span class="cita-doctora" style="background:${col}22;color:${col};border-color:${col}55;">${esc(agendaDe(c))}</span>
+        ${c.pagado?'<span style="font-size:10.5px;font-weight:700;color:var(--success);">✓ Pagado</span>':''}
+        <span class="ref-acc">${(!c.cancelada && !c.pagado && !c.noLlego)?`<button class="btn-sm" style="background:#EEF8F1;color:var(--success);border:1px solid #A8D8B4;" onclick="abrirPagoModal(${c.id})">💳 Procesar pago</button>`:''}
+        <button class="btn-sm btn-sm-edit" onclick="abrirModal(${c.id})">✎ Editar</button></span></div></div>`;
+  }).join('');
+}
 function horaAMinutos(hhmm){
   if(!hhmm) return 0;
   const [h,m] = hhmm.split(':').map(Number);
@@ -4287,7 +4639,7 @@ function hayEmpalme(doctora, fecha, hora, duracionMin, excluirId){
 
   const conflictoCita = activeCitas().find(c=>{
     if(c.id===excluirId) return false;
-    if(c.doctora!==doctora || c.fecha!==fecha || c.cancelada) return false;
+    if(agendaDe(c)!==doctora || c.fecha!==fecha || c.cancelada) return false;
     const cInicio = horaAMinutos(c.hora);
     const cFin = cInicio + (c.duracionMin||60);
     return inicio < cFin && cInicio < fin;
@@ -4332,25 +4684,32 @@ function abrirPagoModal(id){
   pagoModalId = id;
   const montoFinal = calcularMontoFinal(c.precio, c.descuentoPct, c.cortesia);
   document.getElementById('pago-paciente-label').textContent = c.paciente;
-  document.getElementById('pago-servicio-label').textContent = c.servicio+' · '+c.doctora;
+  document.getElementById('pago-servicio-label').textContent = c.servicio+' · '+c.doctora+(esReferida(c)?' · atiende '+c.prestador:'');
   document.getElementById('pago-monto-display').textContent = '$'+montoFinal.toLocaleString('es-MX',{minimumFractionDigits:2})+(c.descuentoPct>0&&!c.cortesia?' (con '+c.descuentoPct+'% dcto.)':'');
 
-  // Desglose por servicio — mismo precio que la doctora capturó y que ya
-  // quedó guardado en la cita, para que recepción pueda verificar antes de
-  // cobrar (no es editable desde aquí).
+  // Servicios a cobrar, resaltados: cada servicio con su monto y la terminal por donde entra
+  // (lo definió el médico al editar la cita; recepción solo verifica y cobra).
   const desgloseWrap = document.getElementById('pago-desglose-wrap');
   const desglose = c.precioDesglose;
-  if(desglose && Object.keys(desglose).length > 1 && !c.cortesia){
-    document.getElementById('pago-desglose').innerHTML = Object.entries(desglose).map(([nombre,monto])=>
-      `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--gray-100);font-size:12px;">
-        <span style="color:var(--gray-600);">${esc(nombre)}</span><span style="font-weight:700;">$${Number(monto).toLocaleString('es-MX',{minimumFractionDigits:2})}</span>
-      </div>`).join('');
+  const nombresServ = c.servicio ? c.servicio.split(' + ').map(x=>x.trim()).filter(Boolean) : [];
+  const filasServ = (desglose && Object.keys(desglose).length) ? Object.entries(desglose)
+    : (nombresServ.length===1 ? [[nombresServ[0], c.precio||0]] : []);
+  if(filasServ.length && !c.cortesia){
+    const dcto = Number(c.descuentoPct)||0;
+    document.getElementById('pago-desglose').innerHTML = '<div class="pago-serv-card">' + filasServ.map(([nombre,monto])=>{
+      const term = terminalDestinoServicio(c, nombre);
+      const col = colorTerminal(term, c.doctora);
+      const etq = esTerminalCanopy(term) ? TERMINAL_CANOPY : 'Terminal · '+term;
+      return `<div class="pago-serv-fila">
+        <span class="pago-serv-nombre">${esc(nombre)} <span class="chip-term" style="background:${col}18;color:${col};border-color:${col}66;">${esc(etq)}</span></span>
+        <span class="pago-serv-monto">$${Number(monto).toLocaleString('es-MX',{minimumFractionDigits:2})}</span>
+      </div>`;
+    }).join('') + (dcto>0 ? `<div class="pago-serv-extra">Descuento aplicado: ${dcto}%</div>` : '') + '</div>';
     desgloseWrap.style.display = '';
-    document.getElementById('pago-monto-label').textContent = 'Monto a cobrar';
   }else{
     desgloseWrap.style.display = 'none';
-    document.getElementById('pago-monto-label').textContent = 'Monto a cobrar — definido por la doctora';
   }
+  document.getElementById('pago-monto-label').textContent = 'Monto a cobrar';
   document.getElementById('pago-cortesia-aviso').style.display = c.cortesia ? 'block' : 'none';
   document.getElementById('pago-medio').value = c.medioPago && c.medioPago!=='Cortesía' ? c.medioPago : '';
   // Reinicia el estado de "dividir en dos medios" cada vez que se abre
@@ -4429,7 +4788,7 @@ function llenarSelectTerminal(selectId, doctora, sugerida){
   const sel = document.getElementById(selectId);
   const marcarDoctora = sugerida==='doctora';
   const marcarCanopy = sugerida==='canopy';
-  sel.innerHTML = `<option value="">Seleccionar...</option><option ${marcarDoctora?'selected':''}>${esc(doctora)}</option><option ${marcarCanopy?'selected':''}>CANOPY PEDIATRICS</option>`;
+  sel.innerHTML = `<option value="">Seleccionar...</option><option ${marcarDoctora?'selected':''}>${esc(doctora)}</option><option ${marcarCanopy?'selected':''}>${TERMINAL_CANOPY}</option>`;
 }
 // Aunque al dividir el pago se usa un solo selector de terminal (no uno
 // por servicio, para no complicar demasiado el formulario), sí se le
@@ -4474,17 +4833,18 @@ function renderTerminalesPorServicio(){
     const sugerida = catEntry?.terminal_preferida; // 'doctora' | 'canopy' | null
     const valorPrevio = previos[n];
     const marcarDoctora = valorPrevio ? valorPrevio===c.doctora : sugerida==='doctora';
-    const marcarCanopy = valorPrevio ? valorPrevio==='CANOPY PEDIATRICS' : sugerida==='canopy';
+    const marcarCanopy = valorPrevio ? esTerminalCanopy(valorPrevio) : sugerida==='canopy';
     return `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;${i<nombres.length-1?'border-bottom:1px solid var(--gray-100);':''}">
       <span style="font-size:12px;color:var(--gray-800);">${esc(n)}</span>
-      <select data-servicio="${esc(n)}" style="width:170px;font-size:12px;padding:5px 7px;">
+      <select data-servicio="${esc(n)}" onchange="colorearTerminalSel(this)" style="width:170px;font-size:12px;padding:5px 7px;">
         <option value="">Seleccionar...</option>
         <option ${marcarDoctora?'selected':''}>${esc(c.doctora)}</option>
-        <option ${marcarCanopy?'selected':''}>CANOPY PEDIATRICS</option>
+        <option ${marcarCanopy?'selected':''}>${TERMINAL_CANOPY}</option>
       </select>
     </div>`;
   }).join('');
+  cont.querySelectorAll('select[data-servicio]').forEach(sel=>colorearTerminalSel(sel));
 }
 function cerrarPagoModal(){
   document.getElementById('pago-modal-overlay').classList.remove('open');
@@ -4606,7 +4966,7 @@ function confirmarPago(){
     if(!medio2){ toast('⚠ Selecciona el segundo medio de pago'); return; }
     // Antes esto bloqueaba SIEMPRE el mismo medio dos veces. Ahora sí se
     // permite el mismo tipo de tarjeta dos veces (ej. un servicio a la
-    // terminal de la doctora, otro a la de CANOPY PEDIATRICS) — mientras
+    // terminal de la doctora, otro a la de Canopy Pediatrics) — mientras
     // las terminales sean distintas. Dos tipos de tarjeta DISTINTOS (ej.
     // Crédito + Débito) ya cuentan como medios distintos de por sí.
     // Cualquier otra combinación repetida (Efectivo+Efectivo,
@@ -4641,7 +5001,11 @@ async function ejecutarPago(c, datos){
   c.requiereFactura = !!requiereFactura;
   c.facturada = false;
   c.estado = 'final'; // procesar el pago (aunque quede pendiente de cobro) completa el flujo
+  // Un médico que cobra la cita de otro (guardias) queda como prestador del servicio
+  const quedaPrestador = sesionActual!=='recepcion' && sesionActual!==c.doctora && sesionActual!==c.prestador;
+  if(quedaPrestador) c.prestador = sesionActual;
   guardarLocal(c);
+  if(quedaPrestador) sincronizarGoogleCalendar(c.id, 'upsert');
 
   const montoTotal = montoTotalPagado(c);
   const medioTexto = medioPagoTexto(c);
@@ -4657,7 +5021,7 @@ async function ejecutarPago(c, datos){
           to_email: c.email,
           paciente: c.paciente,
           servicio: c.servicio,
-          doctora: c.doctora,
+          doctora: agendaDe(c),
           monto: montoTotal.toLocaleString('es-MX',{minimumFractionDigits:2}),
           medio_pago: medioTexto,
           fecha: c.fecha
@@ -4689,7 +5053,7 @@ let fechaCierre = fechaLocalISO();
 let modoCierre = 'dia'; // 'dia' | 'mes'
 let mesCierre = (()=>{ const d=new Date(); return {y:d.getFullYear(),m:d.getMonth()}; })();
 let docCardAbierto = {}; // estado de expandido/colapsado por doctora, key: 'doc_Nombre'
-let vistaCierreTab = 'doctor'; // 'doctor' o 'medio' — qué desglose se muestra en el Cierre
+let vistaCierreTab = 'doctor'; // 'doctor', 'medio' o 'medicos' — qué desglose se muestra en el Cierre
 let filtroCierreDoctora = ''; // solo aplica cuando la sesión es recepción; '' = todo el personal
 
 function toggleDocCard(key){
@@ -4706,6 +5070,10 @@ function toggleDocCard(key){
 // junto con el resto de la app (a diferencia de un PDF aparte).
 // ═══════════════════════════════════════════
 const FAQS = [
+  {cat:'General', icono:'🔄', p:'¿Cómo sé que estoy viendo lo más reciente? ¿Tengo que recargar?', r:'No hace falta recargar. La app se actualiza sola: los cambios de otros llegan en vivo, y además cada 30 segundos revisa por si algo se perdió (también al volver a la app o recuperar internet). Abajo a la derecha verás "● en vivo" en verde cuando estás al día, en amarillo mientras actualiza y en rojo si no hay conexión. Si quieres forzarlo, toca ese texto. Cuando hay una versión nueva de la app se instala sola en menos de un minuto (si tienes una ventana abierta, espera a que la cierres).'},
+  {cat:'Referidos y guardias', icono:'🤝', p:'¿Cómo agendo a un paciente que va a atender otro médico?', r:'En Nueva cita, "Dra./Dr. · dueño del paciente" es de quién es el paciente y "prestador del servicio" es quien lo atiende (por defecto es el mismo). Si eliges otro prestador, la cita aparece en la agenda de ese médico con la etiqueta "Paciente de…", y al dueño le aparece en "Pacientes referidos".'},
+  {cat:'Referidos y guardias', icono:'💳', p:'¿Puede otro médico cobrar o editar la cita de un paciente que no es suyo?', r:'Sí. En guardias cualquier médico puede editar la consulta (precios, descuento, servicios) y procesar el pago de pacientes de otros. Al guardar cambios de una cita ajena queda como prestador del servicio. Todo el cobro entra al dueño del paciente.'},
+  {cat:'Referidos y guardias', icono:'⚖️', p:'¿Dónde veo lo que me deben o lo que debo a otros médicos? ¿Quién registra los pagos?', r:'En Cierre → "🤝 Entre médicos". Por cada consulta atendida por otro médico, el dueño del paciente le debe el 50% al prestador. El saldo se arrastra hasta que se paga (los abonos se aplican a las consultas más antiguas primero). Pestaña "Pendientes" = lo que falta; "Pagos realizados" = historial. El dueño del paciente (o administración) registra cada pago, total o parcial, y al prestador le llega un aviso en la campanita. Recepción solo consulta. El filtro de periodo usa la fecha de la consulta (Pendientes) o del pago (Pagos realizados).'},
   {cat:'Agenda', icono:'📅', p:'¿Cómo agendo una cita nueva?', r:'Desde la Agenda, botón <strong>"+ Nueva cita"</strong> (arriba, junto a Hoy/Día/Semana/Mes). Llena el nombre del padre/madre o tutor, el nombre del niño/a, teléfono, doctora, servicio y horario. Si el paciente ya vino antes, en cuanto escribas su nombre te va a sugerir el teléfono y correo solos.'},
   {cat:'Agenda', icono:'📅', p:'¿Cómo marco que un paciente ya llegó?', r:'Abre la cita (clic en la tarjeta) y avanza el círculo del pipeline a "Llegó" — o usa los botones rápidos de la tarjeta. El pipeline sigue el orden: Agendado → Confirmada → Llegó → En curso → Finalizado.'},
   {cat:'Agenda', icono:'📅', p:'¿Puedo mover una cita a otro horario o cancelarla?', r:'Sí — abre la cita con "✎ Editar" para cambiar fecha/hora/doctora/servicio, o usa "⊘ Cancelar" si ya no va a venir (queda marcada como cancelada, no se borra del historial). Solo recepción (o la doctora dueña de la cita) puede hacer estos cambios.'},
@@ -4883,7 +5251,7 @@ function renderCierre(){
   const alertaPend = document.getElementById('cierre-alerta-pendientes');
   if(modoCierre==='dia'){
     let pendientes = activeCitas().filter(c=>c.fecha===fechaCierre && !c.cancelada && !c.pagado && (c.estado==='llego'||c.estado==='curso'));
-    if(!esRecepcion) pendientes = pendientes.filter(c=>c.doctora===sesionActual);
+    if(!esRecepcion) pendientes = pendientes.filter(c=>c.doctora===sesionActual || c.prestador===sesionActual);
     if(pendientes.length){
       alertaPend.style.display = 'block';
       alertaPend.innerHTML = `<div class="alerta-banner">
@@ -4947,7 +5315,15 @@ function renderCierre(){
   // Desglose — según el toggle "Por Doctor" / "Por Medio de Pago"
   document.getElementById('btn-cierre-vista-doctor').classList.toggle('active', vistaCierreTab==='doctor');
   document.getElementById('btn-cierre-vista-medio').classList.toggle('active', vistaCierreTab==='medio');
+  document.getElementById('btn-cierre-vista-medicos').classList.toggle('active', vistaCierreTab==='medicos');
   const desgloseEl = document.getElementById('cierre-desglose');
+  const navCierre = document.querySelector('#section-cierre .day-nav');
+  if(navCierre){ navCierre.style.display = vistaCierreTab==='medicos' ? 'none' : ''; if(navCierre.nextElementSibling) navCierre.nextElementSibling.style.display = vistaCierreTab==='medicos' ? 'none' : ''; }
+
+  if(vistaCierreTab==='medicos'){
+    renderCierreEntreMedicos();
+    return;
+  }
 
   if(vistaCierreTab==='medio'){
     renderCierrePorMedio(desgloseEl, del_dia, total);
@@ -4995,6 +5371,357 @@ function renderCierre(){
     </div>`;
   });
   desgloseEl.innerHTML = algunaConDatos ? docHtml : '<div class="empty-state"><div class="ico">📭</div>Sin pagos procesados para este filtro</div>';
+}
+
+
+// ═══ Liquidaciones entre médicos ═══
+// Cuando una consulta la atiende un médico distinto al dueño del paciente, todo el cobro entra al dueño
+// (su terminal, o el efectivo que recepción le entrega) y el dueño le debe al prestador el 50% de la consulta.
+// El dueño va registrando lo que paga (completo o en abonos); el saldo se calcula solo. El prestador (y
+// recepción) ven lo mismo. Los abonos se aplican a las consultas más antiguas primero.
+const PORCENTAJE_PRESTADOR = 0.5;
+const paresAbiertos = new Set();
+let pagosCargadosEn = 0;
+async function cargarPagosEntreMedicos(){
+  const { data, error } = await sb.from('pagos_entre_medicos').select('*').order('fecha',{ascending:true}).order('id',{ascending:true});
+  if(error){ console.warn('No se pudieron cargar los pagos entre médicos:', error.message); return; }
+  pagosEntreMedicos = data || [];
+  pagosCargadosEn = Date.now();
+}
+function esServicioConsulta(nombre){
+  const e = CATALOGO_SERVICIOS.find(s=>s.nombre===nombre);
+  return !!e && e.categoria==='Consultas';
+}
+// 50% de lo REALMENTE cobrado de la parte de consulta (con descuento; cortesía = 0)
+function montoLiquidacionCita(c){
+  if(c.cortesia || !c.pagado || c.cancelada) return 0;
+  const nombres = c.servicio ? c.servicio.split(' + ').map(x=>x.trim()).filter(Boolean) : [];
+  const desg = (c.precioDesglose && Object.keys(c.precioDesglose).length) ? c.precioDesglose : null;
+  let baseConsulta = 0;
+  if(desg) nombres.forEach(n=>{ if(esServicioConsulta(n)) baseConsulta += Number(desg[n])||0; });
+  else if(nombres.length && esServicioConsulta(nombres[0])) baseConsulta = Number(c.precio)||0;
+  if(baseConsulta<=0) return 0;
+  const final = calcularMontoFinal(c.precio, c.descuentoPct, c.cortesia);
+  const ratioCobrado = final>0 ? Math.min(1, montoTotalPagado(c)/final) : 1;
+  const factorDcto = 1 - (Number(c.descuentoPct)||0)/100;
+  return Math.round(baseConsulta*factorDcto*ratioCobrado*PORCENTAJE_PRESTADOR*100)/100;
+}
+function enPeriodoCierre(c){
+  if(modoCierre==='dia') return c.fecha===fechaCierre;
+  const {y,m} = mesCierre; return c.fecha.startsWith(y+'-'+String(m+1).padStart(2,'0'));
+}
+// Cuenta corriente por par (dueño → prestador): todas las consultas referidas y pagadas, con los abonos
+// aplicados de la más antigua a la más nueva.  Devuelve { 'dueño|prestador': {dueno,prestador,citas[],abonos[],saldoTotal,pagadoTotal} }
+function cuentasCorrientes(){
+  const cuentas = {};
+  activeCitas().filter(c=>c.pagado && !c.cancelada && esReferida(c) && montoLiquidacionCita(c)>0)
+    .sort((a,b)=>(a.fecha+a.hora+String(a.id)).localeCompare(b.fecha+b.hora+String(b.id)))
+    .forEach(c=>{
+      const k = c.doctora+'|'+c.prestador;
+      if(!cuentas[k]) cuentas[k] = {dueno:c.doctora, prestador:c.prestador, citas:[], abonos:[], generadoTotal:0, pagadoTotal:0, saldoTotal:0};
+      cuentas[k].citas.push(c);
+    });
+  pagosEntreMedicos.forEach(p=>{
+    const k = p.dueno+'|'+p.prestador;
+    if(!cuentas[k]) cuentas[k] = {dueno:p.dueno, prestador:p.prestador, citas:[], abonos:[], generadoTotal:0, pagadoTotal:0, saldoTotal:0};
+    cuentas[k].abonos.push(p);
+  });
+  Object.values(cuentas).forEach(cu=>{
+    let bolsa = cu.abonos.reduce((t,p)=>t+Number(p.monto||0),0);
+    cu.pagadoTotal = bolsa;
+    cu.citas.forEach(c=>{
+      const m = montoLiquidacionCita(c);
+      const aplicado = Math.min(bolsa, m);
+      c._liqPagado = Math.round(aplicado*100)/100;
+      bolsa -= aplicado;
+      cu.generadoTotal += m;
+    });
+    cu.saldoTotal = Math.max(0, Math.round((cu.generadoTotal - cu.pagadoTotal)*100)/100);
+  });
+  return cuentas;
+}
+// ── Inteligencia de tiempos ──────────────────────────────────────────────
+// Pendientes: se filtra por la FECHA DE LA CONSULTA. Pagos realizados: por la FECHA DEL PAGO.
+// El saldo se arrastra: sin filtro ("Todo el histórico") aparece todo lo que sigue sin pagarse.
+let subtabLiq = 'p';                        // 'p' Pendientes | 'g' Pagos realizados
+let filtroTiempoLiq = {preset:'todo', desde:'', hasta:''};
+const PRESETS_TIEMPO_LIQ = [['todo','Todo el histórico'],['mes','Este mes'],['mes_ant','Mes anterior'],['30d','Últimos 30 días'],['90d','Últimos 90 días'],['anio','Este año'],['custom','Rango personalizado…']];
+function rangoTiempoLiq(){
+  const p = filtroTiempoLiq.preset, hoy = new Date(), y = hoy.getFullYear(), m = hoy.getMonth();
+  if(p==='mes') return [fechaLocalISO(new Date(y,m,1)), fechaLocalISO(new Date(y,m+1,0))];
+  if(p==='mes_ant') return [fechaLocalISO(new Date(y,m-1,1)), fechaLocalISO(new Date(y,m,0))];
+  if(p==='30d' || p==='90d'){ const d = new Date(hoy); d.setDate(d.getDate()-(p==='30d'?29:89)); return [fechaLocalISO(d), fechaLocalISO(hoy)]; }
+  if(p==='anio') return [fechaLocalISO(new Date(y,0,1)), fechaLocalISO(hoy)];
+  if(p==='custom') return [filtroTiempoLiq.desde||'0000-01-01', filtroTiempoLiq.hasta||'9999-12-31'];
+  return null;
+}
+function enRangoLiq(f){ const r = rangoTiempoLiq(); const x = String(f).slice(0,10); return !r || (x>=r[0] && x<=r[1]); }
+function setSubtabLiq(t){ subtabLiq = t; renderCierre(); }
+function setPresetLiq(v){ filtroTiempoLiq.preset = v; renderCierre(); }
+function setRangoLiq(){
+  filtroTiempoLiq.desde = document.getElementById('liq-desde').value;
+  filtroTiempoLiq.hasta = document.getElementById('liq-hasta').value;
+  renderCierre();
+}
+
+const fmtM = n => '$'+Number(n).toLocaleString('es-MX',{minimumFractionDigits:2});
+const jsAttr = v => JSON.stringify(v).replace(/"/g,'&quot;');
+const miNombreLiq = () => (typeof currentUser!=='undefined' && currentUser && currentUser.nombre) || sesionActual;
+const esAdminLiq = () => !!(typeof currentUser!=='undefined' && currentUser && currentUser.esAdmin);
+// Registran pagos: el dueño del paciente (doctora) y administración. Recepción sin admin: solo consulta.
+const puedeRegistrarPagoLiq = dueno => (sesionActual!=='recepcion' && sesionActual===dueno) || esAdminLiq();
+function toggleParLiquidacion(key){ if(paresAbiertos.has(key)) paresAbiertos.delete(key); else paresAbiertos.add(key); renderCierre(); }
+
+// Pendientes y pagos visibles para esta sesión, ya filtrados por el periodo
+function datosLiquidacion(){
+  const esRec = sesionActual==='recepcion';
+  const hoyISO = fechaLocalISO();
+  const pend = [], pagos = [];
+  Object.values(cuentasCorrientes()).forEach(cu=>{
+    if(!esRec && cu.dueno!==sesionActual && cu.prestador!==sesionActual) return;
+    if(esRec && filtroCierreDoctora && cu.dueno!==filtroCierreDoctora && cu.prestador!==filtroCierreDoctora) return;
+    const items = cu.citas.map(c=>{ const m = montoLiquidacionCita(c), pg = c._liqPagado||0; return {c, m, pg, rest:Math.max(0, Math.round((m-pg)*100)/100)}; })
+      .filter(x=>x.rest>0.005 && enRangoLiq(x.c.fecha));
+    if(items.length){
+      const dias = Math.max(0, Math.floor((new Date(hoyISO+'T00:00:00') - new Date(items[0].c.fecha+'T00:00:00'))/86400000));
+      pend.push({d:cu.dueno, p:cu.prestador, cu, items, saldo:items.reduce((t,x)=>t+x.rest,0), abonado:items.reduce((t,x)=>t+x.pg,0), total:items.reduce((t,x)=>t+x.m,0), masAntigua:items[0].c.fecha, dias});
+    }
+    let acum = 0;
+    [...cu.abonos].sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))||(a.id-b.id)).forEach(ab=>{
+      acum += Number(ab.monto||0);
+      const generadoHasta = cu.citas.filter(c=>c.fecha<=String(ab.fecha).slice(0,10)).reduce((t,c)=>t+montoLiquidacionCita(c),0);
+      if(enRangoLiq(ab.fecha)) pagos.push({ab, cu, saldoDespues:Math.max(0, Math.round((generadoHasta-acum)*100)/100)});
+    });
+  });
+  pagos.sort((a,b)=>String(b.ab.fecha).localeCompare(String(a.ab.fecha))||(b.ab.id-a.ab.id));
+  return {pend, pagos};
+}
+
+function chipEdadLiq(dias){
+  if(dias>=90) return '<span class="badge" style="background:#FBE9E7;color:#C0392B;border:1px solid #F0B4AB;">+90 días</span>';
+  if(dias>=60) return '<span class="badge" style="background:#FDEBD3;color:#B85C00;border:1px solid #F0CDA0;">+60 días</span>';
+  if(dias>=30) return '<span class="badge" style="background:#FDF6EC;color:#9A6010;border:1px solid #EDD49A;">+30 días</span>';
+  return '';
+}
+function htmlCifraLiq(label, valor, color, w){
+  return `<div style="text-align:right;min-width:${w||110}px;"><div style="font-size:9.5px;font-weight:700;color:var(--gray-400);letter-spacing:.4px;">${label}</div><div style="font-size:14.5px;font-weight:800;color:${color};">${valor}</div></div>`;
+}
+function htmlBarraLiq(nPend, nPag){
+  const pill = (k,txt)=>`<button class="${subtabLiq===k?'active':''}" onclick="setSubtabLiq('${k}')">${txt}</button>`;
+  const opts = PRESETS_TIEMPO_LIQ.map(([v,t])=>`<option value="${v}" ${filtroTiempoLiq.preset===v?'selected':''}>${t}</option>`).join('');
+  const custom = filtroTiempoLiq.preset==='custom'
+    ? `<input type="date" id="liq-desde" value="${filtroTiempoLiq.desde}" onchange="setRangoLiq()" style="width:auto;"> <span style="font-size:12px;color:var(--gray-400);">a</span> <input type="date" id="liq-hasta" value="${filtroTiempoLiq.hasta}" onchange="setRangoLiq()" style="width:auto;">` : '';
+  return `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 16px;">
+    <div class="vista-toggle" style="display:inline-flex;">${pill('p',`⏳ Pendientes (${nPend})`)}${pill('g',`✓ Pagos realizados (${nPag})`)}</div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="font-size:11px;font-weight:700;color:var(--gray-400);">🕐 ${subtabLiq==='p'?'Fecha de la consulta':'Fecha del pago'}</span>
+      <select onchange="setPresetLiq(this.value)" style="min-width:170px;width:auto;">${opts}</select>${custom}</div></div>`;
+}
+function htmlBloqueLiq(tituloHtml, sub, etiqueta, valor, lineas, color){
+  return `<div style="background:#fff;border:1px solid var(--gray-200);border-radius:12px;padding:14px 18px;margin-bottom:12px;">
+    <div style="display:flex;align-items:center;gap:12px;padding-bottom:6px;border-bottom:2px solid var(--gray-100);flex-wrap:wrap;">${tituloHtml}<span style="font-size:12px;color:var(--gray-400);">${sub}</span>
+    <span style="margin-left:auto;">${htmlCifraLiq(etiqueta, valor, color, 130)}</span></div>${lineas}</div>`;
+}
+function htmlVacioLiq(txt){ return `<div style="background:#fff;border:1px dashed var(--gray-200);border-radius:12px;padding:16px 18px;margin-bottom:12px;font-size:12.5px;color:var(--gray-400);">${txt}</div>`; }
+function kpiLiq(label, valor, sub, cls, color){
+  return `<div class="kpi-card ${cls||''}" ${color?`style="border-top-color:${color};"`:''}><div class="kpi-card-label">${label}</div><div class="kpi-card-value" ${color?`style="color:${color};"`:''}>${valor}</div><div class="kpi-card-sub">${sub||''}</div></div>`;
+}
+const sumLiq = (arr, f) => arr.reduce((t,x)=>t+f(x),0);
+const titLiq = (txt, sub) => `<div style="display:flex;align-items:center;gap:10px;margin:0 0 12px;flex-wrap:wrap;"><span style="font-size:15px;font-weight:800;">${txt}</span><span style="font-size:11.5px;color:var(--gray-400);">${sub}</span></div>`;
+
+// Fila de una cuenta pendiente. direccion: 'debo' (yo soy el dueño) | 'cobrar' (yo soy el prestador) | 'general' (recepción/admin)
+function htmlFilaPendiente(x, direccion){
+  const key = x.d+'|'+x.p, abierto = paresAbiertos.has(key);
+  const otro = direccion==='cobrar' ? x.d : x.p;
+  const color = direccion==='cobrar' ? '#2E7D4F' : '#9A6010';
+  const cap = x.abonado>0.005 ? `<div style="font-size:11px;color:var(--gray-400);margin-top:2px;">Abonado ${fmtM(x.abonado)} de ${fmtM(x.total)}</div>` : '';
+  const btn = (direccion!=='cobrar' && puedeRegistrarPagoLiq(x.d))
+    ? `<button class="btn-sm" style="background:#EAF7EE;color:#2E7D4F;border:1px solid #A8D8B4;font-weight:700;" onclick="abrirPagoColegaModal(${jsAttr(x.d)},${jsAttr(x.p)})">＋ Registrar pago</button>` : '';
+  let detalle = '';
+  if(abierto){
+    const filas = x.items.map(({c,m,pg,rest})=>{
+      const consultas = c.servicio.split(' + ').map(z=>z.trim()).filter(esServicioConsulta).join(' + ');
+      return `<tr><td>${fmtDDMMYYYY(c.fecha)}</td><td><strong>${esc(c.paciente)}</strong></td><td>${esc(consultas)}</td><td>${fmtM(m)}</td>
+        <td style="font-weight:700;">${fmtM(rest)}${pg>0.005?` <span style="font-weight:500;color:var(--gray-400);font-size:11px;">(abonada ${fmtM(pg)})</span>`:''}</td></tr>`;
+    }).join('');
+    detalle = `<div style="background:#F8FAFC;border-radius:8px;padding:6px 12px 10px;margin:6px 0 8px;">
+      <div style="font-size:11px;font-weight:800;color:#9A6010;letter-spacing:.3px;margin:6px 0 4px;">CONSULTAS PENDIENTES DE PAGO · 50% PARA ${esc(x.p).toUpperCase()}</div>
+      <table class="tx-table" style="font-size:12px;"><thead><tr><th>Fecha</th><th>Paciente</th><th>Consulta</th><th>50%</th><th>Pendiente</th></tr></thead><tbody>${filas}</tbody></table></div>`;
+  }
+  return `<div style="border-bottom:1px solid var(--gray-100);padding:12px 0 4px;">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <span style="color:var(--gray-400);font-size:13px;">${direccion==='cobrar'?'←':'→'}</span>
+      <div>${bDoctora(otro)}<span style="font-size:11px;color:var(--gray-400);margin-left:8px;">${x.items.length} consulta(s)</span>${cap}
+        <div style="font-size:11px;color:var(--gray-400);margin-top:3px;">Más antigua: ${fmtDDMMYYYY(x.masAntigua)} · ${x.dias} día(s) ${chipEdadLiq(x.dias)}</div></div>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">${htmlCifraLiq('SALDO', fmtM(x.saldo), color, 110)}
+        <span style="display:flex;gap:6px;"><button class="btn-sm btn-edit" onclick="toggleParLiquidacion(${jsAttr(key)})">${abierto?'▾ Ocultar':'▸ Ver consultas'}</button>${btn}</span></span>
+    </div>${detalle}</div>`;
+}
+
+// Tabla de pagos realizados. modo: 'recibido' | 'hecho' | 'general'
+function htmlTablaPagos(titulo, sub, lista, modo, vacio){
+  const total = sumLiq(lista, r=>Number(r.ab.monto||0));
+  const cab = `<div style="display:flex;align-items:center;gap:10px;margin:0 0 10px;flex-wrap:wrap;"><span style="font-size:15px;font-weight:800;">${titulo}</span><span style="font-size:11.5px;color:var(--gray-400);">${sub}</span><span style="margin-left:auto;font-size:13px;font-weight:800;color:#2E7D4F;">Total ${fmtM(total)}</span></div>`;
+  if(!lista.length) return `<div style="margin-bottom:18px;">${cab}${htmlVacioLiq(vacio)}</div>`;
+  const colPar = modo==='recibido' ? 'Recibido de' : (modo==='hecho' ? 'Pagado a' : 'Dueño → Prestador');
+  const filas = lista.map(({ab, saldoDespues})=>{
+    const par = modo==='recibido' ? bDoctora(ab.dueno) : (modo==='hecho' ? bDoctora(ab.prestador) : `${bDoctora(ab.dueno)} <span style="color:var(--gray-400);">→</span> ${bDoctora(ab.prestador)}`);
+    const estado = saldoDespues<=0.005 ? '<span class="badge" style="background:#EAF7EE;color:#2E7D4F;border:1px solid #A8D8B4;">✓ Cuenta liquidada</span>' : `<span style="font-size:12px;color:var(--gray-600);">Saldo ${fmtM(saldoDespues)}</span>`;
+    const undo = (ab.registrado_por===miNombreLiq() || esAdminLiq()) ? `<button class="btn-sm" style="padding:2px 8px;" onclick="deshacerPagoColega(${ab.id})">↶ Deshacer</button>` : '';
+    return `<tr><td>${fmtDDMMYYYY(String(ab.fecha).slice(0,10))}</td><td>${par}</td><td style="font-weight:800;color:#2E7D4F;">${fmtM(ab.monto)}</td><td>${esc(ab.medio||'—')}</td><td style="color:var(--gray-400);">${esc(ab.nota||'')}</td><td>${estado}</td><td>${undo}</td></tr>`;
+  }).join('');
+  return `<div style="margin-bottom:18px;">${cab}<div style="background:#fff;border:1px solid var(--gray-200);border-radius:12px;padding:4px 14px 8px;overflow-x:auto;">
+    <table class="tx-table" style="font-size:12.5px;"><thead><tr><th>Fecha</th><th>${colPar}</th><th>Monto</th><th>Medio</th><th>Nota</th><th>Después del pago</th><th></th></tr></thead><tbody>${filas}</tbody></table></div></div>`;
+}
+
+function renderCierreEntreMedicos(){
+  // Si los pagos no se han refrescado en un rato, los recarga y vuelve a pintar (una sola vez)
+  if(Date.now()-pagosCargadosEn > 20000){ pagosCargadosEn = Date.now(); cargarPagosEntreMedicos().then(()=>{ if(vistaCierreTab==='medicos') renderCierre(); }); }
+  const esRec = sesionActual==='recepcion';
+  const {pend, pagos} = datosLiquidacion();
+  document.getElementById('cierre-alerta-pendientes').style.display = 'none';
+  const aviso = document.getElementById('cierre-rol-aviso');
+  if(esRec){ aviso.style.display = 'none'; }
+  else{ aviso.style.display='block'; aviso.textContent = `👩‍⚕️ Viendo como ${sesionActual} — solo se muestran tus cuentas con colegas y tus propios pacientes.`; }
+
+  const masVieja = pend.length ? pend.reduce((a,b)=>a.dias>=b.dias?a:b) : null;
+  const kpiVieja = kpiLiq('Consulta más antigua sin pagar', masVieja?`${masVieja.dias} día(s)`:'—', masVieja?('desde el '+fmtDDMMYYYY(masVieja.masAntigua)):'nada pendiente en este periodo', 'purple', masVieja&&masVieja.dias>=30?'#C0392B':null);
+  let resumen = '', cuerpo = '';
+  if(esRec){
+    const sal = sumLiq(pend,x=>x.saldo), pag = sumLiq(pagos,r=>Number(r.ab.monto||0));
+    resumen = `<div class="kpi-grid-top" style="margin-bottom:16px;">${kpiLiq('Saldo por liquidar', fmtM(sal), pend.length+' cuenta(s) con saldo', '', '#9A6010')}${kpiLiq('Pagos registrados', fmtM(pag), pagos.length+' pago(s) en el periodo', 'teal', null)}${kpiVieja}</div>`;
+    cuerpo = htmlBarraLiq(pend.length, pagos.length);
+    if(!esAdminLiq()) cuerpo += '<div style="font-size:11.5px;color:var(--gray-400);margin:-6px 0 12px;">👁 Recepción consulta esta información; los pagos los registra el dueño del paciente o administración.</div>';
+    if(subtabLiq==='p'){
+      cuerpo += titLiq('🤝 Cuentas pendientes entre médicos', 'Consultas atendidas por un médico distinto al dueño del paciente · 50% para quien atendió');
+      const duenos = [...new Set(pend.map(x=>x.d))].sort((a,b)=>a.localeCompare(b,'es'));
+      if(!duenos.length) cuerpo += htmlVacioLiq('No hay saldos pendientes en este periodo.');
+      duenos.forEach(d=>{
+        const del = pend.filter(x=>x.d===d).sort((a,b)=>a.p.localeCompare(b.p,'es'));
+        cuerpo += htmlBloqueLiq(bDoctora(d), 'debe', 'SALDO POR PAGAR', fmtM(sumLiq(del,x=>x.saldo)), del.map(x=>htmlFilaPendiente(x,'general')).join(''), '#9A6010');
+      });
+    }else{
+      cuerpo += htmlTablaPagos('✓ Pagos realizados entre médicos', 'Historial en el periodo elegido', pagos, 'general', 'No hay pagos registrados en este periodo.');
+    }
+  }else{
+    const cobrar = pend.filter(x=>x.p===sesionActual), pagar = pend.filter(x=>x.d===sesionActual);
+    if(subtabLiq==='p'){
+      resumen = `<div class="kpi-grid-top" style="margin-bottom:16px;">${kpiLiq('Por cobrar a colegas', fmtM(sumLiq(cobrar,x=>x.saldo)), cobrar.length?('de '+cobrar.length+' médico(s)'):'', 'teal', '#2E7D4F')}${kpiLiq('Por pagar a colegas', fmtM(sumLiq(pagar,x=>x.saldo)), pagar.length?('a '+pagar.length+' médico(s)'):'', '', '#9A6010')}${kpiVieja}</div>`;
+      cuerpo = htmlBarraLiq(pend.length, pagos.length);
+      cuerpo += titLiq('📥 Cuentas por cobrar a colegas', 'Lo que tus colegas te deben. Lo actualiza el dueño del paciente al registrar cada pago; tú solo lo consultas');
+      cuerpo += cobrar.length ? htmlBloqueLiq(bDoctora(sesionActual), 'le deben', 'SALDO POR COBRAR', fmtM(sumLiq(cobrar,x=>x.saldo)), [...cobrar].sort((a,b)=>a.d.localeCompare(b.d,'es')).map(x=>htmlFilaPendiente(x,'cobrar')).join(''), '#2E7D4F')
+        : htmlVacioLiq('En este periodo no te deben nada.');
+      cuerpo += '<div style="height:10px"></div>' + titLiq('📤 Cuentas por pagar a colegas', 'Lo que te falta pagar por tus pacientes que atendieron otros médicos. Aquí registras cada pago, total o parcial');
+      cuerpo += pagar.length ? htmlBloqueLiq(bDoctora(sesionActual), 'debe', 'SALDO POR PAGAR', fmtM(sumLiq(pagar,x=>x.saldo)), [...pagar].sort((a,b)=>a.p.localeCompare(b.p,'es')).map(x=>htmlFilaPendiente(x,'debo')).join(''), '#9A6010')
+        : htmlVacioLiq('No debes nada a colegas en este periodo.');
+    }else{
+      const recibidos = pagos.filter(r=>r.ab.prestador===sesionActual), hechos = pagos.filter(r=>r.ab.dueno===sesionActual);
+      resumen = `<div class="kpi-grid-top" style="margin-bottom:16px;">${kpiLiq('Recibido de colegas', fmtM(sumLiq(recibidos,r=>Number(r.ab.monto||0))), recibidos.length+' pago(s)', 'teal', '#2E7D4F')}${kpiLiq('Pagado a colegas', fmtM(sumLiq(hechos,r=>Number(r.ab.monto||0))), hechos.length+' pago(s)', '', '#9A6010')}</div>`;
+      cuerpo = htmlBarraLiq(pend.length, pagos.length);
+      cuerpo += htmlTablaPagos('✓ Pagos recibidos de colegas', 'Historial en el periodo elegido', recibidos, 'recibido', 'En este periodo no has recibido pagos de colegas.');
+      cuerpo += htmlTablaPagos('✓ Pagos que has hecho a colegas', 'Historial en el periodo elegido', hechos, 'hecho', 'En este periodo no has hecho pagos a colegas.');
+    }
+  }
+  document.getElementById('cierre-summary').innerHTML = resumen;
+  document.getElementById('cierre-desglose').innerHTML = cuerpo;
+}
+
+// ── Registrar / deshacer un pago (dueño del paciente o administración) ──
+let pagoColegaPar = null, tipoPagoColega = 'total';
+function abrirPagoColegaModal(dueno, prestador){
+  if(!puedeRegistrarPagoLiq(dueno)){ toast('🔒 Solo el dueño del paciente o administración registran los pagos'); return; }
+  const cu = cuentasCorrientes()[dueno+'|'+prestador];
+  if(!cu || cu.saldoTotal<=0.005){ toast('Esta cuenta no tiene saldo pendiente'); return; }
+  pagoColegaPar = {dueno, prestador};
+  document.getElementById('pc-dueno-badge').innerHTML = bDoctora(dueno);
+  document.getElementById('pc-prestador-badge').innerHTML = bDoctora(prestador);
+  document.getElementById('pc-nconsultas').textContent = cu.citas.length;
+  document.getElementById('pc-generado').textContent = fmtM(cu.generadoTotal);
+  document.getElementById('pc-pagado').textContent = fmtM(cu.pagadoTotal);
+  document.getElementById('pc-saldo').textContent = fmtM(cu.saldoTotal);
+  document.getElementById('pc-tipo-total-monto').textContent = fmtM(cu.saldoTotal);
+  document.getElementById('pc-fecha').value = fechaLocalISO();
+  document.getElementById('pc-medio').value = 'Efectivo';
+  document.getElementById('pc-nota').value = '';
+  cambiarTipoPagoColega('total');
+  document.getElementById('pago-colega-modal-overlay').classList.add('open');
+}
+function cerrarPagoColegaModal(){ document.getElementById('pago-colega-modal-overlay').classList.remove('open'); pagoColegaPar = null; }
+function cambiarTipoPagoColega(t){
+  tipoPagoColega = t;
+  document.getElementById('pc-tipo-total').classList.toggle('activa', t==='total');
+  document.getElementById('pc-tipo-parcial').classList.toggle('activa', t==='parcial');
+  const inp = document.getElementById('pc-monto');
+  const cu = pagoColegaPar && cuentasCorrientes()[pagoColegaPar.dueno+'|'+pagoColegaPar.prestador];
+  if(cu){
+    if(t==='total'){ inp.value = cu.saldoTotal.toFixed(2); inp.readOnly = true; inp.style.background = 'var(--gray-100)'; }
+    else{ inp.value = ''; inp.readOnly = false; inp.style.background = ''; inp.focus(); }
+  }
+  actualizarPreviewPagoColega();
+}
+function actualizarPreviewPagoColega(){
+  const cu = pagoColegaPar && cuentasCorrientes()[pagoColegaPar.dueno+'|'+pagoColegaPar.prestador];
+  if(!cu) return;
+  const monto = Math.max(0, Number(document.getElementById('pc-monto').value)||0);
+  const saldoDesp = Math.round((cu.saldoTotal-monto)*100)/100;
+  document.getElementById('pc-desp-pagado').textContent = fmtM(cu.pagadoTotal+monto);
+  document.getElementById('pc-desp-saldo').textContent = fmtM(Math.max(0,saldoDesp));
+  document.getElementById('pc-desp-estado').innerHTML =
+    monto>cu.saldoTotal+0.005 ? '<span class="badge" style="background:#FBE9E7;color:#C0392B;border:1px solid #F0B4AB;">⚠ Mayor al saldo</span>'
+    : (monto<=0 ? '' : (saldoDesp<=0.005 ? '<span class="badge" style="background:#EAF7EE;color:#2E7D4F;border:1px solid #A8D8B4;">✓ Quedará liquidado</span>'
+      : '<span class="badge" style="background:#EEF5FC;color:#1B5C9E;border:1px solid #BDD5F0;">◐ Quedará como pago parcial</span>'));
+}
+async function guardarPagoColega(){
+  if(!pagoColegaPar) return;
+  const {dueno, prestador} = pagoColegaPar;
+  if(!puedeRegistrarPagoLiq(dueno)){ toast('🔒 No tienes permiso para registrar este pago'); return; }
+  const cu = cuentasCorrientes()[dueno+'|'+prestador];
+  const monto = Math.round((Number(document.getElementById('pc-monto').value)||0)*100)/100;
+  const fecha = document.getElementById('pc-fecha').value || fechaLocalISO();
+  const medio = document.getElementById('pc-medio').value || null;
+  const nota = document.getElementById('pc-nota').value.trim() || null;
+  if(monto<=0){ toast('⚠ Escribe el monto que pagaste'); return; }
+  if(!cu || monto > cu.saldoTotal + 0.005){ toast('⚠ El monto no puede ser mayor al saldo pendiente ('+fmtM(cu?cu.saldoTotal:0)+')'); return; }
+  // registrado_por lo pone la base (quien tiene la sesión abierta) — así también sirve para administración
+  const { data, error } = await sb.from('pagos_entre_medicos').insert({dueno, prestador, monto, fecha, medio, nota}).select().single();
+  if(error){ console.error(error); toast('⚠ No se pudo registrar el pago: '+error.message); return; }
+  if(!pagosEntreMedicos.some(p=>p.id===data.id)) pagosEntreMedicos.push(data);
+  const saldoAntes = cu.saldoTotal;
+  cerrarPagoColegaModal();
+  toast(monto>=saldoAntes-0.005 ? '✓ Pago registrado — cuenta liquidada' : '✓ Pago registrado — saldo restante '+fmtM(saldoAntes-monto));
+  renderCierre();
+}
+function deshacerPagoColega(id){
+  const p = pagosEntreMedicos.find(x=>x.id===id);
+  if(!p) return;
+  mostrarConfirm({icono:'↶', titulo:'¿Deshacer este pago?', mensaje:`Se quitará el pago de <strong>${fmtM(p.monto)}</strong> de <strong>${esc(p.dueno)}</strong> a <strong>${esc(p.prestador)}</strong> del ${fmtDDMMYYYY(String(p.fecha).slice(0,10))}. El saldo de la cuenta volverá a subir.`, textoConfirmar:'Sí, deshacer'}, async ()=>{
+    const { error } = await sb.from('pagos_entre_medicos').delete().eq('id', id);
+    if(error){ console.error(error); toast('⚠ No se pudo deshacer: '+error.message); return; }
+    pagosEntreMedicos = pagosEntreMedicos.filter(x=>x.id!==id);
+    toast('✓ Pago deshecho');
+    renderCierre();
+  });
+}
+
+// ── Notificación al prestador cuando le registran un pago ──
+function textoPagoRecibido(p){
+  return `🤝 <strong>${esc(p.dueno)}</strong> te registró un pago de <strong>${fmtM(p.monto)}</strong>${p.medio?' ('+esc(p.medio)+')':''}`;
+}
+function notificarPagoRecibido(p){
+  if(!p || p.prestador!==sesionActual || sesionActual==='recepcion' || p.registrado_por===miNombreLiq()) return;
+  agregarActividad(textoPagoRecibido(p));
+  toast('🤝 '+p.dueno+' te registró un pago de '+fmtM(p.monto));
+}
+// Al abrir la app: avisa de pagos que te registraron mientras no estabas (desde la última vez, máx. 3 días si es la primera)
+function avisarPagosPendientesDeVer(){
+  if(sesionActual==='recepcion') return;
+  const clave = 'liqVistoEn_'+sesionActual;
+  let desde = new Date(Date.now()-3*86400000);
+  try{ const v = localStorage.getItem(clave); if(v) desde = new Date(v); }catch(e){}
+  pagosEntreMedicos.filter(p=>p.prestador===sesionActual && p.registrado_por!==miNombreLiq() && new Date(p.registrado_en)>desde)
+    .sort((a,b)=>new Date(a.registrado_en)-new Date(b.registrado_en))
+    .forEach(p=>agregarActividad(textoPagoRecibido(p)+` · ${fmtDDMMYYYY(String(p.fecha).slice(0,10))}`));
+  try{ localStorage.setItem(clave, new Date().toISOString()); }catch(e){}
 }
 
 function cambiarVistaCierre(v){
@@ -5095,7 +5822,7 @@ function initHistDoctoraSelect(){
 function initHistTratanteSelect(){
   const sel = document.getElementById('hist-tratante');
   if(sel.dataset.listo) return; // no repoblar en cada render, solo la primera vez
-  sel.innerHTML = `<option value="">Todos los médicos tratantes</option>` + DOCTORAS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  sel.innerHTML = `<option value="">Todos los prestadores</option>` + DOCTORAS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
   sel.dataset.listo = '1';
 }
 
@@ -5159,8 +5886,8 @@ function getFiltradoHistorico(){
 
   if(desde) filtrado = filtrado.filter(c=>c.fecha>=desde);
   if(hasta) filtrado = filtrado.filter(c=>c.fecha<=hasta);
-  if(filDoc) filtrado = filtrado.filter(c=>c.doctora===filDoc);
-  if(filTrat) filtrado = filtrado.filter(c=>tratanteEfectivo(c)===filTrat);
+  if(filDoc) filtrado = filtrado.filter(c=>c.doctora===filDoc || (!esRecepcion && c.prestador===filDoc));
+  if(filTrat) filtrado = filtrado.filter(c=>agendaDe(c)===filTrat);
   if(filServ) filtrado = filtrado.filter(c=>c.servicio && c.servicio.split(' + ').map(s=>s.trim()).includes(filServ));
   if(filPac) filtrado = filtrado.filter(c=>c.paciente.toLowerCase().includes(filPac) || (c.nombreTutor||'').toLowerCase().includes(filPac));
   if(soloFacturasPendientes) filtrado = filtrado.filter(c=>c.requiereFactura && !c.facturada);
@@ -5248,9 +5975,9 @@ function actualizarCobrarPendienteTerminal(){
     // doctora o la de CANOPY PEDIATRICS? Sigue siendo editable.
     const sugerida = sugerirTerminalCita(c);
     const sel = document.getElementById('cobrar-pendiente-terminal');
-    sel.innerHTML = `<option value="">Seleccionar...</option><option value="${esc(c.doctora)}">${esc(c.doctora)}</option><option value="CANOPY PEDIATRICS">CANOPY PEDIATRICS</option>`;
+    sel.innerHTML = `<option value="">Seleccionar...</option><option value="${esc(c.doctora)}">${esc(c.doctora)}</option><option value="${TERMINAL_CANOPY}">${TERMINAL_CANOPY}</option>`;
     if(sugerida==='doctora') sel.value = c.doctora;
-    else if(sugerida==='canopy') sel.value = 'CANOPY PEDIATRICS';
+    else if(sugerida==='canopy') sel.value = TERMINAL_CANOPY;
     wrap.style.display = '';
   }else{
     wrap.style.display = 'none';
@@ -5350,7 +6077,7 @@ function renderHistorico(){
       <td>${fmtDDMMYYYY(c.fecha)}</td>
       <td>${c.hora}</td>
       <td>${bDoctora(c.doctora)}</td>
-      <td>${c.medicoTratante ? bDoctora(c.medicoTratante) : '<span style="color:var(--gray-300);">—</span>'}</td>
+      <td>${esReferida(c) ? bDoctora(c.prestador) : '<span style="color:var(--gray-300);">—</span>'}</td>
       <td><strong>${esc(c.paciente)}</strong>${c.sinCita?' <span style="font-size:10px;color:var(--gray-400)">(sin cita)</span>':''}${c.nombreTutor?`<br><span style="font-size:10.5px;font-weight:500;color:var(--gray-400);">tutor: ${esc(c.nombreTutor)}</span>`:''}</td>
       <td>${esc(c.servicio)}</td>
       <td>${bPago(c)}</td>
@@ -5363,7 +6090,7 @@ function renderHistorico(){
       </td>
     </tr>`).join('');
   tablaEl.innerHTML = `<div style="overflow-x:auto"><table class="tx-table"><thead><tr>
-      <th>Fecha</th><th>Hora</th><th>Dra./Dr.</th><th>Médico tratante</th>
+      <th>Fecha</th><th>Hora</th><th>Dra./Dr.</th><th>Prestador</th>
       <th>Paciente</th><th>Servicio</th><th>Medio de pago</th><th>Monto</th><th>Factura</th><th>Saldo</th><th></th>
     </tr></thead>
     <tbody>${rows}</tbody>
@@ -5388,11 +6115,11 @@ function exportarExcelHistorico(){
   }
 
   // Hoja 1: Citas
-  const txData=[['Fecha','Hora','Dra./Dr.','Médico tratante','Paciente','Tutor','Servicio','Medio de pago','Terminal','Monto','Factura','Sin cita','Notas']];
+  const txData=[['Fecha','Hora','Dra./Dr. (dueño)','Prestador','Paciente','Tutor','Servicio','Medio de pago','Terminal','Monto','Factura','Sin cita','Notas']];
   [...filtrado].sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora)).forEach(c=>{
     const terminalTexto = [c.terminalPago, c.terminalPago2].filter(Boolean).join(' + ');
     const facturaTexto = !c.requiereFactura ? '' : (c.facturada ? 'Facturada'+(c.numeroFactura?' - '+c.numeroFactura:'') : 'Pendiente');
-    txData.push([fmtDDMMYYYY(c.fecha),c.hora,c.doctora,c.medicoTratante||'',c.paciente,c.nombreTutor||'',c.servicio,medioPagoTexto(c),terminalTexto,montoTotalPagado(c),facturaTexto,c.sinCita?'Sí':'No',c.notas||'']);
+    txData.push([fmtDDMMYYYY(c.fecha),c.hora,c.doctora,c.prestador||'',c.paciente,c.nombreTutor||'',c.servicio,medioPagoTexto(c),terminalTexto,montoTotalPagado(c),facturaTexto,c.sinCita?'Sí':'No',c.notas||'']);
   });
   const wsTx=XLSX.utils.aoa_to_sheet(txData);
   wsTx['!cols']=[{wch:12},{wch:8},{wch:22},{wch:22},{wch:26},{wch:26},{wch:26},{wch:16},{wch:16},{wch:12},{wch:12},{wch:10},{wch:28}];
@@ -6019,7 +6746,7 @@ async function enviarNotificacionLlego(cita){
     const resp = await fetch(NOTIFICAR_LLEGO_ENDPOINT, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({doctora: cita.doctora, paciente: cita.paciente})
+      body: JSON.stringify({doctora: agendaDe(cita), paciente: cita.paciente})
     });
     if(!resp.ok){
       // Antes esto se ignoraba en silencio — un 404/500 aquí nunca se veía
@@ -6081,7 +6808,8 @@ async function iniciarAppDespuesDeLogin(){
   DOCTORAS = (perfilesDoctoras||[]).map(p=>p.nombre).sort((a,b)=>a.localeCompare(b,'es'));
   DOCTORAS.forEach(d=>COLOR_DOCTORA[d]=colorParaDoctora(d));
 
-  await Promise.all([ cargarCitas(), cargarHorarios(), cargarBloqueos(), cargarGestiones(), cargarCatalogoServicios() ]);
+  await Promise.all([ cargarCitas(), cargarHorarios(), cargarBloqueos(), cargarGestiones(), cargarCatalogoServicios(), cargarPagosEntreMedicos() ]);
+  avisarPagosPendientesDeVer();
   // A las doctoras "de práctica" (sin perfil real, solo texto en las citas)
   // también les toca un color propio — si no, comparten el gris de
   // respaldo y no se distinguen entre sí en la vista Semana.
@@ -6089,6 +6817,7 @@ async function iniciarAppDespuesDeLogin(){
     if(!COLOR_DOCTORA[d]) COLOR_DOCTORA[d] = PALETA_DOTS[Object.keys(COLOR_DOCTORA).length % PALETA_DOTS.length];
   });
   iniciarRealtime();
+  iniciarSincronizacionGarantizada();
 
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-root').style.display = '';
