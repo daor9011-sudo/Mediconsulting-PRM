@@ -1379,7 +1379,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-28-103';
+const APP_VERSION = '2026-09-28-104';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -2781,6 +2781,11 @@ function initSelects(){
     modD.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
     modT.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
   });
+  // Si se agregó/editó una doctora, los selectores de Histórico deben
+  // reflejarla — se limpia su bandera de "ya armado" para que se
+  // reconstruyan una vez la próxima vez que se pinte Histórico.
+  delete document.getElementById('hist-doctora').dataset.listo;
+  delete document.getElementById('hist-tratante').dataset.listo;
   // El filtro de la Agenda (para VER, no para crear citas nuevas) también
   // incluye a las doctoras "de práctica" que solo existen en las citas
   // (sin perfil real) — si no, no se podría filtrar la vista por ellas.
@@ -5805,6 +5810,12 @@ function renderCierrePorMedio(el, del_dia, total){
 function initHistDoctoraSelect(){
   const sel = document.getElementById('hist-doctora');
   const esRecepcion = sesionActual === 'recepcion';
+  // renderHistorico() llama esto en cada repintado — incluyendo el que dispara
+  // el propio onchange de este select. Si se reconstruye el innerHTML cada vez,
+  // se pierde la opción recién elegida antes de que el filtro llegue a usarla.
+  // Por eso solo se arma una vez por sesión (se vuelve a armar si cambia de rol).
+  const marca = esRecepcion ? 'recepcion' : sesionActual;
+  if(sel.dataset.listo === marca) return;
   if(esRecepcion){
     sel.disabled = false;
     sel.innerHTML = `<option value="">Todas las Dras./Dres.</option>` + DOCTORAS.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');
@@ -5814,6 +5825,7 @@ function initHistDoctoraSelect(){
     sel.value = sesionActual;
     sel.disabled = true;
   }
+  sel.dataset.listo = marca;
 }
 // Filtro por médico tratante — de quién es el paciente en realidad, no
 // necesariamente quién lo agendó/vio esta vez. A diferencia del filtro de
