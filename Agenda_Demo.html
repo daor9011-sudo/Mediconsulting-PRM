@@ -1379,7 +1379,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-28-104';
+const APP_VERSION = '2026-09-28-105';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -4475,6 +4475,14 @@ async function guardarCitaFinal(datos){
     Object.assign(c,{fecha,hora,duracionMin,doctora,prestador,nombreTutor,paciente,tel,email,servicio,precio,precioDesglose,descuentoPct,cortesia,notas});
     if(!c.pagado) c.terminalPorServicio = terminalPorServicio;
     if(c.pagado) c.requiereFactura = requiereFactura;
+    // Si la cita ya se había procesado (aunque quedara pendiente o parcial), el
+    // precio pudo cambiar aquí mismo (otro servicio, otro monto...). El saldo
+    // debe reflejar SIEMPRE el precio vigente menos lo que ya se cobró — si no,
+    // se queda con el saldo viejo del precio anterior, como pasaba antes.
+    if(c.pagado){
+      const montoFinalNuevo = calcularMontoFinal(c.precio, c.descuentoPct, c.cortesia);
+      c.saldoPendiente = Math.max(0, Math.round((montoFinalNuevo - montoTotalPagado(c))*100)/100);
+    }
     citaGuardada = c;
     toast(quedoComoPrestador ? '✓ Cita actualizada · quedaste como prestador del servicio' : '✓ Cita actualizada');
   }else{
