@@ -974,8 +974,8 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 <!-- Modal selector de doctora (reemplaza el prompt numerado al agendar desde "todas las doctoras") -->
 <div class="modal-overlay modal-encima" id="selector-doctora-modal-overlay">
   <div class="modal" style="max-width:340px;">
-    <div class="modal-icon-circle">👩‍⚕️</div>
-    <h3 style="margin-bottom:14px;">¿Para cuál doctora?</h3>
+    <div class="modal-icon-circle" id="selector-doctora-icono">👩‍⚕️</div>
+    <h3 style="margin-bottom:14px;" id="selector-doctora-titulo">¿Para cuál doctora?</h3>
     <div id="selector-doctora-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
     <div class="modal-footer" style="justify-content:flex-end;margin-top:14px;">
       <button class="btn btn-outline" onclick="cerrarSelectorDoctoraModal()">Cancelar</button>
@@ -1379,7 +1379,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-28-105';
+const APP_VERSION = '2026-09-28-106';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -3315,6 +3315,32 @@ function editarNumeroFactura(id){
   });
 }
 
+// Corrige el medio de pago de una cita ya cobrada — ej. se marcó "Pendiente"
+// o se capturó mal, y hay que dejarlo como Efectivo/Transferencia/Tarjeta real.
+// Solo toca medioPago; el monto y la terminal no cambian aquí.
+const MEDIOS_PAGO_EDITABLES = ['Efectivo','Transferencia','Tarjeta Crédito','Tarjeta Débito','Amex'];
+function editarMedioPagoHistorico(id){
+  const c = citas.find(x=>x.id===id);
+  if(!c) return;
+  if(c.cortesia){ toast('Esta cita es cortesía — no tiene medio de pago que editar'); return; }
+  if(!c.pagado || (!c.medioPago && c.saldoPendiente>0)){
+    toast('Esta cita todavía no está cobrada — usa "💳 Procesar pago" en Agenda');
+    return;
+  }
+  mostrarSelectorOpciones(`Medio de pago de ${c.paciente}`, MEDIOS_PAGO_EDITABLES, (nuevoMedio)=>{
+    if(!nuevoMedio || nuevoMedio===c.medioPago) return;
+    c.medioPago = nuevoMedio;
+    // Si pasa a ser tarjeta y no tenía terminal capturada, se sugiere una por
+    // default (la doctora dueña) para no dejarla vacía — se puede ajustar
+    // luego desde "Procesar pago" si hace falta cambiarla.
+    if(esMedioTarjeta(nuevoMedio) && !c.terminalPago) c.terminalPago = c.doctora;
+    if(nuevoMedio==='Transferencia') c.transferenciaVerificada = false;
+    guardarLocal(c);
+    toast('✓ Medio de pago actualizado a '+nuevoMedio);
+    renderHistorico();
+  }, '💳');
+}
+
 function reactivarCita(id){
   const c = citas.find(x=>x.id===id);
   if(!c)return;
@@ -4568,12 +4594,19 @@ function cancelarModalPrompt(){
   promptModalCallback = null;
 }
 
-// -- Selector de doctora (reemplaza el prompt numerado) --
-function mostrarSelectorDoctora(callback){
+// -- Selector genérico de opciones (lista de botones) — lo usa tanto el
+// selector de doctora como cualquier otro campo con un set fijo de valores --
+function mostrarSelectorOpciones(titulo, opciones, callback, icono){
+  document.getElementById('selector-doctora-titulo').textContent = titulo;
+  document.getElementById('selector-doctora-icono').textContent = icono || '📋';
   const cont = document.getElementById('selector-doctora-lista');
-  cont.innerHTML = DOCTORAS.map(d=>`<button class="btn btn-outline" style="justify-content:flex-start;" onclick="elegirDoctoraSelector('${esc(d).replace(/'/g,"\\'")}')">${esc(d)}</button>`).join('');
+  cont.innerHTML = opciones.map(d=>`<button class="btn btn-outline" style="justify-content:flex-start;" onclick="elegirDoctoraSelector('${esc(d).replace(/'/g,"\\'")}')">${esc(d)}</button>`).join('');
   selectorDoctoraCallback = callback;
   document.getElementById('selector-doctora-modal-overlay').classList.add('open');
+}
+// -- Selector de doctora (reemplaza el prompt numerado) --
+function mostrarSelectorDoctora(callback){
+  mostrarSelectorOpciones('¿Para cuál doctora?', DOCTORAS, callback, '👩‍⚕️');
 }
 let selectorDoctoraCallback = null;
 function elegirDoctoraSelector(doctora){
@@ -6100,7 +6133,7 @@ function renderHistorico(){
       <td>${esReferida(c) ? bDoctora(c.prestador) : '<span style="color:var(--gray-300);">—</span>'}</td>
       <td><strong>${esc(c.paciente)}</strong>${c.sinCita?' <span style="font-size:10px;color:var(--gray-400)">(sin cita)</span>':''}${c.nombreTutor?`<br><span style="font-size:10.5px;font-weight:500;color:var(--gray-400);">tutor: ${esc(c.nombreTutor)}</span>`:''}</td>
       <td>${esc(c.servicio)}</td>
-      <td>${bPago(c)}</td>
+      <td style="cursor:pointer;" onclick="editarMedioPagoHistorico(${c.id})" title="Clic para corregir el medio de pago">${bPago(c)}</td>
       <td style="font-weight:600;color:var(--gold)">$${montoTotalPagado(c).toLocaleString('es-MX',{minimumFractionDigits:2})}</td>
       <td>${!c.requiereFactura?'—':(c.facturada?`<span class="badge" style="background:#EEF8F1;color:var(--success);border:1px solid #A8D8B4;cursor:pointer;" onclick="editarNumeroFactura(${c.id})" title="Clic para editar el folio">🧾 ${c.numeroFactura?esc(c.numeroFactura):'Facturada'}</span>`:`<button class="btn-sm" style="background:#FDF6EC;color:var(--warn);border:1px solid #EDD49A;" onclick="marcarFacturada(${c.id})">🧾 Pendiente</button>`)}</td>
       <td style="font-weight:700;${c.saldoPendiente>0?'color:var(--danger);':'color:var(--gray-400);'}">${c.saldoPendiente>0?'$'+Number(c.saldoPendiente).toLocaleString('es-MX',{minimumFractionDigits:2}):'—'}</td>
