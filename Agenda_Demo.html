@@ -1379,7 +1379,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-28-108';
+const APP_VERSION = '2026-09-28-109';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -2668,6 +2668,7 @@ let modalEditId = null;
 let vistaActual = 'semana'; // 'dia' | 'semana' | 'mes'
 let mesActual = (()=>{ const d=new Date(fechaActual+'T00:00:00'); return {y:d.getFullYear(),m:d.getMonth()}; })();
 const COLOR_DOCTORA = {}; // se asigna por nombre fijo — ver colorParaDoctora()
+COLOR_DOCTORA['Enfermería'] = '#607D8B'; // no está en DOCTORAS (sin perfil/login), se fija aparte
 // 16 colores elegidos para verse distintos entre sí incluso en franjas
 // pequeñas (puntos del calendario, borde de tarjeta).
 const PALETA_DOTS = ['#2ABFBF','#5B4FCF','#E67E22','#2E9E6B','#6D4C41','#8E44AD','#C0392B','#2980B9','#D4A017','#E84393','#7F8C8D','#B8460E','#34495E','#A83264','#556B2F','#16A085'];
@@ -2693,6 +2694,7 @@ const COLOR_DOCTORA_FIJO = {
   'Dra. Nancy Cruz': '#B8460E',
   'Dra. Olivia Ortiz': '#34495E',
   'Dra. Gabriela Chacon': '#A83264',
+  'Enfermería': '#607D8B',
 };
 function colorParaDoctora(nombre){
   if(COLOR_DOCTORA_FIJO[nombre]) return COLOR_DOCTORA_FIJO[nombre];
@@ -2781,6 +2783,11 @@ function initSelects(){
     modD.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
     modT.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
   });
+  // "Enfermería" no es una doctora con perfil/login — es la opción para
+  // pacientes sin cita que no los ve un médico (vacunas sueltas, curaciones,
+  // etc.). Solo aplica como dueño del paciente, no como prestador referido.
+  filD.innerHTML += `<option value="Enfermería">Enfermería</option>`;
+  modD.innerHTML += `<option value="Enfermería">Enfermería</option>`;
   // Si se agregó/editó una doctora, los selectores de Histórico deben
   // reflejarla — se limpia su bandera de "ya armado" para que se
   // reconstruyan una vez la próxima vez que se pinte Histórico.
@@ -4272,7 +4279,9 @@ function abrirModal(id, sinCita){
     document.getElementById('m-fecha').value = fechaActual;
     document.getElementById('m-hora').value = nuevaEsSinCita ? ahora.toTimeString().slice(0,5) : '';
     document.getElementById('m-duracion').value = 60;
-    document.getElementById('m-doctora').value = (sesionActual!=='recepcion' && DOCTORAS.includes(sesionActual)) ? sesionActual : (DOCTORAS[0]||'');
+    document.getElementById('m-doctora').value = (sesionActual!=='recepcion' && DOCTORAS.includes(sesionActual))
+      ? sesionActual
+      : (nuevaEsSinCita ? 'Enfermería' : (DOCTORAS[0]||''));
     document.getElementById('m-prestador').value = '';
     document.getElementById('m-tutor').value = '';
     document.getElementById('m-paciente').value = '';
