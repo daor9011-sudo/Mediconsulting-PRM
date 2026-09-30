@@ -1291,6 +1291,8 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     </div>
 
     <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.4px;margin:10px 0 6px;">Servicios actuales</div>
+    <input type="text" id="servicios-admin-buscar" placeholder="🔍 Buscar servicio..." oninput="renderListaServiciosAdmin()" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
+    <div id="servicios-admin-tabs" style="display:flex;gap:5px;overflow-x:auto;padding-bottom:8px;"></div>
     <div id="servicios-lista-admin" style="max-height:220px;overflow-y:auto;border:1px solid var(--gray-100);border-radius:8px;margin-bottom:16px;"></div>
 
     <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.4px;margin:10px 0 6px;" id="servicio-form-titulo">Nuevo servicio</div>
@@ -1379,7 +1381,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-28-112';
+const APP_VERSION = '2026-09-28-113';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -2573,8 +2575,12 @@ let servicioEditandoId = null;
 
 async function abrirServiciosModal(){
   resetFormularioServicio();
+  catalogoAdminTabActiva = CATEGORIAS_SERVICIO[0];
+  document.getElementById('servicios-admin-buscar').value = '';
   document.getElementById('servicios-modal-overlay').classList.add('open');
-  await renderListaServiciosAdmin();
+  document.getElementById('servicios-lista-admin').innerHTML = '<div style="padding:14px;font-size:12px;color:var(--gray-400);">Cargando...</div>';
+  await cargarCatalogoServicios();
+  renderListaServiciosAdmin();
 }
 function cerrarServiciosModal(){
   document.getElementById('servicios-modal-overlay').classList.remove('open');
@@ -2593,20 +2599,43 @@ function resetFormularioServicio(){
   document.getElementById('servicio-btn-guardar').onclick = crearServicioCatalogo;
   document.getElementById('servicio-btn-cancelar-edicion').style.display = 'none';
 }
-async function renderListaServiciosAdmin(){
+// Misma segmentación por categoría que ya usa el selector de servicios al
+// agendar (pestañas + buscador) — para encontrar algo entre ~70 servicios
+// sin tener que desplazarse por toda la lista.
+let catalogoAdminTabActiva = CATEGORIAS_SERVICIO[0];
+function cambiarTabServiciosAdmin(cat){
+  catalogoAdminTabActiva = cat;
+  document.getElementById('servicios-admin-buscar').value = '';
+  renderListaServiciosAdmin();
+}
+function renderTabsServiciosAdmin(){
+  document.getElementById('servicios-admin-tabs').innerHTML = CATEGORIAS_SERVICIO.map(cat=>
+    `<div class="serv-tab ${cat===catalogoAdminTabActiva?'activa':''}" onclick="cambiarTabServiciosAdmin('${esc(cat).replace(/'/g,"\\'")}')">${esc(cat)}</div>`
+  ).join('');
+}
+// Pinta la lista con lo que YA está en memoria (CATALOGO_SERVICIOS) — no
+// vuelve a consultar la base en cada tecla o cambio de pestaña. Quien llama
+// a esta función es responsable de haber llamado cargarCatalogoServicios()
+// antes, cuando de verdad hace falta refrescar los datos.
+function renderListaServiciosAdmin(){
   const cont = document.getElementById('servicios-lista-admin');
-  cont.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--gray-400);">Cargando...</div>';
-  await cargarCatalogoServicios();
+  renderTabsServiciosAdmin();
+  const busq = document.getElementById('servicios-admin-buscar').value.trim().toLowerCase();
+  // Con texto en el buscador, se busca en TODO el catálogo (cruza categorías);
+  // sin buscador, solo la pestaña activa — igual que al agendar una cita.
+  const base = busq ? CATALOGO_SERVICIOS.filter(s=>s.nombre.toLowerCase().includes(busq)) : CATALOGO_SERVICIOS.filter(s=>s.categoria===catalogoAdminTabActiva);
   // Orden lógico de categorías (Consultas, Servicios, Hospitalización...),
   // NO alfabético entre categorías — alfabético solo DENTRO de cada una.
-  const ordenado = [...CATALOGO_SERVICIOS].sort((a,b)=>
+  const ordenado = [...base].sort((a,b)=>
     CATEGORIAS_SERVICIO.indexOf(a.categoria) - CATEGORIAS_SERVICIO.indexOf(b.categoria)
     || a.nombre.localeCompare(b.nombre,'es')
   );
   let html = '';
   let categoriaAnterior = null;
   ordenado.forEach(s=>{
-    if(s.categoria !== categoriaAnterior){
+    // El encabezado de categoría solo hace falta cuando los resultados cruzan
+    // varias (al buscar) — dentro de una pestaña ya es obvio de cuál es.
+    if(busq && s.categoria !== categoriaAnterior){
       html += `<div style="padding:8px 12px 4px;font-size:10.5px;font-weight:800;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.4px;background:var(--gray-50);">${esc(s.categoria)}</div>`;
       categoriaAnterior = s.categoria;
     }
@@ -2656,7 +2685,8 @@ async function crearServicioCatalogo(){
   if(error){ elError.textContent = error.message; return; }
   toast('✓ Servicio agregado: '+nombre);
   resetFormularioServicio();
-  await renderListaServiciosAdmin();
+  await cargarCatalogoServicios();
+  renderListaServiciosAdmin();
 }
 async function guardarEdicionServicioCatalogo(){
   const id = servicioEditandoId;
@@ -2674,7 +2704,8 @@ async function guardarEdicionServicioCatalogo(){
   if(error){ elError.textContent = error.message; return; }
   toast('✓ Cambios guardados');
   resetFormularioServicio();
-  await renderListaServiciosAdmin();
+  await cargarCatalogoServicios();
+  renderListaServiciosAdmin();
 }
 async function guardarGestiones(){
   if(!gestiones.length) return;
