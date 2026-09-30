@@ -1379,7 +1379,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-28-106';
+const APP_VERSION = '2026-09-28-108';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -2192,7 +2192,7 @@ function citaDesdeDb(r){
     id:r.id, fecha:r.fecha, hora:(r.hora||'').slice(0,5), duracionMin:r.duracion_min,
     doctora:r.doctora, prestador:r.prestador||null, liquidada:!!r.liquidada, liquidadaEn:r.liquidada_en||null, liquidadaPor:r.liquidada_por||null, paciente:r.paciente, nombreTutor:r.nombre_tutor||'', tel:r.tel||'', email:r.email||'', servicio:r.servicio||'',
     precio:Number(r.precio)||0, precioDesglose:r.precio_desglose||null, descuentoPct:Number(r.descuento_pct)||0, cortesia:!!r.cortesia,
-    notas:r.notas||'', estado:r.estado, sinCita:!!r.sin_cita, cancelada:!!r.cancelada, noLlego:!!r.no_llego,
+    notas:r.notas||'', estado:r.estado, sinCita:!!r.sin_cita, cancelada:!!r.cancelada, canceladaPor:r.cancelada_por||null, noLlego:!!r.no_llego,
     pagado:!!r.pagado, montoPagado:Number(r.monto_pagado)||0, medioPago:r.medio_pago||'',
     montoPagado2:r.monto_pagado_2!=null?Number(r.monto_pagado_2):null, medioPago2:r.medio_pago_2||null,
     saldoPendiente:Number(r.saldo_pendiente)||0,
@@ -2214,7 +2214,7 @@ function citaHaciaDb(c){
     requiere_factura:!!c.requiereFactura, facturada:!!c.facturada, numero_factura:c.numeroFactura||null,
     terminal_pago:c.terminalPago||null, terminal_pago_2:c.terminalPago2||null, terminal_por_servicio:c.terminalPorServicio||null,
     transferencia_verificada:!!c.transferenciaVerificada,
-    deleted:!!c.deleted, deleted_at:c.deletedAt||null, deleted_by:c.deletedBy||null
+    deleted:!!c.deleted, deleted_at:c.deletedAt||null, deleted_by:c.deletedBy||null, cancelada_por:c.canceladaPor||null
   };
 }
 
@@ -2893,7 +2893,7 @@ function render(){
           </div>
           ${(c.sinCita||c.cancelada||c.noLlego||c.pagado)?`<div class="cita-badges-extra">
           ${c.sinCita?'<span style="font-size:10.5px;font-weight:700;color:#1B5C9E;background:#EEF5FC;border:1px solid #BDD5F0;padding:3px 9px;border-radius:6px;">🚶 Sin cita</span>':''}
-          ${c.cancelada?'<span class="cancel-tag">✕ Cancelada</span>':''}
+          ${c.cancelada?`<span class="cancel-tag">✕ Cancelada${c.canceladaPor?' · '+esc(c.canceladaPor):''}</span>`:''}
           ${c.noLlego?'<span style="font-size:10.5px;font-weight:700;color:#7D3C98;background:#F5EEF8;border:1px solid #D9B3D9;padding:3px 9px;border-radius:6px;">👻 No llegó</span>':''}
           ${c.pagado && montoTotalPagado(c)>0?(c.precio===null?`<span style="font-size:10.5px;font-weight:700;color:var(--success);background:#EEF8F1;border:1px solid #A8D8B4;padding:3px 9px;border-radius:6px;">✓ Procesado</span>`:(c.cortesia?`<span style="font-size:10.5px;font-weight:700;color:#7D3C98;background:#F5F0FC;border:1px solid #D2B4DE;padding:3px 9px;border-radius:6px;">🎁 Procesado — Cortesía</span>`:`<span style="font-size:10.5px;font-weight:700;color:var(--success);background:#EEF8F1;border:1px solid #A8D8B4;padding:3px 9px;border-radius:6px;">✓ Procesado — $${montoTotalPagado(c).toLocaleString('es-MX',{minimumFractionDigits:2})} (${esc(medioPagoTexto(c))})</span>`)):(c.pagado && c.cortesia?`<span style="font-size:10.5px;font-weight:700;color:#7D3C98;background:#F5F0FC;border:1px solid #D2B4DE;padding:3px 9px;border-radius:6px;">🎁 Procesado — Cortesía</span>`:'')}
           ${c.pagado && c.saldoPendiente>0?`<span style="font-size:10.5px;font-weight:700;color:#9A6010;background:#FDF6EC;border:1px solid #EDD49A;padding:3px 9px;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();abrirCobrarPendienteModal(${c.id})" title="Clic para registrar el cobro de este saldo pendiente">💰 Pago pdte. — $${Number(c.saldoPendiente).toLocaleString('es-MX',{minimumFractionDigits:2})}</span>`:''}
@@ -2902,7 +2902,7 @@ function render(){
         </div>
         <div class="cita-actions">
           ${esMia ? `
-          ${(!c.cancelada && !c.pagado && !c.noLlego)?`<button class="btn-sm" style="background:#EEF8F1;color:var(--success);border:1px solid #A8D8B4;" onclick="abrirPagoModal(${c.id})">💳 Procesar <br>pago</button>`:''}
+          ${(!c.cancelada && !c.pagado && !c.noLlego)?`${btnProcesarPago(c, true)}`:''}
           <button class="btn-sm btn-sm-edit" onclick="abrirModal(${c.id})">✎ Editar</button>
           ${!c.cancelada?`<button class="btn-sm btn-sm-cancel" onclick="cancelarCita(${c.id})">⊘ Cancelar</button>`:''}
           ${(!c.cancelada && !c.noLlego && !c.pagado)?`<button class="btn-sm" style="background:#F5EEF8;color:#7D3C98;border:1px solid #D9B3D9;" onclick="marcarNoLlego(${c.id})">👻 No <br>llegó</button>`:''}
@@ -2911,7 +2911,7 @@ function render(){
             ? `<button class="btn-sm btn-sm-del" onclick="eliminarCita(${c.id})">🗑 Eliminar</button>`
             : `<button class="btn-sm" style="background:#EEF5FC;color:#1B5C9E;border:1px solid #BDD5F0;" onclick="abrirReagendar(${c.id})">📅 Reagendar</button>`}
           ` : `
-          ${(!c.cancelada && !c.pagado && !c.noLlego)?`<button class="btn-sm" style="background:#EEF8F1;color:var(--success);border:1px solid #A8D8B4;" onclick="abrirPagoModal(${c.id})">💳 Procesar <br>pago</button>`:''}
+          ${(!c.cancelada && !c.pagado && !c.noLlego)?`${btnProcesarPago(c, true)}`:''}
           <button class="btn-sm btn-sm-edit" onclick="abrirModal(${c.id})">✎ Editar</button>
           `}
         </div>
@@ -3259,6 +3259,7 @@ function elegirDejarCancelada(){
   const c = citas.find(x=>x.id===citaCancelarId);
   if(!c)return;
   c.cancelada = true;
+  c.canceladaPor = currentUser.nombre;
   guardarLocal(c);
   cerrarModalCancelar();
   render();
@@ -3346,6 +3347,7 @@ function reactivarCita(id){
   if(!c)return;
   mostrarConfirm({titulo:'¿Reactivar esta cita?', mensaje:'Vuelve a quedar como estaba antes de cancelarla, en el mismo día y hora.', textoConfirmar:'Sí, reactivar', icono:'↺'}, ()=>{
     c.cancelada = false;
+    c.canceladaPor = null;
     guardarLocal(c);
     render();
     toast('✓ Cita reactivada — sigue igual que antes de cancelarla');
@@ -4060,7 +4062,7 @@ function eliminarCita(id){
     if(!c)return;
     c.deleted = true;
     c.deletedAt = new Date().toISOString();
-    c.deletedBy = sesionActual;
+    c.deletedBy = currentUser.nombre;
     guardarLocal(c);render();
     toast('Cita eliminada (disponible en la Papelera)');
     sincronizarGoogleCalendar(id, 'delete');
@@ -4667,7 +4669,7 @@ function htmlReferidos(lista){
       <div class="ref-serv">${esc(c.servicio)}</div>
       <div class="ref-l3">→ <strong>Referido a</strong> <span class="cita-doctora" style="background:${col}22;color:${col};border-color:${col}55;">${esc(agendaDe(c))}</span>
         ${c.pagado?'<span style="font-size:10.5px;font-weight:700;color:var(--success);">✓ Pagado</span>':''}
-        <span class="ref-acc">${(!c.cancelada && !c.pagado && !c.noLlego)?`<button class="btn-sm" style="background:#EEF8F1;color:var(--success);border:1px solid #A8D8B4;" onclick="abrirPagoModal(${c.id})">💳 Procesar pago</button>`:''}
+        <span class="ref-acc">${(!c.cancelada && !c.pagado && !c.noLlego)?`${btnProcesarPago(c, false)}`:''}
         <button class="btn-sm btn-sm-edit" onclick="abrirModal(${c.id})">✎ Editar</button></span></div></div>`;
   }).join('');
 }
@@ -4724,9 +4726,30 @@ try{
 
 let pagoModalId = null;
 
+const SERVICIO_VACUNA_SIN_ESPECIFICAR = 'Vacuna (sin especificar)';
+function tieneVacunaSinEspecificar(c){
+  return (c.servicio||'').split(' + ').map(s=>s.trim()).includes(SERVICIO_VACUNA_SIN_ESPECIFICAR);
+}
+// Botón de cobro — cambia de aspecto solo (sin bloquear el clic) cuando la
+// cita trae "Vacuna (sin especificar)"; abrirPagoModal() hace el bloqueo real.
+function btnProcesarPago(c, salto){
+  if(tieneVacunaSinEspecificar(c)){
+    return `<button class="btn-sm" style="background:#FDF6EC;color:#9A6010;border:1px solid #EDD49A;" onclick="abrirPagoModal(${c.id})" title="Falta precisar cuál vacuna fue">💉 Falta vacuna</button>`;
+  }
+  return `<button class="btn-sm" style="background:#EEF8F1;color:var(--success);border:1px solid #A8D8B4;" onclick="abrirPagoModal(${c.id})">💳 Procesar${salto?' <br>pago':' pago'}</button>`;
+}
 function abrirPagoModal(id){
   const c = citas.find(x=>x.id===id);
   if(!c)return;
+  if(tieneVacunaSinEspecificar(c)){
+    mostrarConfirm({
+      etiqueta:'💉 Falta precisar la vacuna', icono:'💉',
+      titulo:'No se puede cobrar todavía',
+      mensaje:`<strong>${esc(c.paciente)}</strong> tiene <strong>"${SERVICIO_VACUNA_SIN_ESPECIFICAR}"</strong> en sus servicios. El médico debe editar la cita y cambiarlo por la vacuna exacta que se aplicó antes de poder procesar el pago.`,
+      textoConfirmar:'✎ Editar cita ahora'
+    }, ()=>abrirModal(id));
+    return;
+  }
   pagoModalId = id;
   const montoFinal = calcularMontoFinal(c.precio, c.descuentoPct, c.cortesia);
   document.getElementById('pago-paciente-label').textContent = c.paciente;
