@@ -1379,7 +1379,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-28-110';
+const APP_VERSION = '2026-09-28-112';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -2362,12 +2362,19 @@ let CATALOGO_SERVICIOS = [];
 const CATEGORIAS_SERVICIO = ['Consultas','Servicios','Hospitalización','Cirugías o procedimientos','Otros'];
 
 async function cargarCatalogoServicios(){
-  const { data, error } = await sb.from('catalogo_servicios').select('id,categoria,nombre,precio,activo,terminal_preferida');
+  const { data, error } = await sb.from('catalogo_servicios').select('id,categoria,nombre,precio,activo,terminal_preferida,es_vacuna');
   if(error){ console.error('Error cargando catálogo de servicios:', error); CATALOGO_SERVICIOS = []; return; }
   CATALOGO_SERVICIOS = data||[];
 }
+// Enfermería no tiene consultorio ni ve pacientes — solo aplica vacunas.
+// Mientras sea la dueña del paciente, el buscador de servicios solo debe
+// ofrecer lo marcado como vacuna en el catálogo.
+function soloVacunasActivo(){
+  const sel = document.getElementById('m-doctora');
+  return !!sel && sel.value==='Enfermería';
+}
 function serviciosActivosPorCategoria(cat){
-  return CATALOGO_SERVICIOS.filter(s=>s.categoria===cat && s.activo!==false).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+  return CATALOGO_SERVICIOS.filter(s=>s.categoria===cat && s.activo!==false && (!soloVacunasActivo() || s.es_vacuna)).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
 }
 
 // -- Selector multi-servicio, usado al agendar/editar una cita --
@@ -2377,7 +2384,7 @@ let serviciosPickerSeleccionados = new Set();
 function abrirSelectorServiciosCita(){
   const actual = document.getElementById('m-servicio').value;
   serviciosPickerSeleccionados = new Set(actual ? actual.split(' + ').map(s=>s.trim()).filter(Boolean) : []);
-  serviciosPickerTabActiva = CATEGORIAS_SERVICIO[0];
+  serviciosPickerTabActiva = soloVacunasActivo() ? 'Servicios' : CATEGORIAS_SERVICIO[0];
   document.getElementById('servicios-buscar').value = '';
   renderTabsServiciosPicker();
   renderListaServiciosPicker();
@@ -2387,9 +2394,12 @@ function cerrarSelectorServiciosPicker(){
   document.getElementById('selector-servicios-modal-overlay').classList.remove('open');
 }
 function renderTabsServiciosPicker(){
-  document.getElementById('servicios-tabs').innerHTML = CATEGORIAS_SERVICIO.map(cat=>
-    `<div class="serv-tab ${cat===serviciosPickerTabActiva?'activa':''}" onclick="cambiarTabServiciosPicker('${esc(cat).replace(/'/g,"\\'")}')">${esc(cat)}</div>`
-  ).join('');
+  const soloVacunas = soloVacunasActivo();
+  document.getElementById('servicios-tabs').innerHTML = CATEGORIAS_SERVICIO.map(cat=>{
+    // Con Enfermería solo existe la pestaña "Servicios" (ahí viven las vacunas) — las demás se ven apagadas y no se pueden abrir.
+    const deshabilitada = soloVacunas && cat!=='Servicios';
+    return `<div class="serv-tab ${cat===serviciosPickerTabActiva?'activa':''}" style="${deshabilitada?'opacity:.4;cursor:not-allowed;':''}" onclick="${deshabilitada?'':`cambiarTabServiciosPicker('${esc(cat).replace(/'/g,"\\'")}')`}">${esc(cat)}</div>`;
+  }).join('');
 }
 function cambiarTabServiciosPicker(cat){
   serviciosPickerTabActiva = cat;
@@ -2398,15 +2408,18 @@ function cambiarTabServiciosPicker(cat){
 }
 function renderListaServiciosPicker(){
   const busq = document.getElementById('servicios-buscar').value.trim().toLowerCase();
+  const soloVacunas = soloVacunasActivo();
   const items = busq
-    ? CATALOGO_SERVICIOS.filter(s=>s.activo!==false && s.nombre.toLowerCase().includes(busq)).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'))
+    ? CATALOGO_SERVICIOS.filter(s=>s.activo!==false && s.nombre.toLowerCase().includes(busq) && (!soloVacunas || s.es_vacuna)).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'))
     : serviciosActivosPorCategoria(serviciosPickerTabActiva);
 
-  document.getElementById('servicios-lista-picker').innerHTML = items.map(s=>`
+  const avisoVacunas = soloVacunas ? `<div style="padding:8px 12px;font-size:11px;font-weight:700;color:#9A6010;background:#FDF6EC;border-bottom:1px solid #EDD49A;">💉 Enfermería solo aplica vacunas — el buscador solo muestra vacunas.</div>` : '';
+  const itemsHtml = items.map(s=>`
     <label class="serv-item">
       <input type="checkbox" ${serviciosPickerSeleccionados.has(s.nombre)?'checked':''} onchange="toggleServicioPicker('${esc(s.nombre).replace(/'/g,"\\'")}')">
       ${esc(s.nombre)}
     </label>`).join('') || '<div style="padding:14px;font-size:12px;color:var(--gray-400);">Sin resultados.</div>';
+  document.getElementById('servicios-lista-picker').innerHTML = avisoVacunas + itemsHtml;
 
   actualizarChipsSeleccionPicker();
 }
@@ -2445,6 +2458,13 @@ function renderChipsServicioCita(){
 // resto de la app — Cierre, Histórico, etc. no cambian, solo la captura).
 function htmlSelectTerminalForm(nombre){
   const dueno = document.getElementById('m-doctora').value || '';
+  // Enfermería no tiene terminal física propia — no hay nada que elegir,
+  // todo entra directo a Canopy Pediatrics.
+  if(dueno==='Enfermería'){
+    (window._terminalServicioValores = window._terminalServicioValores || {})[nombre] = 'canopy';
+    return `<div class="term-fila"><span class="term-etq">INGRESA POR</span>
+      <span class="chip-term" style="background:#2E9E6B18;color:#2E9E6B;border-color:#2E9E6B66;">${TERMINAL_CANOPY}</span></div>`;
+  }
   const valores = window._terminalServicioValores || {};
   const cat = CATALOGO_SERVICIOS.find(x=>x.nombre===nombre);
   const v = valores[nombre] || (cat?.terminal_preferida==='canopy' ? 'canopy' : 'doctora');
@@ -4416,6 +4436,15 @@ function onCambioDuenoCita(){
   actualizarHintPrestador();
   sugerirHoraPorHorario();
   renderChipsServicioCita(); // refresca las terminales (la del dueño cambió)
+  if(soloVacunasActivo()){
+    const servicioActual = document.getElementById('m-servicio').value.trim();
+    const nombresServ = servicioActual ? servicioActual.split(' + ').map(s=>s.trim()).filter(Boolean) : [];
+    const hayNoVacunas = nombresServ.some(n=>{
+      const cat = CATALOGO_SERVICIOS.find(x=>x.nombre===n);
+      return !cat || !cat.es_vacuna;
+    });
+    if(hayNoVacunas) toast('💉 Enfermería solo aplica vacunas — quita del servicio lo que no sea vacuna antes de guardar');
+  }
 }
 function onCambioPrestadorCita(){
   actualizarHintPrestador();
@@ -4457,6 +4486,19 @@ function guardarCita(omitirAvisoPrestador){
   if(faltantes.length){
     toast('⚠ Falta: '+faltantes.join(', '));
     return;
+  }
+  // Enfermería solo aplica vacunas — se bloquea aquí como último candado,
+  // sin importar cómo haya quedado armada la lista de servicios.
+  if(doctora==='Enfermería'){
+    const nombresServ = servicio.split(' + ').map(s=>s.trim()).filter(Boolean);
+    const noVacunas = nombresServ.filter(n=>{
+      const cat = CATALOGO_SERVICIOS.find(x=>x.nombre===n);
+      return !cat || !cat.es_vacuna;
+    });
+    if(noVacunas.length){
+      toast('⚠ Enfermería solo aplica vacunas — quita: '+noVacunas.join(', '));
+      return;
+    }
   }
 
   // Un médico que NO es ni el dueño ni el prestador y guarda cambios de una cita ajena
@@ -4646,6 +4688,12 @@ function esMedioTarjeta(medio){
 // (su agenda, su Google Calendar). prestador vacío = lo atiende el mismo dueño.
 const TERMINAL_CANOPY = 'Canopy Pediatrics';
 function esTerminalCanopy(v){ return typeof v==='string' && v.trim().toLowerCase()==='canopy pediatrics'; }
+// "Enfermería" no tiene terminal física propia (no es una doctora real) — cuando
+// es la dueña del paciente, cualquier servicio que normalmente iría "a la
+// terminal de la doctora" cae en Canopy Pediatrics en su lugar.
+function terminalEfectivaDueno(nombreDueno){
+  return nombreDueno==='Enfermería' ? TERMINAL_CANOPY : nombreDueno;
+}
 function agendaDe(c){ return c.prestador || c.doctora; }
 function esReferida(c){ return !!c.prestador && c.prestador!==c.doctora; }
 function tratanteEfectivo(c){ return c.doctora; } // compat: el dueño del paciente
@@ -4666,7 +4714,7 @@ function terminalDestinoServicio(c, nombre){
   const guardada = c.terminalPorServicio && c.terminalPorServicio[nombre];
   if(guardada) return esTerminalCanopy(guardada) ? TERMINAL_CANOPY : guardada;
   const cat = CATALOGO_SERVICIOS.find(x=>x.nombre===nombre);
-  return cat?.terminal_preferida==='canopy' ? TERMINAL_CANOPY : c.doctora;
+  return cat?.terminal_preferida==='canopy' ? TERMINAL_CANOPY : terminalEfectivaDueno(c.doctora);
 }
 function htmlReferidos(lista){
   if(!lista.length) return '';
@@ -4910,6 +4958,16 @@ function renderTerminalesPorServicio(){
     const catEntry = CATALOGO_SERVICIOS.find(s=>s.nombre===n);
     const sugerida = catEntry?.terminal_preferida; // 'doctora' | 'canopy' | null
     const valorPrevio = previos[n];
+    // Enfermería no tiene terminal propia — la única opción real es Canopy.
+    if(c.doctora==='Enfermería'){
+      return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;${i<nombres.length-1?'border-bottom:1px solid var(--gray-100);':''}">
+        <span style="font-size:12px;color:var(--gray-800);">${esc(n)}</span>
+        <select data-servicio="${esc(n)}" onchange="colorearTerminalSel(this)" style="width:170px;font-size:12px;padding:5px 7px;">
+          <option selected>${TERMINAL_CANOPY}</option>
+        </select>
+      </div>`;
+    }
     const marcarDoctora = valorPrevio ? valorPrevio===c.doctora : sugerida==='doctora';
     const marcarCanopy = valorPrevio ? esTerminalCanopy(valorPrevio) : sugerida==='canopy';
     return `
@@ -6060,9 +6118,14 @@ function actualizarCobrarPendienteTerminal(){
     // doctora o la de CANOPY PEDIATRICS? Sigue siendo editable.
     const sugerida = sugerirTerminalCita(c);
     const sel = document.getElementById('cobrar-pendiente-terminal');
-    sel.innerHTML = `<option value="">Seleccionar...</option><option value="${esc(c.doctora)}">${esc(c.doctora)}</option><option value="${TERMINAL_CANOPY}">${TERMINAL_CANOPY}</option>`;
-    if(sugerida==='doctora') sel.value = c.doctora;
-    else if(sugerida==='canopy') sel.value = TERMINAL_CANOPY;
+    // Enfermería no tiene terminal propia — solo Canopy tiene sentido aquí.
+    if(c.doctora==='Enfermería'){
+      sel.innerHTML = `<option value="${TERMINAL_CANOPY}" selected>${TERMINAL_CANOPY}</option>`;
+    }else{
+      sel.innerHTML = `<option value="">Seleccionar...</option><option value="${esc(c.doctora)}">${esc(c.doctora)}</option><option value="${TERMINAL_CANOPY}">${TERMINAL_CANOPY}</option>`;
+      if(sugerida==='doctora') sel.value = c.doctora;
+      else if(sugerida==='canopy') sel.value = TERMINAL_CANOPY;
+    }
     wrap.style.display = '';
   }else{
     wrap.style.display = 'none';
