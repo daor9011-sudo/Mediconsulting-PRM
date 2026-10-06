@@ -1472,7 +1472,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-120';
+const APP_VERSION = '2026-10-05-121';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -2514,10 +2514,10 @@ async function cargarCatalogoServicios(){
   CATALOGO_SERVICIOS = data||[];
 }
 // Enfermería no tiene consultorio ni ve pacientes — solo aplica vacunas.
-// Mientras sea la dueña del paciente, el buscador de servicios solo debe
+// Mientras sea quien APLICA (prestador), el buscador de servicios solo debe
 // ofrecer lo marcado como vacuna en el catálogo.
 function soloVacunasActivo(){
-  const sel = document.getElementById('m-doctora');
+  const sel = document.getElementById('m-prestador');
   return !!sel && sel.value==='Enfermería';
 }
 function serviciosActivosPorCategoria(cat){
@@ -2560,7 +2560,7 @@ function renderListaServiciosPicker(){
     ? CATALOGO_SERVICIOS.filter(s=>s.activo!==false && s.nombre.toLowerCase().includes(busq) && (!soloVacunas || s.es_vacuna)).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'))
     : serviciosActivosPorCategoria(serviciosPickerTabActiva);
 
-  const avisoVacunas = soloVacunas ? `<div style="padding:8px 12px;font-size:11px;font-weight:700;color:#9A6010;background:#FDF6EC;border-bottom:1px solid #EDD49A;">💉 Enfermería solo aplica vacunas — el buscador solo muestra vacunas.</div>` : '';
+  const avisoVacunas = soloVacunas ? `<div style="padding:8px 12px;font-size:11px;font-weight:700;color:#9A6010;background:#FDF6EC;border-bottom:1px solid #EDD49A;">💉 Enfermería solo aplica vacunas — el buscador solo muestra vacunas. Para otro servicio, cambia «Prestador» a la doctora.</div>` : '';
   const itemsHtml = items.map(s=>`
     <label class="serv-item">
       <input type="checkbox" ${serviciosPickerSeleccionados.has(s.nombre)?'checked':''} onchange="toggleServicioPicker('${esc(s.nombre).replace(/'/g,"\\'")}')">
@@ -2985,7 +2985,8 @@ function initSelects(){
   // después de crear/editar una doctora desde Personal, y sin este reset
   // las opciones se irían duplicando cada vez.
   filD.innerHTML = '<option value="">Todas las Dras./Dres.</option>';
-  modD.innerHTML = '';
+  // El dueño del paciente SIEMPRE debe elegirse: no hay doctora por defecto escondida.
+  modD.innerHTML = '<option value="">Seleccionar doctora…</option>';
   const modT = document.getElementById('m-prestador');
   modT.innerHTML = '<option value="">Igual que el dueño del paciente</option>';
   DOCTORAS.forEach(d=>{
@@ -2993,11 +2994,11 @@ function initSelects(){
     modD.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
     modT.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
   });
-  // "Enfermería" no es una doctora con perfil/login — es la opción para
-  // pacientes sin cita que no los ve un médico (vacunas sueltas, curaciones,
-  // etc.). Solo aplica como dueño del paciente, no como prestador referido.
+  // "Enfermería" no es una doctora con perfil/login. YA NO puede ser la dueña del paciente
+  // (así la productividad se perdía: no le contaba a ninguna doctora). Se elige como quien
+  // APLICA la vacuna (prestador): solo vacunas, y el ingreso cuenta para la doctora dueña.
   filD.innerHTML += `<option value="Enfermería">Enfermería</option>`;
-  modD.innerHTML += `<option value="Enfermería">Enfermería</option>`;
+  modT.innerHTML += `<option value="Enfermería">Enfermería (aplica vacunas)</option>`;
   // Si se agregó/editó una doctora, los selectores de Histórico deben
   // reflejarla — se limpia su bandera de "ya armado" para que se
   // reconstruyan una vez la próxima vez que se pinte Histórico.
@@ -4793,10 +4794,11 @@ function abrirModal(id, sinCita){
     document.getElementById('m-fecha').value = fechaActual;
     document.getElementById('m-hora').value = nuevaEsSinCita ? ahora.toTimeString().slice(0,5) : '';
     document.getElementById('m-duracion').value = 60;
+    // Sin cita desde recepción: la dueña NO se adivina (debe asignarse); quien aplica es Enfermería.
     document.getElementById('m-doctora').value = (sesionActual!=='recepcion' && DOCTORAS.includes(sesionActual))
       ? sesionActual
-      : (nuevaEsSinCita ? 'Enfermería' : (DOCTORAS[0]||''));
-    document.getElementById('m-prestador').value = '';
+      : (nuevaEsSinCita ? '' : (DOCTORAS[0]||''));
+    document.getElementById('m-prestador').value = (nuevaEsSinCita && sesionActual==='recepcion') ? 'Enfermería' : '';
     document.getElementById('m-tutor').value = '';
     document.getElementById('m-paciente').value = '';
     document.getElementById('m-tel').value = '';
@@ -4815,6 +4817,7 @@ function abrirModal(id, sinCita){
     document.getElementById('btn-cancelar-cita-modal').style.display = 'none';
   }
   toggleCortesiaForm();
+  actualizarHintPrestador();   // el texto de ayuda de "Prestador" debe verse desde que abre el formulario
   sugerirHoraPorHorario();
   document.getElementById('modal-overlay').classList.add('open');
 }
@@ -4895,7 +4898,7 @@ function sugerirHoraPorHorario(){
   const doctora = prestadorFormEfectivo();
   const fecha = document.getElementById('m-fecha').value;
   const hint = document.getElementById('hint-hora');
-  if(!doctora || !fecha){ hint.textContent = ''; return; }
+  if(!doctora || !fecha || doctora==='Enfermería'){ hint.textContent = ''; return; }
   const dia = new Date(fecha+'T00:00:00').getDay();
   const bloques = horarioDe(doctora, dia);
   const horaInput = document.getElementById('m-hora');
@@ -4924,12 +4927,18 @@ function actualizarHintPrestador(){
   const dueno = document.getElementById('m-doctora').value;
   const pr = document.getElementById('m-prestador').value;
   document.getElementById('m-prestador-hint').textContent =
-    (pr && pr!==dueno) ? '🔀 Paciente referido: la cita aparece en la agenda de '+pr+'.' : '';
+    pr==='Enfermería' ? '💉 Aplica Enfermería (solo vacunas). La cita queda en la agenda de Enfermería y cuenta en la productividad de '+(dueno || 'la doctora dueña')+'.'
+    : (pr && pr!==dueno) ? '🔀 Paciente referido: la cita aparece en la agenda de '+pr+'.' : '';
 }
 function onCambioDuenoCita(){
   actualizarHintPrestador();
   sugerirHoraPorHorario();
   renderChipsServicioCita(); // refresca las terminales (la del dueño cambió)
+}
+function onCambioPrestadorCita(){
+  actualizarHintPrestador();
+  sugerirHoraPorHorario();
+  renderChipsServicioCita();
   if(soloVacunasActivo()){
     const servicioActual = document.getElementById('m-servicio').value.trim();
     const nombresServ = servicioActual ? servicioActual.split(' + ').map(s=>s.trim()).filter(Boolean) : [];
@@ -4937,12 +4946,8 @@ function onCambioDuenoCita(){
       const cat = CATALOGO_SERVICIOS.find(x=>x.nombre===n);
       return !cat || !cat.es_vacuna;
     });
-    if(hayNoVacunas) toast('💉 Enfermería solo aplica vacunas — quita del servicio lo que no sea vacuna antes de guardar');
+    if(hayNoVacunas) toast('💉 Enfermería solo aplica vacunas — quita del servicio lo que no sea vacuna, o cambia «Prestador» a la doctora');
   }
-}
-function onCambioPrestadorCita(){
-  actualizarHintPrestador();
-  sugerirHoraPorHorario();
 }
 function leerTerminalesServicioForm(dueno){
   const res = {};
@@ -4974,7 +4979,7 @@ function guardarCita(omitirAvisoPrestador){
   const faltantes = [];
   if(!fecha){document.getElementById('fg-fecha').classList.add('field-error');faltantes.push('Fecha');}
   if(!hora){document.getElementById('fg-hora').classList.add('field-error');faltantes.push('Hora');}
-  if(!doctora){document.getElementById('fg-doctora').classList.add('field-error');faltantes.push('Dra./Dr.');}
+  if(!doctora){document.getElementById('fg-doctora').classList.add('field-error');faltantes.push('Dra./Dr. dueño del paciente');}
   if(!paciente){document.getElementById('fg-paciente').classList.add('field-error');faltantes.push('Paciente');}
   if(!servicio){document.getElementById('fg-servicio').classList.add('field-error');faltantes.push('Servicio');}
   if(faltantes.length){
@@ -4983,14 +4988,14 @@ function guardarCita(omitirAvisoPrestador){
   }
   // Enfermería solo aplica vacunas — se bloquea aquí como último candado,
   // sin importar cómo haya quedado armada la lista de servicios.
-  if(doctora==='Enfermería'){
+  if(prestadorSel==='Enfermería'){
     const nombresServ = servicio.split(' + ').map(s=>s.trim()).filter(Boolean);
     const noVacunas = nombresServ.filter(n=>{
       const cat = CATALOGO_SERVICIOS.find(x=>x.nombre===n);
       return !cat || !cat.es_vacuna;
     });
     if(noVacunas.length){
-      toast('⚠ Enfermería solo aplica vacunas — quita: '+noVacunas.join(', '));
+      toast('⚠ Enfermería solo aplica vacunas — quita: '+noVacunas.join(', ')+' (o cambia «Prestador» a la doctora)');
       return;
     }
   }
@@ -5014,7 +5019,7 @@ function guardarCita(omitirAvisoPrestador){
 
   // Detección de empalmes: misma agenda (quien atiende), mismo día, horario que se cruza
   // con otra cita activa o con un bloqueo de agenda de esa persona.
-  if(!nuevaEsSinCita || modalEditId){ // los pacientes sin cita entran directo, no pasan por agenda futura
+  if((!nuevaEsSinCita || modalEditId) && quienAtiende!=='Enfermería'){ // los pacientes sin cita entran directo, no pasan por agenda futura
     const conflicto = hayEmpalme(quienAtiende, fecha, hora, duracionMin, modalEditId);
     if(conflicto){
       const mensaje = conflicto.tipo==='cita'
@@ -5027,7 +5032,7 @@ function guardarCita(omitirAvisoPrestador){
 
   // Fuera del horario configurado de la doctora ese día — aviso, no bloqueo
   // (igual que los empalmes): puede hacer falta agendar fuera de horario.
-  if((!nuevaEsSinCita || modalEditId) && estaFueraDeHorario(quienAtiende, fecha, hora)){
+  if((!nuevaEsSinCita || modalEditId) && quienAtiende!=='Enfermería' && estaFueraDeHorario(quienAtiende, fecha, hora)){
     const dia = new Date(fecha+'T00:00:00').getDay();
     const bloques = horarioDe(quienAtiende, dia);
     const mensaje = (bloques && bloques.length)
@@ -6048,6 +6053,7 @@ function montoFijoPrestadorServicio(nombre){
 // — las consultas, como siempre, solo liquidan una vez que se cobran).
 function montoLiquidacionCita(c){
   if(c.cortesia || c.cancelada) return {monto:0, sinPago:false};
+  if(c.prestador==='Enfermería') return {monto:0, sinPago:false}; // no es una doctora: no se le debe reparto
   const nombres = c.servicio ? c.servicio.split(' + ').map(x=>x.trim()).filter(Boolean) : [];
   const desg = (c.precioDesglose && Object.keys(c.precioDesglose).length) ? c.precioDesglose : null;
   const sumaPorCategoria = (test) => {
