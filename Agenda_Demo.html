@@ -1252,7 +1252,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <label>Google Calendar</label>
       <div id="personal-google-status" style="font-size:12.5px;color:var(--gray-400);margin-bottom:6px;">Revisando...</div>
       <button type="button" class="btn btn-outline" id="personal-google-btn" onclick="conectarGoogleCalendarPersonal()" style="font-size:12px;">🔗 Conectar Google Calendar</button>
-      <div style="font-size:11px;color:var(--gray-400);margin-top:5px;">El enlace de conexión vale 24 horas: la doctora debe abrirlo y aceptar dentro de ese tiempo.</div>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:5px;">Se te muestra un enlace para mandárselo a la doctora (vale 24 horas). No lo abras tú: si lo abres, lo más probable es que a ella le marque error.</div>
     </div>
     <div id="personal-error" style="color:var(--danger);font-size:12px;margin-bottom:8px;"></div>
     <div class="modal-footer">
@@ -1357,23 +1357,98 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 
 <!-- Modal de Historial de actividad (audit_log) — solo visible para admins -->
 <div class="modal-overlay" id="auditoria-modal-overlay">
-  <div class="modal" style="max-width:560px;">
+  <div class="modal" style="max-width:820px;">
     <h3>📋 Historial de actividad</h3>
-    <div style="font-size:11.5px;color:var(--gray-400);margin-bottom:14px;line-height:1.5;">
-      Registro de acciones sensibles: borrados definitivos, cuentas creadas o editadas, y contraseñas restablecidas por un admin.
+    <div class="vista-toggle" id="aud-tabs" style="margin:0 0 12px;">
+      <button id="aud-tab-actividad" class="active" onclick="cambiarTabAuditoria('actividad')">🕒 Actividad de usuarios</button>
+      <button id="aud-tab-seguridad" onclick="cambiarTabAuditoria('seguridad')">🔐 Cuentas y contraseñas</button>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;">
-      <select id="auditoria-filtro-tabla" onchange="renderListaAuditoria()" style="flex:1;">
-        <option value="">Todas las acciones</option>
-        <option value="citas">Citas eliminadas</option>
-        <option value="perfiles">Accesos (creados/editados)</option>
-        <option value="auth.users">Contraseñas restablecidas</option>
-      </select>
-      <button class="btn btn-outline" style="font-size:11px;padding:8px 12px;" onclick="renderListaAuditoria()">↻ Actualizar</button>
+
+    <div id="aud-panel-actividad">
+      <div style="font-size:11.5px;color:var(--gray-400);margin-bottom:12px;line-height:1.5;">
+        Todo lo que se hace en la plataforma: quién, qué, cuándo y desde qué dispositivo. Se registra desde la base de datos, así que no se puede editar ni borrar.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <select id="aud-f-usuario" onchange="cargarActividad(true)" style="flex:1;min-width:150px;"><option value="">Todos los usuarios</option></select>
+        <select id="aud-f-tipo" onchange="cargarActividad(true)" style="flex:1;min-width:150px;">
+          <option value="">Todo tipo de acción</option>
+          <option value="citas">Citas (crear, editar, cancelar…)</option>
+          <option value="pagos">Pagos y cobros</option>
+          <option value="agenda">Agenda (bloqueos y horarios)</option>
+          <option value="catalogo">Catálogo de servicios</option>
+          <option value="usuarios">Usuarios y permisos</option>
+          <option value="google">Google Calendar</option>
+          <option value="accesos">Accesos a la app</option>
+          <option value="seguimientos">Seguimientos (PRM)</option>
+        </select>
+        <select id="aud-f-periodo" onchange="cargarActividad(true)" style="flex:1;min-width:130px;">
+          <option value="hoy">Hoy</option>
+          <option value="7" selected>Últimos 7 días</option>
+          <option value="30">Últimos 30 días</option>
+          <option value="">Todo el historial</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <input type="text" id="aud-f-buscar" placeholder="🔍 Buscar paciente, doctora, acción..." oninput="buscarActividadDebounce()" style="flex:1;">
+        <button class="btn btn-outline" style="font-size:11px;padding:8px 12px;" onclick="cargarActividad(true)" title="Actualizar">↻</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:8px 12px;" onclick="exportarActividad()">↓ Excel</button>
+      </div>
+      <div id="aud-act-lista" style="max-height:440px;overflow-y:auto;border:1px solid var(--gray-100);border-radius:8px;"></div>
+      <div id="aud-act-pie" style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--gray-400);margin-top:8px;min-height:30px;"></div>
     </div>
-    <div id="auditoria-lista" style="max-height:380px;overflow-y:auto;border:1px solid var(--gray-100);border-radius:8px;"></div>
+
+    <div id="aud-panel-seguridad" style="display:none;">
+      <div style="font-size:11.5px;color:var(--gray-400);margin-bottom:14px;line-height:1.5;">
+        Registro de acciones sensibles: borrados definitivos, cuentas creadas o editadas, y contraseñas restablecidas por un admin.
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <select id="auditoria-filtro-tabla" onchange="renderListaAuditoria()" style="flex:1;">
+          <option value="">Todas las acciones</option>
+          <option value="citas">Citas eliminadas</option>
+          <option value="perfiles">Accesos (creados/editados)</option>
+          <option value="auth.users">Contraseñas restablecidas</option>
+        </select>
+        <button class="btn btn-outline" style="font-size:11px;padding:8px 12px;" onclick="renderListaAuditoria()">↻ Actualizar</button>
+      </div>
+      <div id="auditoria-lista" style="max-height:440px;overflow-y:auto;border:1px solid var(--gray-100);border-radius:8px;"></div>
+    </div>
+
     <div class="modal-footer" style="justify-content:flex-end;">
       <button class="btn btn-outline" onclick="cerrarAuditoriaModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Enlace para que una doctora conecte su Google Calendar -->
+<div class="modal-overlay modal-encima" id="gcal-enlace-modal-overlay">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-icon-circle">🔗</div>
+    <h3>Enlace para conectar Google Calendar</h3>
+    <div style="font-size:12.5px;color:var(--gray-600);line-height:1.55;margin-bottom:10px;">
+      Mándale este enlace a <strong id="gcal-enlace-doctora"></strong>. Ella lo abre <strong>desde su propia cuenta de Google</strong> y acepta el permiso. Vale 24 horas.
+    </div>
+    <div style="background:#FDF6EC;border:1px solid #EDD49A;color:#9A6010;border-radius:8px;padding:9px 12px;font-size:11.5px;line-height:1.5;margin-bottom:10px;">
+      ⚠ <strong>No lo abras tú.</strong> Cuando alguien lo abre, Google lo cambia por un enlace ligado a esa sesión, y lo más probable es que a la doctora le marque un error. Cópialo desde aquí, no desde la barra del navegador.
+    </div>
+    <textarea id="gcal-enlace-texto" readonly rows="4" onclick="this.select()" style="width:100%;box-sizing:border-box;font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;resize:none;"></textarea>
+    <div class="modal-footer" style="justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px;">
+      <button class="btn btn-outline" onclick="cerrarModalEnlaceGoogle()">Cerrar</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-outline" onclick="compartirEnlaceGoogleWhatsApp()">💬 WhatsApp</button>
+        <button class="btn btn-gold" onclick="copiarEnlaceGoogle()">📋 Copiar enlace</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Actividad de una cita o de un paciente (solo administración) -->
+<div class="modal-overlay modal-encima" id="bitacora-registro-modal-overlay">
+  <div class="modal" style="max-width:640px;">
+    <h3 id="bitacora-registro-titulo">🕒 Actividad</h3>
+    <div id="bitacora-registro-resumen" style="font-size:12px;color:var(--gray-600);margin-bottom:10px;line-height:1.55;"></div>
+    <div id="bitacora-registro-lista" style="max-height:420px;overflow-y:auto;border:1px solid var(--gray-100);border-radius:8px;"></div>
+    <div class="modal-footer" style="justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="cerrarBitacoraRegistro()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -1397,7 +1472,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-117';
+const APP_VERSION = '2026-10-05-120';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -1462,11 +1537,18 @@ function mostrarBannerActualizacion(){
   b.textContent = '🔄 Hay una actualización lista — se aplicará sola en cuanto termines esto';
   document.body.appendChild(b);
 }
+let revisionVersionPausadaHasta = 0;
 async function revisarVersionNueva(){
   if(versionNuevaPendiente){
     if(!hayModalAbierto()) window.location.href = location.pathname + '?_r=' + Date.now();
     return;
   }
+  // Solo tiene sentido cuando la app se sirve desde una dirección web real. En una copia local
+  // (archivo), una vista previa incrustada en otra página o similar no hay servidor al cual
+  // preguntarle — se omite sin ruido (así tampoco se generan peticiones fallidas en la consola).
+  if(!/^https?:$/.test(location.protocol) || location.origin === 'null') return;
+  if(window.self !== window.top) return;
+  if(Date.now() < revisionVersionPausadaHasta) return;
   try{
     // "cache:no-store" solo le pide al NAVEGADOR que no use su caché local —
     // eso no evita que el CDN de Vercel entregue una copia vieja. Se
@@ -1476,7 +1558,15 @@ async function revisarVersionNueva(){
       cache:'no-store',
       headers:{ 'Cache-Control':'no-cache, no-store, must-revalidate', 'Pragma':'no-cache' }
     });
-    if(!resp.ok){ console.warn('📡 Revisión de versión: respuesta no OK', resp.status); return; }
+    if(!resp.ok){
+      // 404/403/405/410: esa dirección no sirve la app (vista previa, copia en otro lugar) — no hay nada
+      // que comparar, así que se pausa 10 min para no insistir cada minuto. Otros errores (5xx, red) son
+      // temporales y se reintentan en la siguiente vuelta. Nada de esto es un error de la app: va a nivel
+      // "debug" para que no aparezca como advertencia en la consola.
+      if([403,404,405,410].includes(resp.status)) revisionVersionPausadaHasta = Date.now() + 10*60*1000;
+      console.debug('📡 Revisión de versión: sin respuesta útil', resp.status);
+      return;
+    }
     const html = await resp.text();
     const m = html.match(/const APP_VERSION\s*=\s*'([^']+)'/);
     console.log('📡 Revisión de versión — actual:', APP_VERSION, '| servidor:', m ? m[1] : '(no encontrada)');
@@ -1488,7 +1578,7 @@ async function revisarVersionNueva(){
         mostrarBannerActualizacion();
       }
     }
-  }catch(e){ console.warn('📡 Revisión de versión falló:', e); }
+  }catch(e){ console.debug('📡 Revisión de versión: sin conexión por ahora', e); }
 }
 setInterval(revisarVersionNueva, 60000); // cada minuto
 setTimeout(revisarVersionNueva, 15000); // primera revisión rápida, no hasta 2 minutos después
@@ -2080,6 +2170,7 @@ async function intentarLogin(){
   try{
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if(error){ mostrarErrorLogin('Correo o contraseña incorrectos.'); return; }
+    window._accesoExplicito = true;   // entró escribiendo su contraseña (no es una sesión que ya estaba abierta)
 
     // ¿El usuario necesita verificar un segundo factor (MFA)?
     const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -2155,6 +2246,7 @@ async function completarLoginYArrancarApp(){
 
 function cerrarSesionApp(){
   mostrarConfirm({titulo:'¿Cerrar sesión?', mensaje:'Vas a salir de la app. Necesitarás iniciar sesión de nuevo para volver a entrar.', textoConfirmar:'Cerrar sesión', icono:'🚪'}, async ()=>{
+    try{ await sb.rpc('registrar_evento', { p_evento: 'logout' }); }catch(e){ /* sin registro, pero se sale igual */ }
     detenerRealtime();
     await sb.auth.signOut();
     location.reload();
@@ -3699,6 +3791,33 @@ async function actualizarEstadoGoogleCalendarPersonal(nombreDoctora){
     btnEl.textContent = '🔗 Conectar Google Calendar';
   }
 }
+let gcalEnlaceActual = { doctora:'', url:'' };
+function abrirModalEnlaceGoogle(doctora, url){
+  gcalEnlaceActual = { doctora, url };
+  document.getElementById('gcal-enlace-doctora').textContent = doctora;
+  document.getElementById('gcal-enlace-texto').value = url;
+  document.getElementById('gcal-enlace-modal-overlay').classList.add('open');
+}
+function cerrarModalEnlaceGoogle(){ document.getElementById('gcal-enlace-modal-overlay').classList.remove('open'); }
+async function copiarEnlaceGoogle(){
+  const url = gcalEnlaceActual.url;
+  const aviso = '✓ Enlace copiado — pégalo en el WhatsApp de la doctora';
+  try{
+    await navigator.clipboard.writeText(url);
+    toast(aviso);
+  }catch(e){
+    const ta = document.getElementById('gcal-enlace-texto');
+    ta.focus(); ta.select();
+    let ok = false;
+    try{ ok = document.execCommand('copy'); }catch(_e){}
+    toast(ok ? aviso : 'Selecciona el texto del recuadro y cópialo (Ctrl/Cmd + C)');
+  }
+}
+function compartirEnlaceGoogleWhatsApp(){
+  const { doctora, url } = gcalEnlaceActual;
+  const texto = `Hola ${doctora}, para conectar tu Google Calendar a la Agenda de CANOPY abre este enlace con tu cuenta de Google y acepta el permiso (vale 24 horas):\n\n${url}`;
+  window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank');
+}
 async function conectarGoogleCalendarPersonal(){
   const nombreDoctora = personalEditandoDoctoraNombre;
   if(!nombreDoctora) return;
@@ -3719,8 +3838,10 @@ async function conectarGoogleCalendarPersonal(){
     if(sesionActual === nombreDoctora){
       window.location.href = resultado.url;
     }else{
-      window.open(resultado.url, '_blank');
-      toast('Se abrió una pestaña nueva — compártele ese link a '+nombreDoctora+' si prefieres que ella misma acepte el permiso desde su cuenta.');
+      // NO se abre Google aquí: al abrirlo, Google lo cambia por un enlace ligado a esa sesión, y el que se
+      // copia de la barra del navegador ya no le sirve a otra persona (le sale "400. That's an error").
+      // Se muestra el enlace original para copiarlo o mandarlo por WhatsApp tal cual.
+      abrirModalEnlaceGoogle(nombreDoctora, resultado.url);
     }
   }catch(e){
     toast('⚠ Error de conexión: '+e.message);
@@ -3839,9 +3960,22 @@ async function guardarEdicionPersonal(){
 // ═══════════════════════════════════════════
 function abrirAuditoriaModal(){
   if(!currentUser.esAdmin && !currentUser.puedeServicios){ toast('⚠ No tienes permiso para ver el historial'); return; }
+  const admin = !!currentUser.esAdmin;
   document.getElementById('auditoria-filtro-tabla').value = '';
   document.getElementById('auditoria-modal-overlay').classList.add('open');
-  renderListaAuditoria();
+  // La actividad de usuarios solo la ve administración (lo exige también la base de datos);
+  // quien solo puede editar servicios sigue viendo únicamente "Cuentas y contraseñas".
+  document.getElementById('aud-tabs').style.display = admin ? '' : 'none';
+  if(admin){ prepararFiltrosActividad(); cambiarTabAuditoria('actividad'); }
+  else cambiarTabAuditoria('seguridad');
+}
+function cambiarTabAuditoria(tab){
+  const act = tab === 'actividad';
+  document.getElementById('aud-panel-actividad').style.display = act ? '' : 'none';
+  document.getElementById('aud-panel-seguridad').style.display = act ? 'none' : '';
+  document.getElementById('aud-tab-actividad').classList.toggle('active', act);
+  document.getElementById('aud-tab-seguridad').classList.toggle('active', !act);
+  if(act) cargarActividad(true); else renderListaAuditoria();
 }
 function cerrarAuditoriaModal(){
   document.getElementById('auditoria-modal-overlay').classList.remove('open');
@@ -3882,6 +4016,249 @@ async function renderListaAuditoria(){
       <div style="font-size:10.5px;color:var(--gray-400);margin-top:2px;">${fechaTexto} · por <strong>${esc(entry.hecha_por||'—')}</strong></div>
     </div>`;
   }).join('');
+}
+
+
+// ═══════════════════════════════════════════
+// TRAZABILIDAD — quién hizo qué, cuándo y desde dónde
+// La bitácora la escribe la BASE DE DATOS (no esta pantalla) y es de solo escritura;
+// aquí únicamente se consulta, y solo administración puede verla.
+// ═══════════════════════════════════════════
+const BIT_ETIQUETAS = {
+  fecha:'Fecha', hora:'Hora', duracion_min:'Duración (min)', doctora:'Dueño del paciente', prestador:'Prestador', paciente:'Paciente',
+  nombre_tutor:'Tutor', tel:'Teléfono', email:'Correo', servicio:'Servicio(s)', precio:'Precio', precio_desglose:'Desglose de precio',
+  descuento_pct:'% descuento', cortesia:'Cortesía', notas:'Notas', estado:'Estado', sin_cita:'Sin cita', cancelada:'Cancelada',
+  no_llego:'No llegó', pagado:'Pagada', monto_pagado:'Monto pagado', medio_pago:'Medio de pago', monto_pagado_2:'Monto pagado (2)',
+  medio_pago_2:'Medio de pago (2)', saldo_pendiente:'Saldo pendiente', requiere_factura:'Requiere factura', facturada:'Facturada',
+  numero_factura:'No. de factura', terminal_pago:'Terminal', terminal_pago_2:'Terminal (2)', terminal_por_servicio:'Terminal por servicio',
+  transferencia_verificada:'Transferencia verificada', deleted:'En papelera', activo:'Activo', nombre:'Nombre', categoria:'Categoría',
+  terminal_preferida:'Terminal preferida', es_vacuna:'Es vacuna', es_urgencia_referida:'Es urgencia referida',
+  monto_prestador_referido:'Monto al prestador', rol:'Rol', es_admin:'Administrador', puede_servicios:'Puede editar servicios',
+  todo_dia:'Todo el día', hora_inicio:'Hora de inicio', hora_fin:'Hora de fin', motivo:'Motivo', canal:'Canal', resultado:'Resultado',
+  eliminada:'Eliminado', monto:'Monto', medio:'Medio', nota:'Nota'
+};
+const BIT_DINERO = new Set(['precio','monto_pagado','monto_pagado_2','saldo_pendiente','monto','monto_prestador_referido']);
+const BIT_FOTO = ['paciente','fecha','hora','doctora','prestador','servicio','precio','estado','monto','medio','nombre','categoria','rol','email','motivo'];
+
+function bitValor(k, v){
+  if(v === null || v === undefined || v === '') return '—';
+  if(typeof v === 'boolean') return v ? 'Sí' : 'No';
+  if(BIT_DINERO.has(k) && !isNaN(Number(v))) return fmtM(v);
+  if(k === 'estado') return ESTADO_LABEL[v] || String(v);
+  if(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return fmtDDMMYYYY(v);
+  if(typeof v === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(v)) return v.slice(0,5);
+  if(typeof v === 'object') return Object.entries(v).map(([a,b]) => a + ': ' + (typeof b === 'number' ? fmtM(b) : b)).join(' · ');
+  return String(v);
+}
+function bitEsDiff(cambios){
+  const ks = Object.keys(cambios || {});
+  return ks.length > 0 && ks.every(k => cambios[k] && typeof cambios[k] === 'object' && !Array.isArray(cambios[k]) && ('antes' in cambios[k] || 'despues' in cambios[k]));
+}
+// Cambios como lista de líneas (HTML escapado)
+function htmlCambiosBitacora(cambios){
+  if(!cambios || typeof cambios !== 'object') return '';
+  const claves = Object.keys(cambios);
+  if(!claves.length) return '';
+  const linea = (k, texto) => `<div style="font-size:11px;line-height:1.55;"><span style="color:var(--gray-400);">${esc(BIT_ETIQUETAS[k] || k)}:</span> ${texto}</div>`;
+  if(bitEsDiff(cambios)){
+    return claves.map(k => linea(k,
+      `<span style="color:var(--danger);text-decoration:line-through;opacity:.8;">${esc(bitValor(k, cambios[k].antes))}</span> → <strong style="color:#2E7D4F;">${esc(bitValor(k, cambios[k].despues))}</strong>`
+    )).join('');
+  }
+  // foto de lo creado o borrado: solo lo importante
+  return claves.filter(k => BIT_FOTO.includes(k) && cambios[k] !== null && cambios[k] !== '')
+    .map(k => linea(k, esc(bitValor(k, cambios[k])))).join('');
+}
+// Cambios como texto plano (para Excel)
+function textoCambiosBitacora(cambios){
+  if(!cambios || typeof cambios !== 'object') return '';
+  const claves = Object.keys(cambios);
+  if(bitEsDiff(cambios)) return claves.map(k => (BIT_ETIQUETAS[k] || k) + ': ' + bitValor(k, cambios[k].antes) + ' → ' + bitValor(k, cambios[k].despues)).join(' | ');
+  return claves.filter(k => BIT_FOTO.includes(k) && cambios[k] !== null && cambios[k] !== '').map(k => (BIT_ETIQUETAS[k] || k) + ': ' + bitValor(k, cambios[k])).join(' | ');
+}
+function resumenDispositivo(ua, origen){
+  if(origen === 'servidor') return 'Función del servidor';
+  if(origen === 'base_de_datos') return 'Acceso directo a la base de datos';
+  if(!ua) return '';
+  const so = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows'
+           : /Mac OS X|Macintosh/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : '';
+  const nav = /Edg\//.test(ua) ? 'Edge' : /OPR\/|Opera/.test(ua) ? 'Opera' : /Firefox\//.test(ua) ? 'Firefox'
+            : /(Chrome|CriOS)\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '';
+  return [so, nav].filter(Boolean).join(' · ') || 'Dispositivo desconocido';
+}
+function fechaHoraBitacora(iso){
+  const f = new Date(iso);
+  const o = { timeZone:'America/Mexico_City' };
+  return {
+    fecha: f.toLocaleDateString('es-MX', { ...o, day:'2-digit', month:'2-digit', year:'numeric' }),
+    hora:  f.toLocaleTimeString('es-MX', { ...o, hour:'2-digit', minute:'2-digit' })
+  };
+}
+function htmlEntradaBitacora(e){
+  const { fecha, hora } = fechaHoraBitacora(e.creado_en);
+  const col = COLOR_DOCTORA[e.usuario] || (e.origen !== 'app' ? '#8A97A8' : '#1B3A6B');
+  const rolTxt = e.rol === 'recepcion' ? 'Recepción' : e.rol === 'doctora' ? 'Dra./Dr.' : '';
+  const dispositivo = resumenDispositivo(e.dispositivo, e.origen);
+  const cambios = htmlCambiosBitacora(e.cambios);
+  return `<div style="padding:10px 12px;border-bottom:1px solid var(--gray-100);">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <span class="badge" style="background:${col}22;color:${col};border:1px solid ${col}55;">${esc(e.usuario)}</span>
+      ${rolTxt ? `<span style="font-size:10px;color:var(--gray-400);">${rolTxt}</span>` : ''}
+      <span style="font-size:10.5px;color:var(--gray-400);margin-left:auto;">${fecha} · ${hora}</span>
+    </div>
+    <div style="font-size:12.5px;font-weight:700;color:var(--gray-800);margin-top:5px;">${esc(e.accion)}</div>
+    ${e.detalle ? `<div style="font-size:11.5px;color:var(--gray-600);margin-top:1px;">${esc(e.detalle)}</div>` : ''}
+    ${cambios ? `<div style="margin-top:5px;padding:6px 9px;background:var(--gray-50);border-radius:6px;">${cambios}</div>` : ''}
+    <div style="font-size:10px;color:var(--gray-400);margin-top:4px;">${esc(dispositivo)}${e.ip ? ' · ' + esc(e.ip) : ''}</div>
+  </div>`;
+}
+
+// ── Actividad general (pestaña del historial)
+const AUD_PAGINA = 50;
+let audActividad = { filas: [], total: 0, token: 0 };
+let audBuscarTimer = null;
+function buscarActividadDebounce(){ clearTimeout(audBuscarTimer); audBuscarTimer = setTimeout(() => cargarActividad(true), 350); }
+
+const AUD_TIPOS = {
+  citas: q => q.eq('tabla', 'citas'),
+  pagos: q => q.in('accion', ['Procesó el pago','Registró el pago como pendiente','Registró un pago parcial','Registró un cobro sobre la cita','Deshizo el pago',
+    'Cambió el medio de pago','Verificó la transferencia','Registró la cita como cortesía','Marcó la cita como facturada','Editó los datos de factura',
+    'Registró un pago entre médicos','Deshizo un pago entre médicos']),
+  agenda: q => q.in('tabla', ['bloqueos_agenda','horarios_doctoras']),
+  catalogo: q => q.eq('tabla', 'catalogo_servicios'),
+  usuarios: q => q.eq('tabla', 'perfiles'),
+  google: q => q.eq('tabla', 'google_calendar_tokens'),
+  accesos: q => q.eq('tabla', 'sesion'),
+  seguimientos: q => q.eq('tabla', 'gestiones')
+};
+function aplicarFiltrosActividad(q){
+  const u = document.getElementById('aud-f-usuario').value;
+  if(u) q = q.eq('usuario', u);
+  const t = document.getElementById('aud-f-tipo').value;
+  if(t && AUD_TIPOS[t]) q = AUD_TIPOS[t](q);
+  const p = document.getElementById('aud-f-periodo').value;
+  if(p === 'hoy'){ const d = new Date(); d.setHours(0,0,0,0); q = q.gte('creado_en', d.toISOString()); }
+  else if(p){ q = q.gte('creado_en', new Date(Date.now() - Number(p) * 86400000).toISOString()); }
+  // se quitan los caracteres que tienen significado en el filtro .or() para que el texto no lo rompa
+  const txt = document.getElementById('aud-f-buscar').value.replace(/[,()*%\\"']/g, ' ').trim();
+  if(txt) q = q.or(`detalle.ilike.%${txt}%,accion.ilike.%${txt}%,usuario.ilike.%${txt}%`);
+  return q;
+}
+async function prepararFiltrosActividad(){
+  const sel = document.getElementById('aud-f-usuario');
+  const previo = sel.value;
+  const nombres = new Set(['Sistema (función del servidor)', 'Base de datos (acceso directo)']);
+  const { data } = await sb.from('perfiles').select('nombre').order('nombre');
+  (data || []).forEach(p => nombres.add(p.nombre));
+  sel.innerHTML = '<option value="">Todos los usuarios</option>' + [...nombres].map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  sel.value = previo;
+}
+async function cargarActividad(reiniciar){
+  if(!currentUser.esAdmin) return;
+  const cont = document.getElementById('aud-act-lista');
+  const token = ++audActividad.token;
+  if(reiniciar){
+    audActividad.filas = []; audActividad.total = 0;
+    cont.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--gray-400);">Cargando...</div>';
+  }
+  const desde = audActividad.filas.length;
+  const q = aplicarFiltrosActividad(sb.from('bitacora').select('*', { count: 'exact' }))
+    .order('creado_en', { ascending: false }).order('id', { ascending: false }).range(desde, desde + AUD_PAGINA - 1);
+  const { data, count, error } = await q;
+  if(token !== audActividad.token) return;   // llegó tarde: ya hay una búsqueda más nueva
+  if(error){
+    cont.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--danger);">No se pudo cargar (${esc(error.message)}). Si no eres administrador, esta actividad no está disponible para tu cuenta.</div>`;
+    return;
+  }
+  audActividad.filas = audActividad.filas.concat(data || []);
+  audActividad.total = (count === null || count === undefined) ? audActividad.filas.length : count;
+  renderActividad();
+}
+function renderActividad(){
+  const cont = document.getElementById('aud-act-lista');
+  const pie = document.getElementById('aud-act-pie');
+  if(!audActividad.filas.length){
+    cont.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--gray-400);">No hay actividad con esos filtros.</div>';
+    pie.innerHTML = '';
+    return;
+  }
+  cont.innerHTML = audActividad.filas.map(e => htmlEntradaBitacora(e)).join('');
+  const quedan = audActividad.total - audActividad.filas.length;
+  pie.innerHTML = `<span>Mostrando ${audActividad.filas.length} de ${audActividad.total}</span>` +
+    (quedan > 0 ? `<button class="btn btn-outline" style="font-size:11px;padding:6px 12px;" onclick="cargarActividad(false)">Cargar ${Math.min(quedan, AUD_PAGINA)} más</button>` : '');
+}
+async function exportarActividad(){
+  if(typeof XLSX === 'undefined'){ toast('⚠ No se pudo cargar el módulo de Excel'); return; }
+  toast('Preparando Excel…');
+  const filas = [];
+  let desde = 0;
+  while(filas.length < 5000){
+    const q = aplicarFiltrosActividad(sb.from('bitacora').select('*'))
+      .order('creado_en', { ascending: false }).order('id', { ascending: false }).range(desde, desde + 999);
+    const { data, error } = await q;
+    if(error){ toast('⚠ No se pudo exportar: ' + error.message); return; }
+    filas.push(...(data || []));
+    if(!data || data.length < 1000) break;
+    desde += 1000;
+  }
+  const aoa = [['Fecha','Hora','Usuario','Rol','Acción','Detalle','Cambios','Dispositivo','IP']];
+  filas.forEach(e => {
+    const { fecha, hora } = fechaHoraBitacora(e.creado_en);
+    aoa.push([fecha, hora, e.usuario, e.rol === 'recepcion' ? 'Recepción' : e.rol === 'doctora' ? 'Dra./Dr.' : '', e.accion, e.detalle || '',
+      textoCambiosBitacora(e.cambios), resumenDispositivo(e.dispositivo, e.origen), e.ip || '']);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:11},{wch:7},{wch:26},{wch:11},{wch:34},{wch:52},{wch:60},{wch:24},{wch:16}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Actividad');
+  XLSX.writeFile(wb, `Actividad_CANOPY_${fechaLocalISO()}.xlsx`);
+  toast('✓ Excel exportado (' + filas.length + ' registros)');
+}
+
+// ── Actividad de una cita o de un paciente
+async function abrirBitacoraRegistros(titulo, ids){
+  if(!currentUser.esAdmin){ toast('⚠ Solo administración puede ver esto'); return; }
+  document.getElementById('bitacora-registro-titulo').textContent = titulo;
+  const resumen = document.getElementById('bitacora-registro-resumen');
+  const lista = document.getElementById('bitacora-registro-lista');
+  resumen.innerHTML = '';
+  lista.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--gray-400);">Cargando...</div>';
+  document.getElementById('bitacora-registro-modal-overlay').classList.add('open');
+  const { data, error } = await sb.from('bitacora').select('*').eq('tabla', 'citas')
+    .in('registro_id', ids.map(String)).order('creado_en', { ascending: true }).order('id', { ascending: true });
+  if(error){
+    lista.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--danger);">No se pudo cargar (${esc(error.message)}).</div>`;
+    return;
+  }
+  const filas = data || [];
+  const creaciones = filas.filter(e => e.accion === 'Creó la cita' || e.accion === 'Registró paciente sin cita');
+  if(creaciones.length){
+    resumen.innerHTML = (ids.length === 1 ? 'Agendada por ' : 'Citas agendadas por: ') +
+      creaciones.map(e => { const t = fechaHoraBitacora(e.creado_en); return `<strong>${esc(e.usuario)}</strong> (${t.fecha} ${t.hora})`; }).join(', ') + '.';
+  }else{
+    resumen.innerHTML = 'No hay registro de quién la agendó: es anterior a la bitácora, que se activó el 5 de octubre de 2026.';
+  }
+  lista.innerHTML = filas.length
+    ? filas.map(e => htmlEntradaBitacora(e)).join('')
+    : '<div style="padding:14px;font-size:12px;color:var(--gray-400);">Todavía no hay movimientos registrados.</div>';
+}
+function cerrarBitacoraRegistro(){ document.getElementById('bitacora-registro-modal-overlay').classList.remove('open'); }
+function abrirBitacoraCita(id){
+  const c = citas.find(x => x.id === id);
+  if(!c) return;
+  abrirBitacoraRegistros('🕒 ' + c.paciente + ' · ' + fmtDDMMYYYY(c.fecha) + ' ' + String(c.hora || '').slice(0,5), [id]);
+}
+function abrirBitacoraPaciente(nombre){
+  const key = String(nombre).toLowerCase().trim();
+  const ids = citas.filter(c => String(c.paciente).toLowerCase().trim() === key).map(c => c.id);
+  if(!ids.length){ toast('Ese paciente no tiene citas registradas'); return; }
+  abrirBitacoraRegistros('🕒 Actividad de ' + nombre, ids);
+}
+
+// ── Accesos: quién entra y cuándo (la base descarta repeticiones: 5 min al iniciar sesión, 60 al reabrir)
+function registrarAccesoApp(){
+  const evento = window._accesoExplicito ? 'login' : 'abrio';
+  try{ sb.rpc('registrar_evento', { p_evento: evento }).then(() => {}, () => {}); }catch(e){ /* la trazabilidad nunca debe frenar la app */ }
 }
 
 // Convierte una fila cruda de audit_log en una frase legible en español,
@@ -4020,21 +4397,33 @@ function guardarBloqueo(){
   const doctorasDestino = esGeneral ? DOCTORAS : [doctora];
   const grupoId = esGeneral ? Date.now() : null;
 
-  let idSeq = 0;
+  // Un bloqueo idéntico a uno que ya existe (misma doctora, día, horario y motivo) no se vuelve a
+  // crear. Antes, tocar "Bloquear" dos veces —o una segunda vez por no ver respuesta en el celular—
+  // dejaba el bloqueo duplicado, y al borrarlo quedaba el otro.
+  const hhmm = h => String(h||'').slice(0,5);
+  const yaExiste = (doc, fecha) => bloqueos.some(b => b.doctora===doc && b.fecha===fecha && !!b.todoDia===!!todoDia
+    && hhmm(b.horaInicio)===hhmm(horaInicio) && hhmm(b.horaFin)===hhmm(horaFin)
+    && String(b.motivo||'').trim().toLowerCase()===motivo.toLowerCase());
+
+  let idSeq = 0, omitidos = 0;
   const nuevosBloqueos = [];
   dias.forEach(fecha=>{
     doctorasDestino.forEach(doc=>{
+      if(yaExiste(doc, fecha)){ omitidos++; return; }
       nuevosBloqueos.push({
         id: Date.now()+(idSeq++), doctora:doc, fecha, todoDia, horaInicio, horaFin, motivo, grupoId,
         creadoPor:sesionActual, creadoEn:fechaLocalISO()
       });
     });
   });
+  if(!nuevosBloqueos.length){ toast('⚠ Ese bloqueo ya existe — no se duplicó'); return; }
   bloqueos.push(...nuevosBloqueos);
   guardarBloqueos(nuevosBloqueos);
   renderListaBloqueos();
   render();
-  toast(dias.length>1 ? `✓ Bloqueados ${dias.length} días` : '✓ Bloqueo registrado');
+  // el motivo se limpia para que se note que ya quedó guardado (la lista está más abajo, a veces fuera de pantalla)
+  document.getElementById('bq-motivo').value = '';
+  toast((dias.length>1 ? `✓ Bloqueados ${dias.length} días` : '✓ Bloqueo registrado') + (omitidos ? ` (${omitidos} ya existían)` : ''));
 }
 
 // Agrupa bloqueos consecutivos de la misma doctora+motivo+horario en un
@@ -6387,6 +6776,7 @@ function renderHistorico(){
       <td>
         <button class="btn-sm btn-edit" onclick="abrirModal(${c.id})" title="Editar esta cita (paciente, teléfono, servicio, etc. — el dinero lo captura la doctora)">✎ Editar</button>
         <button class="btn-sm btn-edit" onclick="abrirTrazabilidad('${esc(c.paciente).replace(/'/g,"\\'")}')">📖 Ver historial</button>
+        ${currentUser.esAdmin?`<button class="btn-sm btn-edit" onclick="abrirBitacoraCita(${c.id})" title="Quién hizo qué con esta cita">🕒 Actividad</button>`:''}
       </td>
     </tr>`).join('');
   tablaEl.innerHTML = `<div style="overflow-x:auto"><table class="tx-table"><thead><tr>
@@ -6492,7 +6882,7 @@ function abrirTrazabilidad(nombrePaciente, contextoCRM){
   let visitas = activeCitas().filter(c=>c.paciente.toLowerCase().trim()===key && c.pagado && !c.cancelada);
   if(!esRecepcion) visitas = visitas.filter(c=>c.doctora===sesionActual);
   visitas.sort((a,b)=>(b.fecha+b.hora).localeCompare(a.fecha+a.hora));
-  if(!visitas.length) return;
+  if(!visitas.length){ toast('Este paciente todavía no tiene visitas cobradas'); return; }
 
   trazaPacienteActual = {key, nombre: visitas[0].paciente};
 
@@ -6763,6 +7153,7 @@ function renderDirectorio(){
         </div>
       </div>
       <div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px;">
+        ${currentUser.esAdmin?`<button class="btn-sm btn-sm-edit" onclick="abrirBitacoraPaciente('${esc(p.paciente).replace(/'/g,"\\'")}')" title="Quién agendó y qué se hizo con sus citas">🕒 Actividad</button>`:''}
         <button class="btn-sm btn-sm-edit" onclick="abrirTrazabilidadDesdeDirectorio('${esc(p.paciente).replace(/'/g,"\\'")}')">📖 Ver historial</button>
         <button class="btn btn-gold" onclick='agendarDesdeDirectorio(${JSON.stringify(JSON.stringify(p))})'>+ Nueva cita</button>
       </div>
@@ -7111,6 +7502,7 @@ async function iniciarAppDespuesDeLogin(){
   await Promise.all([ cargarCitas(), cargarHorarios(), cargarBloqueos(), cargarGestiones(), cargarCatalogoServicios(), cargarPagosEntreMedicos() ]);
   avisarPagosPendientesDeVer();
   setTimeout(avisarGoogleCalendarVencido, 1500);
+  registrarAccesoApp();
   // A las doctoras "de práctica" (sin perfil real, solo texto en las citas)
   // también les toca un color propio — si no, comparten el gris de
   // respaldo y no se distinguen entre sí en la vista Semana.
