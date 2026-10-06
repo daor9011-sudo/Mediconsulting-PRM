@@ -1252,6 +1252,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <label>Google Calendar</label>
       <div id="personal-google-status" style="font-size:12.5px;color:var(--gray-400);margin-bottom:6px;">Revisando...</div>
       <button type="button" class="btn btn-outline" id="personal-google-btn" onclick="conectarGoogleCalendarPersonal()" style="font-size:12px;">🔗 Conectar Google Calendar</button>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:5px;">El enlace de conexión vale 24 horas: la doctora debe abrirlo y aceptar dentro de ese tiempo.</div>
     </div>
     <div id="personal-error" style="color:var(--danger);font-size:12px;margin-bottom:8px;"></div>
     <div class="modal-footer">
@@ -1396,7 +1397,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-09-28-116';
+const APP_VERSION = '2026-10-05-117';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -1887,6 +1888,35 @@ async function tokenSesionFresco(){
 // "Fire and forget": nunca bloquea ni truena el flujo normal de agendar/
 // cancelar — si la doctora no tiene Google conectado, o si Google falla
 // por lo que sea, simplemente no pasa nada (se ve en consola, nada más).
+// Avisa al entrar si alguna conexión con Google Calendar venció. Antes el panel seguía diciendo
+// "Conectado" mientras las citas dejaban de llegar al calendario y nadie se enteraba.
+// Administración ve todas las vencidas; cada doctora, solo la suya. Una vez por sesión.
+async function avisarGoogleCalendarVencido(){
+  try{
+    if(window._gcalRegreso) return;                        // acaba de volver de Google: ya vio su propio aviso
+    if(sessionStorage.getItem('gcalAvisoVisto')) return;
+    const esAdmin = !!currentUser.esAdmin;
+    let consulta = sb.from('google_calendar_tokens').select('doctora').eq('expirado', true);
+    if(esAdmin){ /* ve todas */ }
+    else if(currentUser.rol === 'doctora'){ consulta = consulta.eq('doctora', currentUser.nombre); }
+    else return;
+    const { data, error } = await consulta;
+    if(error) return;
+    const vencidas = (data||[]).map(r=>r.doctora);
+    if(!vencidas.length) return;
+    sessionStorage.setItem('gcalAvisoVisto','1');
+    mostrarConfirm({
+      etiqueta:'Google Calendar', icono:'⚠️',
+      titulo: esAdmin ? 'Hay calendarios desconectados' : 'Tu Google Calendar se desconectó',
+      mensaje: esAdmin
+        ? `La conexión con Google venció para: <strong>${vencidas.map(v=>esc(v)).join('</strong>, <strong>')}</strong>. Sus citas dejaron de llegar a su calendario. Entra a <strong>Personal</strong>, abre su perfil, toca <strong>Reconectar</strong> y mándale el enlace (vale 24 horas).`
+        : 'Tus citas dejaron de llegar a tu calendario de Google. Pídele a administración que te genere un enlace nuevo para reconectarlo.',
+      textoConfirmar:'Entendido', sinCancelar:true
+    }, ()=>{});
+  }catch(e){ console.warn('Aviso de Google Calendar:', e); }
+}
+
+const gcalAvisosMostrados = new Set();
 async function sincronizarGoogleCalendar(citaId, action){
   try{
     const session = await tokenSesionFresco();
@@ -1898,6 +1928,14 @@ async function sincronizarGoogleCalendar(citaId, action){
     });
     const resultado = await resp.json();
     if(!resp.ok) console.warn('📅 Google Calendar:', resultado.error||resultado);
+    else if(resultado && resultado.expired){
+      // La cita sí se guardó; lo que no llegó fue su evento al calendario de Google.
+      const clave = resultado.reason || 'venció';
+      if(!gcalAvisosMostrados.has(clave)){
+        gcalAvisosMostrados.add(clave);
+        toast('⚠ '+clave+'. La cita sí se guardó.');
+      }
+    }
   }catch(e){ console.warn('📅 Google Calendar (sin conexión o error):', e); }
 }
 
@@ -3643,9 +3681,15 @@ async function actualizarEstadoGoogleCalendarPersonal(nombreDoctora){
   const statusEl = document.getElementById('personal-google-status');
   const btnEl = document.getElementById('personal-google-btn');
   statusEl.textContent = 'Revisando...';
-  const { data, error } = await sb.from('google_calendar_tokens').select('conectado_en').eq('doctora', nombreDoctora).maybeSingle();
+  const { data, error } = await sb.from('google_calendar_tokens').select('conectado_en,expirado').eq('doctora', nombreDoctora).maybeSingle();
   if(error){ statusEl.textContent = 'No se pudo revisar el estado.'; return; }
-  if(data){
+  if(data && data.expirado){
+    // Google ya no acepta el permiso (venció o lo revocó): antes aquí seguía diciendo "Conectado"
+    // mientras las citas dejaban de llegar al calendario.
+    statusEl.textContent = '⚠ La conexión venció: Google ya no acepta el permiso. Las citas de esta doctora no están llegando a su calendario. Hay que reconectarla.';
+    statusEl.style.color = 'var(--danger)';
+    btnEl.textContent = '🔄 Reconectar ahora';
+  }else if(data){
     statusEl.innerHTML = `✓ Conectado desde el ${fmtDDMMYYYY(data.conectado_en.slice(0,10))}`;
     statusEl.style.color = 'var(--success)';
     btnEl.textContent = '🔄 Reconectar';
@@ -3690,6 +3734,7 @@ async function conectarGoogleCalendarPersonal(){
   const params = new URLSearchParams(location.search);
   const gcal = params.get('gcal');
   if(!gcal) return;
+  window._gcalRegreso = true;
   const urlLimpia = location.pathname;
   window.history.replaceState({}, '', urlLimpia);
   setTimeout(()=>{
@@ -3860,7 +3905,7 @@ function formatearEntradaAuditoria(entry, mapaNombres){
     const antes = d.antes || {}, despues = d.despues || {};
     const cambios = [];
     if(antes.nombre !== despues.nombre) cambios.push(`nombre: "${esc(antes.nombre)}" → "${esc(despues.nombre)}"`);
-    if(antes.rol !== despues.rol) cambios.push(`rol: ${antes.rol} → ${despues.rol}`);
+    if(antes.rol !== despues.rol) cambios.push(`rol: ${esc(antes.rol)} → ${esc(despues.rol)}`);
     if(antes.es_admin !== despues.es_admin) cambios.push(despues.es_admin ? 'ahora es <strong>admin</strong>' : 'ya no es admin');
     if(antes.activo !== despues.activo) cambios.push(despues.activo ? 'cuenta reactivada' : 'cuenta <strong>desactivada</strong>');
     const detalleTexto = cambios.length ? cambios.join(', ') : 'sin cambios (guardado tal cual)';
@@ -7065,6 +7110,7 @@ async function iniciarAppDespuesDeLogin(){
 
   await Promise.all([ cargarCitas(), cargarHorarios(), cargarBloqueos(), cargarGestiones(), cargarCatalogoServicios(), cargarPagosEntreMedicos() ]);
   avisarPagosPendientesDeVer();
+  setTimeout(avisarGoogleCalendarVencido, 1500);
   // A las doctoras "de práctica" (sin perfil real, solo texto en las citas)
   // también les toca un color propio — si no, comparten el gris de
   // respaldo y no se distinguen entre sí en la vista Semana.
