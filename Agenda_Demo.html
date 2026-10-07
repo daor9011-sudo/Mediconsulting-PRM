@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-122">
+<meta name="app-version" content="2026-10-05-124">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1928,7 +1928,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-122';
+const APP_VERSION = '2026-10-05-124';
 document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
@@ -3102,6 +3102,16 @@ function cambioTerminalServicioForm(sel){
 // multiplica solo por el precio por día que ya está en el catálogo.
 function esServicioPorDia(nombre){ return /hospitalizaci/i.test(nombre||''); }
 
+// Servicios que se cobran por UNIDADES (mismo mecanismo que los días de hospitalización): se elige cuántas
+// y el sistema multiplica por el precio unitario del catálogo. Para sumar otro servicio basta una línea aquí
+// (el nombre se compara sin acentos ni mayúsculas) con su máximo de unidades.
+const SERVICIOS_POR_CANTIDAD = {
+  'beyfortus 100mg': { max:5 },
+  'beyfortus 50mg':  { max:5 }
+};
+function normNombreServicio(n){ return String(n||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
+function cantidadMaxServicio(nombre){ const c = SERVICIOS_POR_CANTIDAD[normNombreServicio(nombre)]; return c ? c.max : 0; }
+
 function renderDesglosePrecioServicios(nombres){
   const cont = document.getElementById('m-precio-desglose');
   if(!nombres || !nombres.length){
@@ -3140,6 +3150,34 @@ function renderDesglosePrecioServicios(nombres){
       </div>`;
     }
 
+    const maxCant = cantidadMaxServicio(n);
+    if(maxCant && sugerido>0){
+      // Cantidad guardada = monto ÷ precio unitario. Solo si es un múltiplo exacto (1 a máx.) se muestra el selector;
+      // si el monto guardado es otro (precio personalizado, o el catálogo cambió después), se deja el campo de
+      // precio de siempre para NO alterar el monto de una cita que ya existe.
+      const previo = previos[n];
+      const cantInicial = previo === undefined ? 1 : Math.round(previo / sugerido);
+      const exacto = previo === undefined || (cantInicial >= 1 && cantInicial <= maxCant && Math.abs(previo - cantInicial*sugerido) < 0.5);
+      if(exacto){
+        const totalCant = cantInicial * sugerido;
+        const opcionesCant = Array.from({length:maxCant}, (_,idx)=>idx+1).map(q=>`<option value="${q}" ${q===cantInicial?'selected':''}>${q}</option>`).join('');
+        return `
+      <div style="padding:8px 0;${borde}">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--gray-800);font-weight:600;flex:1;min-width:140px;">${esc(n)}</span>
+          <select data-precio-unidad="${sugerido}" data-servicio-cant="${esc(n)}" data-total-id="total-cant-${i}" onchange="actualizarCantidadServicio(this)" style="width:70px;flex-shrink:0;padding:5px 4px;font-size:12px;" aria-label="Cantidad de ${esc(n)}">${opcionesCant}</select>
+          <span style="font-size:11px;color:var(--gray-400);">unidad(es)</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--gray-400);">
+          <span>$${sugerido.toLocaleString('es-MX',{minimumFractionDigits:2})} / unidad</span>
+          <span id="total-cant-${i}" style="font-size:13px;font-weight:800;color:var(--gray-800);">$${totalCant.toLocaleString('es-MX',{minimumFractionDigits:2})}</span>
+        </div>
+        <input type="hidden" data-servicio="${esc(n)}" value="${totalCant}">
+        ${htmlSelectTerminalForm(n)}
+      </div>`;
+      }
+    }
+
     return `
     <div style="padding:8px 0;${borde}">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
@@ -3161,6 +3199,16 @@ function actualizarDiasHospitalizacion(sel){
   const idxMatch = [...document.querySelectorAll('#m-precio-desglose select[data-servicio-dias]')].indexOf(sel);
   const totalDisplay = document.getElementById('total-dias-'+idxMatch);
   if(totalDisplay) totalDisplay.textContent = '$'+total.toLocaleString('es-MX',{minimumFractionDigits:2});
+  actualizarPrecioDesdeDesglose();
+}
+function actualizarCantidadServicio(sel){
+  const precioUnidad = Number(sel.dataset.precioUnidad) || 0;
+  const cantidad = Number(sel.value) || 1;
+  const total = cantidad * precioUnidad;
+  const hidden = sel.closest('div[style*="padding:8px 0"]').querySelector('input[data-servicio]');
+  if(hidden) hidden.value = total;
+  const visor = document.getElementById(sel.dataset.totalId);
+  if(visor) visor.textContent = '$' + total.toLocaleString('es-MX',{minimumFractionDigits:2});
   actualizarPrecioDesdeDesglose();
 }
 function actualizarPrecioDesdeDesglose(){
