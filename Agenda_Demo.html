@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-125">
+<meta name="app-version" content="2026-10-05-126">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -500,6 +500,13 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 @media (max-width:900px){.gst .g-grid{grid-template-columns:minmax(0,1fr)}.gst .bar-nav .ctl{margin-left:0;width:100%}.gst .bar-nav input, .gst .bar-nav select{flex:1;min-width:120px}}
 .gst .gst-aviso{background:#EEF5FC;border:1px solid #BDD5F0;color:#1B5C9E;border-radius:10px;padding:10px 14px;margin-top:12px;font-size:12.5px;font-weight:600}
 .gst{max-width:1250px;margin:0 auto}
+
+.gst .sec-title{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#64748b;margin:18px 0 10px}
+.gst .cat-hint{font-size:11px;color:#64748b;background:#fff;border-left:3px solid #2ABFBF;border-radius:6px;padding:7px 9px;margin-top:6px;line-height:1.45}
+.gst .cat-info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:10px;margin:0 0 6px;min-width:0}
+.gst .cat-info-card{border-radius:10px;padding:11px 12px;border:1px solid;min-width:0}
+.gst .cat-info-card .t{font-size:12px;font-weight:800;margin-bottom:4px}
+.gst .cat-info-card .d{font-size:10.5px;color:#64748b;line-height:1.5}
 
 </style>
 <style id="gd-css-dashboard">
@@ -1932,7 +1939,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-125';
+const APP_VERSION = '2026-10-05-126';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -8158,11 +8165,11 @@ function partir(nombre, max){
 }
 
 const CAT_G = [
-  {k:'insumos',   n:'Insumos médicos',       e:'🧴', c:'#2E7D4F'},
-  {k:'vacunas',   n:'Vacunas y biológicos',  e:'💉', c:'#1C8A8A'},
-  {k:'locativos', n:'Locativos',             e:'🏢', c:'#1B5C9E'},
-  {k:'papeleria', n:'Papelería y oficina',   e:'📎', c:'#0E7C74'},
-  {k:'otros',     n:'Otros',                 e:'📦', c:'#A3376B'}
+  {k:'insumos',   n:'Insumos médicos',       e:'🧴', c:'#2E7D4F', d:'Material clínico de uso diario en consulta y procedimientos: gasas, jeringas, guantes, cubrebocas, termómetros, abatelenguas, material de curación, soluciones y alcohol.'},
+  {k:'vacunas',   n:'Vacunas y biológicos',  e:'💉', c:'#1C8A8A', d:'Compra o reposición de vacunas, anticuerpos (como Beyfortus) y otros biológicos, incluido el material de cadena fría para conservarlos.'},
+  {k:'locativos', n:'Locativos',             e:'🏢', c:'#1B5C9E', d:'Renta, agua, luz, internet y teléfono del consultorio, además de su mantenimiento, limpieza y reparaciones.'},
+  {k:'papeleria', n:'Papelería y oficina',   e:'📎', c:'#0E7C74', d:'Hojas, tóner y tinta, recetarios impresos, folders, etiquetas y demás material de oficina.'},
+  {k:'otros',     n:'Otros',                 e:'📦', c:'#A3376B', d:'Lo que no encaja en las demás: congresos y cursos, mensajería y transporte, alimentos de sesiones clínicas, suscripciones de software y gastos imprevistos.'}
 ];
 const FACT = [
   {k:'no',      n:'No facturado',           c:'#64748B'},
@@ -8269,7 +8276,7 @@ function montarGastos(){
       <h3 id="gst-form-t">➕ Registrar gasto</h3>
       <div class="form-group"><label for="gst-fecha">Fecha del gasto</label><input type="date" id="gst-fecha" value="${hoy}" max="${hoy}"><div class="errmsg">Elige una fecha que no sea futura</div></div>
       ${adm ? `<div class="form-group dueno-box" id="gst-fg-doc"><label for="gst-doc">Dra./Dr. <span class="rol-sub">· a quién pertenece el gasto</span></label><select id="gst-doc"><option value="">Seleccionar doctora...</option>${DOCTORAS.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')}</select><div class="errmsg">Elige a qué doctora pertenece</div></div>` : ''}
-      <div class="form-group"><label for="gst-cat">Categoría</label><select id="gst-cat">${CAT_G.map(c=>`<option value="${c.k}">${c.e} ${c.n}</option>`).join('')}</select></div>
+      <div class="form-group"><label for="gst-cat">Categoría</label><select id="gst-cat" onchange="GD.hintCat()">${CAT_G.map(c=>`<option value="${c.k}">${c.e} ${c.n}</option>`).join('')}</select><div class="cat-hint" id="gst-cat-hint"></div></div>
       <div class="form-group" id="gst-fg-monto"><label for="gst-monto">Monto ($)</label><input type="number" id="gst-monto" min="0" step="0.01" placeholder="0.00" inputmode="decimal"><div class="errmsg">Escribe un monto mayor a cero</div></div>
       <div class="form-group"><label for="gst-desc">Descripción</label><textarea id="gst-desc" rows="2" maxlength="300" placeholder="¿En qué se gastó?" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:6px"></textarea></div>
       <div class="form-group"><label>Facturación</label><div class="fchips">
@@ -8285,13 +8292,22 @@ function montarGastos(){
       ${adm ? '<div class="card" id="gst-docs"></div>' : ''}
     </div>
   </div>
+  <div class="sec-title">¿Qué incluye cada categoría?</div>
+  <div class="cat-info-grid" id="gst-cat-info">${CAT_G.map(c=>`<div class="cat-info-card" style="background:${c.c}12;border-color:${c.c}55"><div class="t" style="color:${c.c}">${c.e} ${esc(c.n)}</div><div class="d">${esc(c.d)}</div></div>`).join('')}</div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px">
     <span style="font-size:15px;font-weight:800;color:var(--gray-800)" id="gst-tabla-t"></span>
     ${adm ? '<button class="btn btn-outline" onclick="GD.exportar()">↓ Exportar</button>' : ''}
   </div>
   <div class="card" style="padding:6px 10px"><div class="tbl-wrap"><table class="tx-table ${adm?'':'sin-doc'}" id="gst-tabla"><thead><tr><th>Fecha</th><th>Dra./Dr.</th><th>Categoría</th><th>Monto</th><th>Facturación</th><th>Descripción</th><th></th></tr></thead><tbody id="gst-tbody"></tbody></table></div></div>
   </div>`;
+  hintCat();
   actualizarGastos();
+}
+// Pista con lo que incluye la categoría elegida (como en Skin Fabric)
+function hintCat(){
+  const sel = $id('gst-cat'), h = $id('gst-cat-hint'); if(!sel || !h) return;
+  const c = catG(sel.value);
+  h.textContent = c.d; h.style.borderLeftColor = c.c;
 }
 function actualizarGastos(){
   if(!$id('gst-kpis')) return;
@@ -8299,7 +8315,7 @@ function actualizarGastos(){
   const filt = S.gCat ? base.filter(g => g.cat === S.gCat) : base;
   $id('gst-mes').textContent = MESES[S.mes.m] + ' ' + S.mes.y;
   $id('gst-pills').innerHTML = `<span class="lbl">Categoría:</span><button class="pill ${S.gCat===''?'on':''}" onclick="GD.cat('')">Todas</button>` +
-    CAT_G.map(c=>`<button class="pill ${S.gCat===c.k?'on':''}" onclick="GD.cat('${c.k}')">${c.e} ${c.n}</button>`).join('');
+    CAT_G.map(c=>`<button class="pill ${S.gCat===c.k?'on':''}" onclick="GD.cat('${c.k}')" title="${esc(c.d)}">${c.e} ${c.n}</button>`).join('');
   const tot = sum(filt,g=>g.m), porFact = sum(filt.filter(g=>g.fact==='no'),g=>g.m), aMi = filt.filter(g=>g.fact==='doctora');
   const k = (cls,l,v,sub,col) => `<div class="kpi-card ${cls}" ${col?`style="border-top-color:${col}"`:''}><div class="kpi-card-label">${l}</div><div class="kpi-card-value" ${col?`style="color:${col}"`:''}>${v}</div><div class="kpi-card-sub">${sub}</div></div>`;
   $id('gst-kpis').innerHTML = adm
@@ -8358,7 +8374,7 @@ async function guardar(){
 }
 function editar(id){
   const g = GASTOS.find(x=>x.id===id); if(!g) return;
-  S.editId = id; $id('gst-fecha').value = g.f; $id('gst-cat').value = g.cat; $id('gst-monto').value = g.m; $id('gst-desc').value = g.desc;
+  S.editId = id; $id('gst-fecha').value = g.f; $id('gst-cat').value = g.cat; hintCat(); $id('gst-monto').value = g.m; $id('gst-desc').value = g.desc;
   document.querySelector(`input[name=gst-fact][value=${g.fact}]`).checked = true;
   const sel = $id('gst-doc');
   if(sel){ if(![...sel.options].some(o => o.value === g.d)) sel.add(new Option(g.d + ' (inactiva)', g.d)); sel.value = g.d; }
@@ -8877,6 +8893,7 @@ window.GD = {
     const k = y+'-'+pad(m+1), min = MES_MIN.y+'-'+pad(MES_MIN.m+1), max = hoyISO().slice(0,7);
     if(k < min || k > max){ toast(k > max ? 'Aún no hay gastos de ese mes' : 'No hay gastos tan atrás'); return; }
     S.mes = {y,m}; actualizarGastos(); },
+  hintCat,
   buscar(v){ S.gBuscar = v; actualizarGastos(); },
   gdoc(v){ S.gDoc = v; actualizarGastos(); },
   cat(k){ S.gCat = k; actualizarGastos(); },
