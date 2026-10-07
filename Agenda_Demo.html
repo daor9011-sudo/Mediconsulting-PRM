@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-126">
+<meta name="app-version" content="2026-10-05-127">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1939,7 +1939,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-126';
+const APP_VERSION = '2026-10-05-127';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -5192,6 +5192,77 @@ function eliminarCitaDefinitivo(id){
   });
 }
 
+// Vaciar la papelera: muestra EXACTAMENTE qué se va a borrar, pide el código y deja que el servidor
+// verifique y borre. Las citas con cobro registrado NO se incluyen salvo que se marque de forma expresa.
+let vaciandoPapelera = false;
+function abrirVaciarPapelera(){
+  if(!currentUser || !currentUser.esAdmin){ toast('⚠ Solo un administrador puede vaciar la papelera'); return; }
+  const enPapelera = citas.filter(c => c.deleted);
+  if(!enPapelera.length){ toast('La papelera ya está vacía'); return; }
+  const conCobro = enPapelera.filter(c => montoTotalPagado(c) > 0);
+  const sinCobro = enPapelera.length - conCobro.length;
+  const totalCobrado = conCobro.reduce((t, c) => t + montoTotalPagado(c), 0);
+  let msg = `<div style="text-align:left;font-size:12.5px;line-height:1.55;">
+    Hay <b>${enPapelera.length}</b> cita(s) en la papelera. Al continuar se eliminarán <b>definitivamente</b>
+    ${conCobro.length ? `las <b>${sinCobro}</b> que no tienen cobro` : 'todas'}. No se puede deshacer.`;
+  if(conCobro.length){
+    msg += `<div style="margin-top:10px;padding:9px 11px;border:1px solid #F1C9C5;background:#FDF3F2;border-radius:8px;">
+      <b style="color:#B03A2E;">⚠ ${conCobro.length} tiene(n) cobro registrado (${fmtM(totalCobrado)}):</b>
+      <ul style="margin:5px 0 7px 16px;padding:0;">${conCobro.map(c => `<li>${esc(c.paciente)} · ${fmtDDMMYYYY(c.fecha)} · ${fmtM(montoTotalPagado(c))}</li>`).join('')}</ul>
+      Por seguridad <b>se conservan</b>. Revísalas (↺ Restaurar si el cobro fue real).
+      <label style="display:flex;gap:7px;align-items:flex-start;margin-top:8px;cursor:pointer;"><input type="checkbox" id="vp-incluir-cobradas" style="margin-top:2px;"> <span>Eliminar también estas ${conCobro.length}, aunque tengan cobro</span></label>
+    </div>`;
+  }
+  msg += '</div>';
+  mostrarConfirm({titulo:'¿Vaciar la papelera?', mensaje:msg, textoConfirmar:'Continuar', icono:'🧹'}, () => {
+    const chk = document.getElementById('vp-incluir-cobradas');
+    const incluir = !!(chk && chk.checked);
+    const ids = enPapelera.map(c => c.id);
+    const cuantas = incluir ? enPapelera.length : sinCobro;
+    if(!cuantas){ toast('Solo quedaban citas con cobro: no se eliminó nada. Revísalas una por una.'); return; }
+    mostrarPrompt({titulo:'Código de seguridad', mensaje:`Escribe el código para eliminar ${cuantas} cita(s) definitivamente. Esta acción no se puede deshacer.`, tipo:'password', placeholder:'Código de seguridad', icono:'🔒'}, async (code) => {
+      if(code === null || code.trim() === '') return;
+      await ejecutarVaciarPapelera(ids, incluir, code.trim());
+    });
+  });
+}
+async function ejecutarVaciarPapelera(ids, incluirCobradas, codigo){
+  if(vaciandoPapelera) return;
+  vaciandoPapelera = true;
+  try{
+    const session = await tokenSesionFresco();
+    if(!session){ toast('⚠ Sesión expirada, vuelve a iniciar sesión'); return; }
+    let r;
+    try{
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/vaciar-papelera`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` },
+        body: JSON.stringify({ codigo, ids, incluirCobradas: incluirCobradas === true })
+      });
+      r = await resp.json();
+      if(!resp.ok){
+        quitarCitasEliminadas(r && r.ids);          // si alcanzó a borrar algunas antes de fallar, se reflejan
+        toast('⚠ ' + ((r && r.error) || 'No se pudo vaciar la papelera'));
+        return;
+      }
+    }catch(e){
+      toast('⚠ Error de conexión: ' + e.message);
+      return;
+    }
+    quitarCitasEliminadas(r.ids);
+    const n = Number(r.eliminadas) || 0;
+    toast(`✓ ${n} cita(s) eliminada(s) definitivamente` + (r.conservadasCobradas ? ` · ${r.conservadasCobradas} con cobro se conservaron` : ''));
+  }finally{
+    vaciandoPapelera = false;
+  }
+}
+function quitarCitasEliminadas(lista){
+  const fuera = new Set(lista || []);
+  if(fuera.size) citas = citas.filter(x => !fuera.has(x.id));
+  renderPapeleraAgenda();
+  render();
+}
+
 function togglePapeleraAgenda(){
   const el = document.getElementById('agenda-papelera-content');
   const showing = el.style.display!=='none';
@@ -5204,7 +5275,8 @@ function renderPapeleraAgenda(){
   if(!el) return;
   const borradas = citas.filter(c=>c.deleted).sort((a,b)=>(b.deletedAt||'').localeCompare(a.deletedAt||''));
   if(!borradas.length){ el.innerHTML = '<div class="empty-state">La papelera está vacía</div>'; return; }
-  let html = `<div class="cierre-section-title">Papelera — ${borradas.length} cita(s) eliminada(s)</div>
+  const botonVaciar = (currentUser && currentUser.esAdmin) ? `<button class="btn-sm btn-sm-del" style="margin-left:auto;" onclick="abrirVaciarPapelera()" title="Elimina definitivamente lo que hay en la papelera">🧹 Vaciar papelera</button>` : '';
+  let html = `<div class="cierre-section-title" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">Papelera — ${borradas.length} cita(s) eliminada(s) ${botonVaciar}</div>
     <div style="overflow-x:auto"><table class="tx-table"><thead><tr>
       <th>Fecha</th><th>Hora</th><th>Dra./Dr.</th><th>Paciente</th><th>Servicio</th><th>Eliminada</th><th>Por</th><th></th>
     </tr></thead><tbody>`;
