@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-124">
+<meta name="app-version" content="2026-10-05-125">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -898,9 +898,13 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 }
 
 </style>
+<style id="version-css">
+#version-footer{color:#6B7789;background:none;text-shadow:none;}
+#version-footer.sobre-azul{color:#fff;}
+</style>
 </head>
 <body>
-<div id="version-footer" onclick="sincronizarAhora()" title="Toca para actualizar ahora" style="position:fixed;bottom:4px;right:8px;font-size:10px;color:var(--gray-400);opacity:0.85;z-index:500;cursor:pointer;background:rgba(255,255,255,.75);padding:1px 6px;border-radius:6px;">v</div>
+<div id="version-footer" onclick="sincronizarAhora()" title="Toca para actualizar ahora" style="position:fixed;bottom:4px;right:10px;font-size:10px;font-weight:600;z-index:500;cursor:pointer;">v</div>
 
 <!-- ═══════════════════════════════════════════
      PANTALLA DE LOGIN (email + password + MFA)
@@ -1928,8 +1932,14 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-124';
-document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; });
+const APP_VERSION = '2026-10-05-125';
+// La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
+function ajustarColorVersion(){
+  const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
+  if(!vf) return;
+  vf.classList.toggle('sobre-azul', !!lg && getComputedStyle(lg).display !== 'none');
+}
+document.addEventListener('DOMContentLoaded', ()=>{ const vf=document.getElementById('version-footer'); if(vf) vf.textContent = 'v'+APP_VERSION; ajustarColorVersion(); });
 const SUPABASE_URL = 'https://raoitzookbbgbovmmtjk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zA4Qbbjr9RH1ecLC6otOQ_c1y96KtU';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2136,6 +2146,8 @@ async function sincronizarTodo(motivo){
 
 // Botón del indicador: lee todo ahora mismo
 async function sincronizarAhora(){
+  revisionVersionPausadaHasta = 0;
+  await revisarVersionNueva();   // si ya hay una versión nueva en el servidor, la app se recarga sola aquí
   const ok = await sincronizarTodo('manual');
   toast(ok ? '✓ Todo está al día' : (navigator.onLine===false ? '⚠ Sin internet — se actualizará al volver' : '⏳ Actualizando…'));
 }
@@ -2143,6 +2155,7 @@ async function sincronizarAhora(){
 function pintarEstadoSinc(){
   const vf = document.getElementById('version-footer');
   if(!vf) return;
+  ajustarColorVersion();
   let punto = '⏳', color = 'var(--gray-400)', txt = 'conectando';
   if(navigator.onLine === false){ punto = '●'; color = '#C0392B'; txt = 'sin internet'; }
   else if(ultimaSincOk){
@@ -8049,6 +8062,7 @@ async function iniciarAppDespuesDeLogin(){
 
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-root').style.display = '';
+  ajustarColorVersion();
   document.getElementById('header-sub-sesion').textContent =
     currentUser.rol === 'recepcion' ? (currentUser.esAdmin ? 'Administrador' : 'Recepción') : currentUser.nombre;
   document.getElementById('btn-personal-header').style.display = currentUser.esAdmin ? '' : 'none';
