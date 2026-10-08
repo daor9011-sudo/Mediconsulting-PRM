@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-127">
+<meta name="app-version" content="2026-10-05-128">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1657,6 +1657,36 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <label style="font-size:11.5px;">Terminal por donde entró</label>
       <select id="cobrar-pendiente-terminal"></select>
     </div>
+    <div id="cobrar-pendiente-split-check-wrap" style="margin:-4px 0 12px;">
+      <label id="cobrar-pendiente-split-check-label" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-600);cursor:pointer;">
+        <input type="checkbox" id="cobrar-pendiente-split-check" onchange="toggleCobrarPendienteSplit()"> Dividir en dos medios (ej. mitad transferencia, mitad tarjeta)
+      </label>
+      <div id="cobrar-pendiente-split-bloqueado" style="display:none;font-size:11px;color:var(--gray-400);margin-top:3px;">Esta cita ya tiene un primer medio registrado — este cobro solo puede quedar en un segundo medio.</div>
+    </div>
+    <div id="cobrar-pendiente-split-wrap" style="display:none;">
+      <div class="form-group">
+        <label style="font-size:11.5px;">Monto con <span id="cobrar-pendiente-split-medio1-label">el primer medio</span></label>
+        <input type="number" id="cobrar-pendiente-split-monto1" step="0.01" min="0" oninput="actualizarCobrarPendienteSplit()">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <div class="form-group" style="flex:1;">
+          <label style="font-size:11.5px;">Segundo medio</label>
+          <select id="cobrar-pendiente-split-medio2" onchange="actualizarCobrarPendienteSplit()">
+            <option value="">Seleccionar...</option>
+            <option>Efectivo</option><option>Tarjeta Crédito</option><option>Tarjeta Débito</option><option>Amex</option><option>Transferencia</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label style="font-size:11.5px;">Monto con el segundo</label>
+          <div id="cobrar-pendiente-split-monto2-display" style="font-size:15px;font-weight:700;color:var(--gray-800);padding:9px 0;">$0.00</div>
+        </div>
+      </div>
+      <div class="form-group" id="cobrar-pendiente-terminal2-wrap" style="display:none;">
+        <label style="font-size:11.5px;">Terminal por donde entró el segundo</label>
+        <select id="cobrar-pendiente-terminal2"></select>
+      </div>
+      <div id="cobrar-pendiente-split-aviso" style="font-size:11.5px;font-weight:600;padding:4px 0 2px;"></div>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-gold" onclick="guardarCobrarPendiente()">✓ Registrar cobro</button>
       <button class="btn btn-outline" onclick="cerrarCobrarPendienteModal()">Cancelar</button>
@@ -1939,7 +1969,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-127';
+const APP_VERSION = '2026-10-05-128';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -5994,8 +6024,8 @@ function cambiarTipoPago(tipo){
   // "Dividir en dos medios" solo tiene sentido cuando el pago es completo
   // — en pendiente no hay nada que cobrar, y en parcial simplificamos a
   // un solo medio para lo que se cobra ahora.
-  document.getElementById('pago-split-check-label').style.display = (tipo==='completo' && !esCortesia) ? 'flex' : 'none';
-  if(tipo!=='completo'){
+  document.getElementById('pago-split-check-label').style.display = ((tipo==='completo'||tipo==='parcial') && !esCortesia) ? 'flex' : 'none';
+  if(tipo==='pendiente' || esCortesia){
     document.getElementById('pago-split-check').checked = false;
     document.getElementById('pago-split-wrap').style.display = 'none';
   }
@@ -6023,6 +6053,8 @@ function actualizarPagoParcial(){
   }else{
     el.textContent = `Queda debiendo: $${restante.toLocaleString('es-MX',{minimumFractionDigits:2})}`;
   }
+  // Si está dividiendo lo que paga ahora en dos medios, ese reparto depende de "pagaAhora" — se recalcula.
+  if(document.getElementById('pago-split-check').checked) actualizarPagoSplit();
 }
 function llenarSelectTerminal(selectId, doctora, sugerida){
   const sel = document.getElementById(selectId);
@@ -6101,13 +6133,34 @@ function cerrarPagoModal(){
   pagoModalId = null;
 }
 
+// Monto sobre el que se calcula el split: el total si el pago queda completo,
+// o lo que se paga ahora si es un pago parcial (el resto sigue como saldo pendiente).
+function montoBaseSplitPago(){
+  const c = citas.find(x=>x.id===pagoModalId);
+  if(!c) return 0;
+  if(tipoPagoActual==='parcial') return Number(document.getElementById('pago-parcial-monto').value)||0;
+  return calcularMontoFinal(c.precio, c.descuentoPct, c.cortesia);
+}
+// Valida y lee "dividir en dos medios" (compartido por Procesar pago y Cobrar saldo pendiente,
+// cada uno con sus propios ids de campos). base = monto total a repartir entre los dos medios.
+function leerSplitDosMedios(ids, medio1, base, terminal1){
+  const monto1 = Number(document.getElementById(ids.monto1).value)||0;
+  const medio2 = document.getElementById(ids.medio2).value;
+  const monto2 = Math.max(0, base - monto1);
+  if(!medio2) return {ok:false, msg:'⚠ Selecciona el segundo medio de pago'};
+  if(medio1===medio2 && !esMedioTarjeta(medio1)) return {ok:false, msg:'⚠ Elige dos medios de pago distintos'};
+  if(monto1<=0 || monto2<=0) return {ok:false, msg:'⚠ Ambos montos deben ser mayores a $0 — si es un solo medio, desmarca "Dividir en dos medios"'};
+  if(monto1>base) return {ok:false, msg:'⚠ El monto del primer medio no puede ser mayor al total'};
+  const terminal2 = esMedioTarjeta(medio2) ? document.getElementById(ids.terminal2).value : null;
+  if(esMedioTarjeta(medio2) && !terminal2) return {ok:false, msg:'⚠ Selecciona la terminal del segundo medio'};
+  if(medio1===medio2 && esMedioTarjeta(medio1) && terminal1 && terminal1===terminal2) return {ok:false, msg:'⚠ Si ambos pagos son del mismo tipo de tarjeta, deben ir a terminales distintas — si no, no hace falta dividir'};
+  return {ok:true, monto1, medio2, monto2, terminal2};
+}
 function togglePagoSplit(){
   const activo = document.getElementById('pago-split-check').checked;
   document.getElementById('pago-split-wrap').style.display = activo ? 'block' : 'none';
   if(activo){
-    const c = citas.find(x=>x.id===pagoModalId);
-    const montoFinal = calcularMontoFinal(c.precio, c.descuentoPct, c.cortesia);
-    document.getElementById('pago-split-monto1').value = montoFinal;
+    document.getElementById('pago-split-monto1').value = montoBaseSplitPago();
     actualizarPagoSplit();
   }
   actualizarTerminalesVisibles();
@@ -6115,7 +6168,7 @@ function togglePagoSplit(){
 function actualizarPagoSplit(){
   const c = citas.find(x=>x.id===pagoModalId);
   if(!c) return;
-  const montoFinal = calcularMontoFinal(c.precio, c.descuentoPct, c.cortesia);
+  const montoFinal = montoBaseSplitPago();
   const monto1 = Number(document.getElementById('pago-split-monto1').value)||0;
   const monto2 = Math.max(0, montoFinal - monto1);
   document.getElementById('pago-split-monto2-display').textContent = '$'+monto2.toLocaleString('es-MX',{minimumFractionDigits:2});
@@ -6180,17 +6233,28 @@ function confirmarPago(){
     return;
   }
 
-  // ── Pago parcial: cobra una parte, el resto queda pendiente ──
+  // ── Pago parcial: cobra una parte (en uno o dos medios), el resto queda pendiente ──
   if(tipoPagoActual==='parcial'){
     const medio = document.getElementById('pago-medio').value;
     const pagaAhora = Number(document.getElementById('pago-parcial-monto').value)||0;
     if(!medio){ toast('⚠ Selecciona el medio de pago'); return; }
     if(pagaAhora<=0){ toast('⚠ Escribe cuánto paga ahora'); return; }
     if(pagaAhora>=montoFinal){ toast('⚠ Si paga el total, usa la opción "Completo"'); return; }
-    const terminalLeida = leerTerminalTarjeta(medio, false);
+    const dividiendo = document.getElementById('pago-split-check').checked;
+    const terminalLeida = leerTerminalTarjeta(medio, dividiendo);
     if(!terminalLeida.ok) return;
+    const terminal1 = terminalLeida.terminal1;
+
+    let monto1 = pagaAhora, monto2 = null, medio2 = null, terminal2 = null;
+    if(dividiendo){
+      const ids = {monto1:'pago-split-monto1', medio2:'pago-split-medio2', terminal2:'pago-terminal2'};
+      const r = leerSplitDosMedios(ids, medio, pagaAhora, terminal1);
+      if(!r.ok){ toast(r.msg); return; }
+      monto1 = r.monto1; medio2 = r.medio2; monto2 = r.monto2; terminal2 = r.terminal2;
+    }
+
     const saldoPendiente = montoFinal - pagaAhora;
-    const datos = {monto1:pagaAhora, medio1:medio, monto2:null, medio2:null, terminal1:terminalLeida.terminal1, terminal2:null, terminalPorServicio:terminalLeida.terminalPorServicio, saldoPendiente, requiereFactura};
+    const datos = {monto1, medio1:medio, monto2, medio2, terminal1, terminal2, terminalPorServicio:terminalLeida.terminalPorServicio, saldoPendiente, requiereFactura};
     if(!c.email){
       mostrarConfirm({titulo:'¿Procesar sin comprobante?', mensaje:'Este paciente no tiene email registrado. ¿Procesar el pago parcial de todos modos?', textoConfirmar:'Sí, procesar', icono:'✉️'}, ()=>ejecutarPago(c, datos));
       return;
@@ -6208,25 +6272,17 @@ function confirmarPago(){
   if(!terminalLeida.ok) return;
   const terminal1 = terminalLeida.terminal1;
 
+  // Antes esto bloqueaba SIEMPRE el mismo medio dos veces. Ahora sí se
+  // permite el mismo tipo de tarjeta dos veces (ej. un servicio a la
+  // terminal de la doctora, otro a la de Canopy Pediatrics) — mientras
+  // las terminales sean distintas. Dos tipos de tarjeta DISTINTOS (ej.
+  // Crédito + Débito) ya cuentan como medios distintos de por sí.
   let monto1 = montoFinal, monto2 = null, medio2 = null, terminal2 = null;
   if(dividiendo){
-    monto1 = Number(document.getElementById('pago-split-monto1').value)||0;
-    medio2 = document.getElementById('pago-split-medio2').value;
-    monto2 = Math.max(0, montoFinal - monto1);
-    if(!medio2){ toast('⚠ Selecciona el segundo medio de pago'); return; }
-    // Antes esto bloqueaba SIEMPRE el mismo medio dos veces. Ahora sí se
-    // permite el mismo tipo de tarjeta dos veces (ej. un servicio a la
-    // terminal de la doctora, otro a la de Canopy Pediatrics) — mientras
-    // las terminales sean distintas. Dos tipos de tarjeta DISTINTOS (ej.
-    // Crédito + Débito) ya cuentan como medios distintos de por sí.
-    // Cualquier otra combinación repetida (Efectivo+Efectivo,
-    // Transferencia+Transferencia) sigue sin tener sentido, se bloquea.
-    if(medio===medio2 && !esMedioTarjeta(medio)){ toast('⚠ Elige dos medios de pago distintos'); return; }
-    if(monto1<=0 || monto2<=0){ toast('⚠ Ambos montos deben ser mayores a $0 — si es un solo medio, desmarca "Dividir en dos medios"'); return; }
-    if(monto1>montoFinal){ toast('⚠ El monto del primer medio no puede ser mayor al total'); return; }
-    terminal2 = esMedioTarjeta(medio2) ? document.getElementById('pago-terminal2').value : null;
-    if(esMedioTarjeta(medio2) && !terminal2){ toast('⚠ Selecciona la terminal del segundo medio'); return; }
-    if(medio===medio2 && esMedioTarjeta(medio) && terminal1 && terminal1===terminal2){ toast('⚠ Si ambos pagos son del mismo tipo de tarjeta, deben ir a terminales distintas — si no, no hace falta dividir'); return; }
+    const ids = {monto1:'pago-split-monto1', medio2:'pago-split-medio2', terminal2:'pago-terminal2'};
+    const r = leerSplitDosMedios(ids, medio, montoFinal, terminal1);
+    if(!r.ok){ toast(r.msg); return; }
+    monto1 = r.monto1; medio2 = r.medio2; monto2 = r.monto2; terminal2 = r.terminal2;
   }
 
   const datos = {monto1, medio1:medio, monto2, medio2, terminal1, terminal2, terminalPorServicio:terminalLeida.terminalPorServicio, saldoPendiente:0, requiereFactura};
@@ -7270,33 +7326,89 @@ function abrirCobrarPendienteModal(id){
     `<strong>${esc(c.paciente)}</strong> — ${esc(c.servicio)}<br>Saldo pendiente: <strong style="color:var(--danger);">$${Number(c.saldoPendiente).toLocaleString('es-MX',{minimumFractionDigits:2})}</strong>`;
   document.getElementById('cobrar-pendiente-medio').value = '';
   document.getElementById('cobrar-pendiente-terminal-wrap').style.display = 'none';
+  // Dividir en dos medios solo tiene sentido si esta cita no tiene todavía ningún
+  // medio registrado — si ya hay uno (de un pago parcial anterior), este cobro
+  // es necesariamente el segundo y último medio posible, así que no hay nada que dividir.
+  const puedeDividir = !c.medioPago;
+  document.getElementById('cobrar-pendiente-split-check').checked = false;
+  document.getElementById('cobrar-pendiente-split-check').disabled = !puedeDividir;
+  document.getElementById('cobrar-pendiente-split-check-label').style.opacity = puedeDividir ? '1' : '.55';
+  document.getElementById('cobrar-pendiente-split-bloqueado').style.display = puedeDividir ? 'none' : 'block';
+  document.getElementById('cobrar-pendiente-split-wrap').style.display = 'none';
+  document.getElementById('cobrar-pendiente-split-monto1').value = '';
+  document.getElementById('cobrar-pendiente-split-medio2').value = '';
+  document.getElementById('cobrar-pendiente-split-monto2-display').textContent = '$0.00';
+  document.getElementById('cobrar-pendiente-split-aviso').textContent = '';
   document.getElementById('cobrar-pendiente-modal-overlay').classList.add('open');
+}
+function toggleCobrarPendienteSplit(){
+  const activo = document.getElementById('cobrar-pendiente-split-check').checked;
+  document.getElementById('cobrar-pendiente-split-wrap').style.display = activo ? 'block' : 'none';
+  if(activo){
+    const c = citas.find(x=>x.id===cobrarPendienteId);
+    document.getElementById('cobrar-pendiente-split-monto1').value = c ? c.saldoPendiente : '';
+    actualizarCobrarPendienteSplit();
+  }
+  actualizarCobrarPendienteTerminal();
+}
+function actualizarCobrarPendienteSplit(){
+  const c = citas.find(x=>x.id===cobrarPendienteId);
+  if(!c) return;
+  const saldo = Number(c.saldoPendiente)||0;
+  const monto1 = Number(document.getElementById('cobrar-pendiente-split-monto1').value)||0;
+  const monto2 = Math.max(0, saldo - monto1);
+  document.getElementById('cobrar-pendiente-split-monto2-display').textContent = '$'+monto2.toLocaleString('es-MX',{minimumFractionDigits:2});
+  const medio1 = document.getElementById('cobrar-pendiente-medio').value;
+  const medio2 = document.getElementById('cobrar-pendiente-split-medio2').value;
+  document.getElementById('cobrar-pendiente-split-medio1-label').textContent = medio1 || 'el primer medio';
+  actualizarCobrarPendienteTerminal();
+  const aviso = document.getElementById('cobrar-pendiente-split-aviso');
+  if(monto1 > saldo){
+    aviso.style.color = 'var(--danger)';
+    aviso.textContent = '⚠ El monto del primer medio no puede ser mayor al saldo pendiente.';
+  }else if(medio1 && medio2 && medio1===medio2){
+    aviso.style.color = 'var(--danger)';
+    aviso.textContent = '⚠ Elige dos medios distintos.';
+  }else{
+    aviso.style.color = 'var(--gray-400)';
+    aviso.textContent = `Saldo: $${saldo.toLocaleString('es-MX',{minimumFractionDigits:2})} = $${monto1.toLocaleString('es-MX',{minimumFractionDigits:2})} + $${monto2.toLocaleString('es-MX',{minimumFractionDigits:2})}`;
+  }
 }
 function cerrarCobrarPendienteModal(){
   document.getElementById('cobrar-pendiente-modal-overlay').classList.remove('open');
   cobrarPendienteId = null;
 }
+function llenarSelectTerminalCobro(selectId, c){
+  const sugerida = sugerirTerminalCita(c);
+  const sel = document.getElementById(selectId);
+  // Enfermería no tiene terminal propia — solo Canopy tiene sentido aquí.
+  if(c.doctora==='Enfermería'){
+    sel.innerHTML = `<option value="${TERMINAL_CANOPY}" selected>${TERMINAL_CANOPY}</option>`;
+  }else{
+    sel.innerHTML = `<option value="">Seleccionar...</option><option value="${esc(c.doctora)}">${esc(c.doctora)}</option><option value="${TERMINAL_CANOPY}">${TERMINAL_CANOPY}</option>`;
+    if(sugerida==='doctora') sel.value = c.doctora;
+    else if(sugerida==='canopy') sel.value = TERMINAL_CANOPY;
+  }
+}
 function actualizarCobrarPendienteTerminal(){
   const c = citas.find(x=>x.id===cobrarPendienteId);
-  const medio = document.getElementById('cobrar-pendiente-medio').value;
-  const wrap = document.getElementById('cobrar-pendiente-terminal-wrap');
-  if(c && esMedioTarjeta(medio)){
-    // Misma sugerencia que usa "Procesar pago": según el catálogo, para
-    // los servicios de esta cita, ¿la terminal preferida es la de la
-    // doctora o la de CANOPY PEDIATRICS? Sigue siendo editable.
-    const sugerida = sugerirTerminalCita(c);
-    const sel = document.getElementById('cobrar-pendiente-terminal');
-    // Enfermería no tiene terminal propia — solo Canopy tiene sentido aquí.
-    if(c.doctora==='Enfermería'){
-      sel.innerHTML = `<option value="${TERMINAL_CANOPY}" selected>${TERMINAL_CANOPY}</option>`;
-    }else{
-      sel.innerHTML = `<option value="">Seleccionar...</option><option value="${esc(c.doctora)}">${esc(c.doctora)}</option><option value="${TERMINAL_CANOPY}">${TERMINAL_CANOPY}</option>`;
-      if(sugerida==='doctora') sel.value = c.doctora;
-      else if(sugerida==='canopy') sel.value = TERMINAL_CANOPY;
-    }
-    wrap.style.display = '';
+  if(!c) return;
+  const medio1 = document.getElementById('cobrar-pendiente-medio').value;
+  const dividiendo = document.getElementById('cobrar-pendiente-split-check').checked;
+  const medio2 = document.getElementById('cobrar-pendiente-split-medio2').value;
+  const wrap1 = document.getElementById('cobrar-pendiente-terminal-wrap');
+  if(esMedioTarjeta(medio1)){
+    llenarSelectTerminalCobro('cobrar-pendiente-terminal', c);
+    wrap1.style.display = '';
   }else{
-    wrap.style.display = 'none';
+    wrap1.style.display = 'none';
+  }
+  const wrap2 = document.getElementById('cobrar-pendiente-terminal2-wrap');
+  if(dividiendo && esMedioTarjeta(medio2)){
+    llenarSelectTerminalCobro('cobrar-pendiente-terminal2', c);
+    wrap2.style.display = '';
+  }else{
+    wrap2.style.display = 'none';
   }
 }
 function guardarCobrarPendiente(){
@@ -7307,7 +7419,26 @@ function guardarCobrarPendiente(){
   const terminal = document.getElementById('cobrar-pendiente-terminal').value;
   if(esMedioTarjeta(medio) && !terminal){ toast('⚠ Selecciona la terminal'); return; }
   const monto = Number(c.saldoPendiente)||0;
-  if(!c.medioPago){
+
+  const puedeDividir = !c.medioPago;
+  const dividiendo = puedeDividir && document.getElementById('cobrar-pendiente-split-check').checked;
+  let mensajeOk = '✓ Saldo pendiente cobrado';
+
+  if(dividiendo){
+    // El cliente decide, al momento de cobrar, repartir el saldo entre dos medios
+    // (ej. "la mitad por transferencia y la otra con tarjeta") — ambas casillas de
+    // esta cita estaban libres, así que caben los dos medios completos.
+    const ids = {monto1:'cobrar-pendiente-split-monto1', medio2:'cobrar-pendiente-split-medio2', terminal2:'cobrar-pendiente-terminal2'};
+    const r = leerSplitDosMedios(ids, medio, monto, esMedioTarjeta(medio) ? terminal : null);
+    if(!r.ok){ toast(r.msg); return; }
+    c.medioPago = medio;
+    c.montoPagado = r.monto1;
+    c.terminalPago = esMedioTarjeta(medio) ? terminal : null;
+    c.medioPago2 = r.medio2;
+    c.montoPagado2 = r.monto2;
+    c.terminalPago2 = r.terminal2;
+    mensajeOk = '✓ Saldo pendiente cobrado, dividido en dos medios';
+  }else if(!c.medioPago){
     // no se había cobrado nada todavía — este queda como el único medio
     c.medioPago = medio;
     c.montoPagado = monto;
@@ -7326,7 +7457,7 @@ function guardarCobrarPendiente(){
   cerrarCobrarPendienteModal();
   render();
   if(document.getElementById('section-historico').style.display!=='none') renderHistorico();
-  toast('✓ Saldo pendiente cobrado');
+  toast(mensajeOk);
 }
 
 function initHistServicioSelect(){
