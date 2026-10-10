@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-130">
+<meta name="app-version" content="2026-10-05-131">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1980,7 +1980,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-130';
+const APP_VERSION = '2026-10-05-131';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -7510,7 +7510,13 @@ function renderHistorico(){
   }
 
   const filtrado = getFiltradoHistorico();
-  const total = filtrado.reduce((s,c)=>s+montoTotalPagado(c),0);
+  // Si esta es la sesión propia de una doctora y la cita solo le aparece por ser la prestadora
+  // (no es la dueña del paciente), lo que es "suyo" para estos totales es su parte del reparto,
+  // no el monto completo que pagó el paciente — ese monto completo es del dueño del paciente.
+  const montoHistorico = c => (!esRecepcion && sesionActual===c.prestador && sesionActual!==c.doctora)
+    ? montoLiquidacionCita(c).monto
+    : montoTotalPagado(c);
+  const total = filtrado.reduce((s,c)=>s+montoHistorico(c),0);
   const nPacUnicos = new Set(filtrado.map(c=>c.paciente.toLowerCase().trim())).size;
   const totalPorCobrarHist = filtrado.reduce((s,c)=>s+Number(c.saldoPendiente||0),0);
   const nPorCobrarHist = filtrado.filter(c=>c.saldoPendiente>0).length;
