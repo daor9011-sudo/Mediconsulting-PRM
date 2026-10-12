@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-131">
+<meta name="app-version" content="2026-10-05-132">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1980,7 +1980,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-131';
+const APP_VERSION = '2026-10-05-132';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -2326,7 +2326,13 @@ function aplicarCambioRealtimeCita(payload){
     // Alimenta la campanita de actividad cuando detecta una transición
     // real (no cuando el evento llega por otra razón, ej. editar notas).
     if(payload.eventType==='UPDATE' && anterior){
-      if(actualizada.estado==='llego' && anterior.estado!=='llego'){
+      // Antes esto le avisaba a TODAS las doctoras conectadas, sin importar de quién fuera el
+      // paciente. Ahora solo le suena a recepción (que gestiona la sala de espera de todas) y a la
+      // doctora o prestadora dueña de esa cita. OJO: no se reutiliza "veoElDineroDeEsta" porque esa
+      // regla deja pasar a todo el mundo mientras la cita no esté cobrada — y casi toda llegada
+      // ocurre antes del cobro, así que con esa regla el aviso le seguiría sonando a todas.
+      const esMiaEstaCita = sesionActual==='recepcion' || actualizada.doctora===sesionActual || actualizada.prestador===sesionActual;
+      if(actualizada.estado==='llego' && anterior.estado!=='llego' && esMiaEstaCita){
         agregarActividad(`🚶 <strong>${esc(actualizada.paciente)}</strong> llegó — ${esc(agendaDe(actualizada))}`);
       }
       if(veoElDineroDeEsta && actualizada.pagado && !anterior.pagado){
