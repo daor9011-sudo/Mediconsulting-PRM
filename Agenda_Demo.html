@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-133">
+<meta name="app-version" content="2026-10-05-134">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1994,7 +1994,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-133';
+const APP_VERSION = '2026-10-05-134';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -3186,15 +3186,17 @@ function cambioTerminalServicioForm(sel){
 // multiplica solo por el precio por día que ya está en el catálogo.
 function esServicioPorDia(nombre){ return /hospitalizaci/i.test(nombre||''); }
 
-// Servicios que se cobran por UNIDADES (mismo mecanismo que los días de hospitalización): se elige cuántas
-// y el sistema multiplica por el precio unitario del catálogo. Para sumar otro servicio basta una línea aquí
-// (el nombre se compara sin acentos ni mayúsculas) con su máximo de unidades.
-const SERVICIOS_POR_CANTIDAD = {
-  'beyfortus 100mg': { max:5 },
-  'beyfortus 50mg':  { max:5 }
-};
+// Cualquier servicio marcado como vacuna en el catálogo (💉, el mismo checkbox "Es vacuna" de
+// Servicios) se cobra por UNIDADES: se elige cuántas (1 a 10) y el sistema multiplica por el precio
+// unitario — igual mecanismo que los días de hospitalización. Ya no es una lista fija de nombres:
+// agregar o quitar una vacuna en Servicios la agrega o la quita de aquí solo, sin tocar código.
+const CANTIDAD_MAX_VACUNA = 10;
 function normNombreServicio(n){ return String(n||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
-function cantidadMaxServicio(nombre){ const c = SERVICIOS_POR_CANTIDAD[normNombreServicio(nombre)]; return c ? c.max : 0; }
+function cantidadMaxServicio(nombre){
+  const n = normNombreServicio(nombre);
+  const enCatalogo = CATALOGO_SERVICIOS.find(s => normNombreServicio(s.nombre) === n);
+  return (enCatalogo && enCatalogo.es_vacuna) ? CANTIDAD_MAX_VACUNA : 0;
+}
 
 function renderDesglosePrecioServicios(nombres){
   const cont = document.getElementById('m-precio-desglose');
