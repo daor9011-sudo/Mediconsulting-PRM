@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-132">
+<meta name="app-version" content="2026-10-05-133">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1657,6 +1657,20 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   <div class="modal" style="max-width:380px;">
     <h3>💰 Cobrar saldo pendiente</h3>
     <div id="cobrar-pendiente-resumen" style="background:var(--gray-50);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;color:var(--gray-600);"></div>
+    <div id="cobrar-pendiente-historial" style="display:none;background:var(--gray-50);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:12px;">
+      <div style="font-weight:700;color:var(--gray-800);margin-bottom:2px;">Ya abonado</div>
+      <div id="cobrar-pendiente-historial-filas"></div>
+    </div>
+    <div class="form-group" id="cobrar-pendiente-monto-wrap">
+      <label>¿Cuánto abona hoy?</label>
+      <input type="number" id="cobrar-pendiente-monto" step="0.01" min="0" oninput="actualizarCobrarPendienteMonto()" style="font-size:16px;font-weight:700;color:var(--gray-800);">
+      <div id="cobrar-pendiente-barra-wrap" style="margin-top:6px;">
+        <div style="height:7px;background:var(--gray-100);border-radius:99px;overflow:hidden;"><div id="cobrar-pendiente-barra" style="display:block;height:100%;background:var(--success);border-radius:99px;width:0%;"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--gray-400);font-weight:600;margin-top:3px;">
+          <span id="cobrar-pendiente-abona-txt">Abona $0.00</span><span id="cobrar-pendiente-resta-txt">Queda pendiente $0.00</span>
+        </div>
+      </div>
+    </div>
     <div class="form-group">
       <label>Medio de pago</label>
       <select id="cobrar-pendiente-medio" onchange="actualizarCobrarPendienteTerminal()">
@@ -1670,7 +1684,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     </div>
     <div id="cobrar-pendiente-split-check-wrap" style="margin:-4px 0 12px;">
       <label id="cobrar-pendiente-split-check-label" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-600);cursor:pointer;">
-        <input type="checkbox" id="cobrar-pendiente-split-check" onchange="toggleCobrarPendienteSplit()"> Dividir en dos medios (ej. mitad transferencia, mitad tarjeta)
+        <input type="checkbox" id="cobrar-pendiente-split-check" onchange="toggleCobrarPendienteSplit()"> Dividir este abono en dos medios (ej. mitad transferencia, mitad tarjeta)
       </label>
       <div id="cobrar-pendiente-split-bloqueado" style="display:none;font-size:11px;color:var(--gray-400);margin-top:3px;">Esta cita ya tiene un primer medio registrado — este cobro solo puede quedar en un segundo medio.</div>
     </div>
@@ -1699,7 +1713,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <div id="cobrar-pendiente-split-aviso" style="font-size:11.5px;font-weight:600;padding:4px 0 2px;"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-gold" onclick="guardarCobrarPendiente()">✓ Registrar cobro</button>
+      <button class="btn btn-gold" id="cobrar-pendiente-btn-guardar" onclick="guardarCobrarPendiente()">✓ Registrar cobro</button>
       <button class="btn btn-outline" onclick="cerrarCobrarPendienteModal()">Cancelar</button>
     </div>
   </div>
@@ -1980,7 +1994,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-132';
+const APP_VERSION = '2026-10-05-133';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -2879,6 +2893,9 @@ function citaDesdeDb(r){
     notas:r.notas||'', estado:r.estado, sinCita:!!r.sin_cita, cancelada:!!r.cancelada, canceladaPor:r.cancelada_por||null, noLlego:!!r.no_llego,
     pagado:!!r.pagado, montoPagado:Number(r.monto_pagado)||0, medioPago:r.medio_pago||'',
     montoPagado2:r.monto_pagado_2!=null?Number(r.monto_pagado_2):null, medioPago2:r.medio_pago_2||null,
+    // Fecha en que ESE medio realmente entró a caja — la pone el servidor (trigger), nunca el navegador.
+    // Distinta de "fecha" (el día de la cita): el Cierre debe agruparse por esta, no por esa.
+    fechaPago:r.fecha_pago||null, fechaPago2:r.fecha_pago_2||null,
     saldoPendiente:Number(r.saldo_pendiente)||0,
     requiereFactura:!!r.requiere_factura, facturada:!!r.facturada, numeroFactura:r.numero_factura||null,
     terminalPago:r.terminal_pago||null, terminalPago2:r.terminal_pago_2||null, terminalPorServicio:r.terminal_por_servicio||null,
@@ -3699,7 +3716,7 @@ function render(){
           ${c.cancelada?`<span class="cancel-tag">✕ Cancelada${c.canceladaPor?' · '+esc(c.canceladaPor):''}</span>`:''}
           ${c.noLlego?'<span style="font-size:10.5px;font-weight:700;color:#7D3C98;background:#F5EEF8;border:1px solid #D9B3D9;padding:3px 9px;border-radius:6px;">👻 No llegó</span>':''}
           ${c.pagado && montoTotalPagado(c)>0?(c.precio===null?`<span style="font-size:10.5px;font-weight:700;color:var(--success);background:#EEF8F1;border:1px solid #A8D8B4;padding:3px 9px;border-radius:6px;">✓ Procesado</span>`:(c.cortesia?`<span style="font-size:10.5px;font-weight:700;color:#7D3C98;background:#F5F0FC;border:1px solid #D2B4DE;padding:3px 9px;border-radius:6px;">🎁 Procesado — Cortesía</span>`:`<span style="font-size:10.5px;font-weight:700;color:var(--success);background:#EEF8F1;border:1px solid #A8D8B4;padding:3px 9px;border-radius:6px;">✓ Procesado — $${montoTotalPagado(c).toLocaleString('es-MX',{minimumFractionDigits:2})} (${esc(medioPagoTexto(c))})</span>`)):(c.pagado && c.cortesia?`<span style="font-size:10.5px;font-weight:700;color:#7D3C98;background:#F5F0FC;border:1px solid #D2B4DE;padding:3px 9px;border-radius:6px;">🎁 Procesado — Cortesía</span>`:'')}
-          ${c.pagado && c.saldoPendiente>0?`<span style="font-size:10.5px;font-weight:700;color:#9A6010;background:#FDF6EC;border:1px solid #EDD49A;padding:3px 9px;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();abrirCobrarPendienteModal(${c.id})" title="Clic para registrar el cobro de este saldo pendiente">💰 Pago pdte. — $${Number(c.saldoPendiente).toLocaleString('es-MX',{minimumFractionDigits:2})}</span>`:''}
+          ${c.pagado && c.saldoPendiente>0?`<span style="font-size:10.5px;font-weight:700;color:#9A6010;background:#FDF6EC;border:1px solid #EDD49A;padding:3px 9px;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation();abrirCobrarPendienteModal(${c.id})" title="Clic para registrar el cobro de este saldo pendiente">💰 Pago pdte. — $${Number(c.saldoPendiente).toLocaleString('es-MX',{minimumFractionDigits:2})}${c.medioPago?` <span style="font-weight:500;opacity:.85;">(ya abonó $${Number(c.montoPagado).toLocaleString('es-MX',{minimumFractionDigits:2})})</span>`:''}</span>`:''}
           </div>`:''}
           </div>
         </div>
@@ -6537,21 +6554,34 @@ function renderCierre(){
   const esRecepcion = sesionActual === 'recepcion';
   let del_dia, labelPeriodo;
 
+  // "citasDelPeriodoPorCita": como antes — por la fecha DE LA CITA. Sigue siendo la base correcta
+  // para Cortesías y Por Cobrar (eso va de la mano de cuándo fue la consulta, no de cuándo se cobró).
+  // "del_dia": NUEVO — por la fecha REAL de cobro, que puede cesar en un día distinto al de la cita
+  // (ej. una cita de hace una semana que se terminó de pagar hoy). Esta es la base del dinero.
+  let citasDelPeriodoPorCita, enPeriodoPago;
   if(modoCierre==='dia'){
     document.getElementById('cierre-day-label').textContent = fmtFechaLabel(fechaCierre);
     document.getElementById('cierre-date-picker').value = fechaCierre;
     document.getElementById('cierre-date-picker-fmt').textContent = fmtDDMMYYYY(fechaCierre);
-    del_dia = activeCitas().filter(c=>c.fecha===fechaCierre && c.pagado && !c.cancelada);
+    citasDelPeriodoPorCita = activeCitas().filter(c=>c.fecha===fechaCierre && c.pagado && !c.cancelada);
+    enPeriodoPago = f => f === fechaCierre;
     labelPeriodo = 'Corte del día — '+fmtDDMMYYYY(fechaCierre);
   }else{
     const {y,m} = mesCierre;
     const prefijo = y+'-'+String(m+1).padStart(2,'0');
     document.getElementById('cierre-day-label').textContent = fmtMesLabel(y,m).replace(/^\w/,c=>c.toUpperCase());
     document.getElementById('cierre-month-picker').value = prefijo;
-    del_dia = activeCitas().filter(c=>c.fecha.startsWith(prefijo) && c.pagado && !c.cancelada);
+    citasDelPeriodoPorCita = activeCitas().filter(c=>c.fecha.startsWith(prefijo) && c.pagado && !c.cancelada);
+    enPeriodoPago = f => !!f && f.startsWith(prefijo);
     labelPeriodo = 'Cierre del mes — '+fmtMesLabel(y,m);
   }
-  if(!esRecepcion) del_dia = del_dia.filter(c=>c.doctora===sesionActual);
+  // La fuente para "quién pagó qué" es TODA la agenda activa (sin filtrar por fecha de cita — el pago
+  // pudo caer en este periodo aunque la cita haya sido de otro día), acotada luego por el periodo real de pago.
+  del_dia = citasParaPeriodoDePago(activeCitas().filter(c=>!c.cancelada), enPeriodoPago);
+  if(!esRecepcion){
+    citasDelPeriodoPorCita = citasDelPeriodoPorCita.filter(c=>c.doctora===sesionActual);
+    del_dia = del_dia.filter(c=>c.doctora===sesionActual);
+  }
 
   // Filtro de doctora — solo aplica para recepción; una doctora ya está
   // limitada a su propia sesión arriba, así que el selector ni le aparece.
@@ -6563,7 +6593,10 @@ function renderCierre(){
       filSel.dataset.poblado = '1';
     }
     filSel.value = filtroCierreDoctora;
-    if(filtroCierreDoctora) del_dia = del_dia.filter(c=>c.doctora===filtroCierreDoctora);
+    if(filtroCierreDoctora){
+      citasDelPeriodoPorCita = citasDelPeriodoPorCita.filter(c=>c.doctora===filtroCierreDoctora);
+      del_dia = del_dia.filter(c=>c.doctora===filtroCierreDoctora);
+    }
   }else{
     filSel.style.display = 'none';
   }
@@ -6599,9 +6632,11 @@ function renderCierre(){
   }
 
   const total = del_dia.reduce((s,c)=>s+montoTotalPagado(c),0);
-  const totalPorCobrar = del_dia.reduce((s,c)=>s+Number(c.saldoPendiente||0),0);
+  // "Por cobrar" y "Cortesías" van por fecha de la CITA (citasDelPeriodoPorCita) — no son dinero que
+  // haya entrado este periodo, son propiedades de las consultas que se atendieron este periodo.
+  const totalPorCobrar = citasDelPeriodoPorCita.reduce((s,c)=>s+Number(c.saldoPendiente||0),0);
+  const nCortesias = citasDelPeriodoPorCita.filter(c=>c.cortesia).length;
   const nPac = del_dia.length;
-  const nCortesias = del_dia.filter(c=>c.cortesia).length;
   const nPacUnicosTotal = new Set(del_dia.map(c=>c.paciente.toLowerCase().trim())).size;
 
   document.getElementById('cierre-summary').innerHTML = `
@@ -6655,7 +6690,7 @@ function renderCierre(){
   }
 
   if(vistaCierreTab==='medio'){
-    renderCierrePorMedio(desgloseEl, del_dia, total);
+    renderCierrePorMedio(desgloseEl, del_dia, total, citasDelPeriodoPorCita);
     return;
   }
 
@@ -6685,7 +6720,7 @@ function renderCierre(){
     const pacRows = [...sub].sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora)).map(c=>`
       <div class="doc-pac-row">
         <span>${modoCierre==='mes'?'<span style="color:var(--gray-400);font-weight:600;">'+fmtDDMMYYYY(c.fecha)+'</span> · ':''}<span class="nom">${esc(c.paciente)}</span>${c.sinCita?' <span style="font-size:10px;color:var(--gray-400)">(sin cita)</span>':''} <span class="serv">— ${esc(c.servicio)}</span></span>
-        <span class="val">${c.cortesia?'Cortesía':'$'+montoTotalPagado(c).toLocaleString('es-MX',{minimumFractionDigits:2})}${c.saldoPendiente>0?` <span style="font-size:10px;color:var(--warn);font-weight:700;">(+ $${Number(c.saldoPendiente).toLocaleString('es-MX',{minimumFractionDigits:0})} pdte.)</span>`:''}</span>
+        <span class="val">${c.cortesia?'Cortesía':'$'+montoTotalPagado(c).toLocaleString('es-MX',{minimumFractionDigits:2})}${c._otroMedioEnOtroDia?' <span style="font-size:10px;color:var(--gray-400);font-weight:600;">(parte — el resto se cobró otro día)</span>':''}${c.saldoPendiente>0?` <span style="font-size:10px;color:var(--warn);font-weight:700;">(+ $${Number(c.saldoPendiente).toLocaleString('es-MX',{minimumFractionDigits:0})} pdte.)</span>`:''}</span>
       </div>`).join('');
 
     docHtml += `<div class="doc-card">
@@ -6794,6 +6829,34 @@ function notaRepartoHistorico(c){
   else if(sesionActual===c.doctora) texto = 'Le toca a '+esc(c.prestador)+': '+montoTxt+sufijo;
   else texto = 'Reparto → '+esc(c.prestador)+': '+montoTxt+sufijo;
   return `<div style="font-size:10.5px;font-weight:600;color:var(--gray-400);margin-top:2px;">${texto}${pendienteTxt}</div>`;
+}
+// Una cita puede meter dinero en el Cierre de hasta 2 días distintos (si se abonó en dos momentos).
+// Esta función arma, para un periodo dado, una versión de cada cita con pago real en ese periodo —
+// pero con montoPagado/medioPago (y su par 2) RECORTADOS a solo lo que entró en el periodo. Así el
+// resto del Cierre (totales, por doctora, por medio, filas de pacientes) no cambia nada de su código:
+// sigue leyendo c.montoPagado/c.medioPago como siempre, solo que ahora ya vienen acotados al periodo
+// correcto en vez de ser el total histórico completo de la cita.
+function citasParaPeriodoDePago(citasBase, enPeriodoFn){
+  const out = [];
+  citasBase.forEach(c => {
+    const slot1 = Number(c.montoPagado||0) > 0 && c.fechaPago && enPeriodoFn(c.fechaPago);
+    const slot2 = Number(c.montoPagado2||0) > 0 && c.fechaPago2 && enPeriodoFn(c.fechaPago2);
+    if(!slot1 && !slot2) return;
+    // Si alguno de los dos medios de la cita quedó fuera de este periodo (se cobró otro día), lo marcamos
+    // para poder avisar en la fila que esto es solo una parte de lo que terminó pagando la cita.
+    const hayOtroMedioFueraDePeriodo =
+      (Number(c.montoPagado||0) > 0 && !slot1) || (Number(c.montoPagado2||0) > 0 && !slot2);
+    out.push(Object.assign({}, c, {
+      montoPagado: slot1 ? c.montoPagado : 0,
+      medioPago: slot1 ? c.medioPago : null,
+      terminalPago: slot1 ? c.terminalPago : null,
+      montoPagado2: slot2 ? c.montoPagado2 : null,
+      medioPago2: slot2 ? c.medioPago2 : null,
+      terminalPago2: slot2 ? c.terminalPago2 : null,
+      _otroMedioEnOtroDia: hayOtroMedioFueraDePeriodo
+    }));
+  });
+  return out;
 }
 function enPeriodoCierre(c){
   if(modoCierre==='dia') return c.fecha===fechaCierre;
@@ -7130,7 +7193,7 @@ function cambiarFiltroCierreDoctora(){
 // Tarjetas por medio de pago (Efectivo / Tarjeta / Transferencia / Cortesía),
 // cada una con % del corte, número de pagos, barra de progreso y desglose
 // por doctora dentro de ese medio — refleja pagos divididos entre dos medios.
-function renderCierrePorMedio(el, del_dia, total){
+function renderCierrePorMedio(el, del_dia, total, citasDelPeriodoPorCita){
   const MEDIOS_INFO = {
     'Efectivo':{color:'#2E7D4F',bg:'#EAF7EE',border:'#A8D8B4',icon:'💵'},
     'Transferencia':{color:'#1A7A5E',bg:'#FDF6EC',border:'#EDD49A',icon:'🏦'},
@@ -7170,7 +7233,7 @@ function renderCierrePorMedio(el, del_dia, total){
     </div>`;
   });
 
-  const cortesias = del_dia.filter(c=>c.cortesia);
+  const cortesias = citasDelPeriodoPorCita.filter(c=>c.cortesia);
   if(cortesias.length){
     algunaConDatos = true;
     const porDoctora = {};
@@ -7352,18 +7415,20 @@ function marcarTransferenciaVerificada(id){
 // "Procesar pago" desaparece de la tarjeta en cuanto queda pagado=true,
 // aunque sea parcial. Este modal es la única puerta para cerrar ese saldo.
 let cobrarPendienteId = null;
+let cobrarPendienteUltimoMedioDisponible = false;
 function abrirCobrarPendienteModal(id){
   const c = citas.find(x=>x.id===id);
   if(!c || !(c.saldoPendiente>0)) return;
   cobrarPendienteId = id;
   document.getElementById('cobrar-pendiente-resumen').innerHTML =
     `<strong>${esc(c.paciente)}</strong> — ${esc(c.servicio)}<br>Saldo pendiente: <strong style="color:var(--danger);">$${Number(c.saldoPendiente).toLocaleString('es-MX',{minimumFractionDigits:2})}</strong>`;
-  document.getElementById('cobrar-pendiente-medio').value = '';
-  document.getElementById('cobrar-pendiente-terminal-wrap').style.display = 'none';
+
   // Dividir en dos medios solo tiene sentido si esta cita no tiene todavía ningún
-  // medio registrado — si ya hay uno (de un pago parcial anterior), este cobro
-  // es necesariamente el segundo y último medio posible, así que no hay nada que dividir.
+  // medio registrado — si ya hay uno (de un abono anterior), este cobro es
+  // necesariamente el segundo y último medio posible: no hay un tercero para
+  // dividir, y por lo tanto el monto de hoy debe liquidar lo que queda, completo.
   const puedeDividir = !c.medioPago;
+  cobrarPendienteUltimoMedioDisponible = !puedeDividir;
   document.getElementById('cobrar-pendiente-split-check').checked = false;
   document.getElementById('cobrar-pendiente-split-check').disabled = !puedeDividir;
   document.getElementById('cobrar-pendiente-split-check-label').style.opacity = puedeDividir ? '1' : '.55';
@@ -7373,14 +7438,56 @@ function abrirCobrarPendienteModal(id){
   document.getElementById('cobrar-pendiente-split-medio2').value = '';
   document.getElementById('cobrar-pendiente-split-monto2-display').textContent = '$0.00';
   document.getElementById('cobrar-pendiente-split-aviso').textContent = '';
+
+  // Historial: lo que ya se abonó antes en esta misma cita (si hubo un primer abono parcial).
+  const histEl = document.getElementById('cobrar-pendiente-historial');
+  if(c.medioPago && Number(c.montoPagado||0) > 0){
+    histEl.style.display = 'block';
+    document.getElementById('cobrar-pendiente-historial-filas').innerHTML =
+      `<div style="display:flex;justify-content:space-between;color:var(--gray-600);padding:2px 0;">
+        <span>${c.fechaPago ? fmtDDMMYYYY(c.fechaPago)+' · ' : ''}${esc(c.medioPago)}</span>
+        <b style="color:var(--text);">$${Number(c.montoPagado).toLocaleString('es-MX',{minimumFractionDigits:2})}</b>
+      </div>`;
+  }else{
+    histEl.style.display = 'none';
+    document.getElementById('cobrar-pendiente-historial-filas').innerHTML = '';
+  }
+
+  // El monto a abonar arranca en el saldo completo (liquidarlo de un jalón es lo más común);
+  // si ya no queda un medio libre después de este cobro, no se puede dejar un resto suelto,
+  // así que el campo se bloquea en el saldo completo.
+  const montoEl = document.getElementById('cobrar-pendiente-monto');
+  montoEl.value = c.saldoPendiente;
+  montoEl.max = c.saldoPendiente;
+  montoEl.readOnly = cobrarPendienteUltimoMedioDisponible;
+  montoEl.style.background = cobrarPendienteUltimoMedioDisponible ? 'var(--gray-50)' : '#fff';
   document.getElementById('cobrar-pendiente-modal-overlay').classList.add('open');
+  actualizarCobrarPendienteMonto();
+}
+// Se actualiza al escribir cuánto se abona: mueve la barra, el texto de "queda pendiente", y
+// recalcula el split si estaba dividiendo (que reparte el ABONO, no el saldo completo).
+function actualizarCobrarPendienteMonto(){
+  const c = citas.find(x=>x.id===cobrarPendienteId);
+  if(!c) return;
+  const saldo = Number(c.saldoPendiente)||0;
+  let monto = Number(document.getElementById('cobrar-pendiente-monto').value)||0;
+  const resta = Math.max(0, saldo - monto);
+  document.getElementById('cobrar-pendiente-barra').style.width = saldo>0 ? Math.min(100, Math.round(monto/saldo*100))+'%' : '0%';
+  document.getElementById('cobrar-pendiente-abona-txt').textContent = 'Abona $'+monto.toLocaleString('es-MX',{minimumFractionDigits:2});
+  const restaTxt = document.getElementById('cobrar-pendiente-resta-txt');
+  if(resta <= 0.004){ restaTxt.textContent = 'Liquida el saldo ✓'; restaTxt.style.color = 'var(--success)'; restaTxt.style.fontWeight = '700'; }
+  else{ restaTxt.textContent = 'Queda pendiente $'+resta.toLocaleString('es-MX',{minimumFractionDigits:2}); restaTxt.style.color = 'var(--gray-400)'; restaTxt.style.fontWeight = '600'; }
+  const btn = document.getElementById('cobrar-pendiente-btn-guardar');
+  btn.textContent = resta > 0.004 ? '✓ Registrar abono' : '✓ Registrar cobro — liquida la cuenta';
+  if(document.getElementById('cobrar-pendiente-split-check').checked) actualizarCobrarPendienteSplit();
 }
 function toggleCobrarPendienteSplit(){
   const activo = document.getElementById('cobrar-pendiente-split-check').checked;
   document.getElementById('cobrar-pendiente-split-wrap').style.display = activo ? 'block' : 'none';
   if(activo){
-    const c = citas.find(x=>x.id===cobrarPendienteId);
-    document.getElementById('cobrar-pendiente-split-monto1').value = c ? c.saldoPendiente : '';
+    // Reparte lo que se va a abonar HOY (no necesariamente el saldo completo de la cita).
+    const abono = Number(document.getElementById('cobrar-pendiente-monto').value)||0;
+    document.getElementById('cobrar-pendiente-split-monto1').value = abono;
     actualizarCobrarPendienteSplit();
   }
   actualizarCobrarPendienteTerminal();
@@ -7388,7 +7495,7 @@ function toggleCobrarPendienteSplit(){
 function actualizarCobrarPendienteSplit(){
   const c = citas.find(x=>x.id===cobrarPendienteId);
   if(!c) return;
-  const saldo = Number(c.saldoPendiente)||0;
+  const saldo = Number(document.getElementById('cobrar-pendiente-monto').value)||0;   // el abono de hoy, no el saldo total de la cita
   const monto1 = Number(document.getElementById('cobrar-pendiente-split-monto1').value)||0;
   const monto2 = Math.max(0, saldo - monto1);
   document.getElementById('cobrar-pendiente-split-monto2-display').textContent = '$'+monto2.toLocaleString('es-MX',{minimumFractionDigits:2});
@@ -7399,13 +7506,13 @@ function actualizarCobrarPendienteSplit(){
   const aviso = document.getElementById('cobrar-pendiente-split-aviso');
   if(monto1 > saldo){
     aviso.style.color = 'var(--danger)';
-    aviso.textContent = '⚠ El monto del primer medio no puede ser mayor al saldo pendiente.';
+    aviso.textContent = '⚠ El monto del primer medio no puede ser mayor al abono.';
   }else if(medio1 && medio2 && medio1===medio2){
     aviso.style.color = 'var(--danger)';
     aviso.textContent = '⚠ Elige dos medios distintos.';
   }else{
     aviso.style.color = 'var(--gray-400)';
-    aviso.textContent = `Saldo: $${saldo.toLocaleString('es-MX',{minimumFractionDigits:2})} = $${monto1.toLocaleString('es-MX',{minimumFractionDigits:2})} + $${monto2.toLocaleString('es-MX',{minimumFractionDigits:2})}`;
+    aviso.textContent = `Abono: $${saldo.toLocaleString('es-MX',{minimumFractionDigits:2})} = $${monto1.toLocaleString('es-MX',{minimumFractionDigits:2})} + $${monto2.toLocaleString('es-MX',{minimumFractionDigits:2})}`;
   }
 }
 function cerrarCobrarPendienteModal(){
@@ -7452,18 +7559,28 @@ function guardarCobrarPendiente(){
   if(!medio){ toast('⚠ Selecciona el medio de pago'); return; }
   const terminal = document.getElementById('cobrar-pendiente-terminal').value;
   if(esMedioTarjeta(medio) && !terminal){ toast('⚠ Selecciona la terminal'); return; }
-  const monto = Number(c.saldoPendiente)||0;
+
+  const saldoAntes = Number(c.saldoPendiente)||0;
+  let abono = Number(document.getElementById('cobrar-pendiente-monto').value)||0;
+  if(abono <= 0){ toast('⚠ Escribe cuánto se abona'); return; }
+  if(abono > saldoAntes + 0.004){ toast('⚠ No puede abonar más de lo que debe ($'+saldoAntes.toLocaleString('es-MX',{minimumFractionDigits:2})+')'); return; }
+  // Si ya no queda un medio libre después de este cobro, no se puede dejar un resto suelto sin
+  // forma de cobrarlo después — este abono tiene que liquidar lo que falta, completo.
+  if(cobrarPendienteUltimoMedioDisponible && abono < saldoAntes - 0.004){
+    toast('⚠ Esta cita ya no tiene más medios libres — este cobro debe liquidar el saldo completo ($'+saldoAntes.toLocaleString('es-MX',{minimumFractionDigits:2})+')');
+    return;
+  }
 
   const puedeDividir = !c.medioPago;
   const dividiendo = puedeDividir && document.getElementById('cobrar-pendiente-split-check').checked;
-  let mensajeOk = '✓ Saldo pendiente cobrado';
+  const liquida = abono >= saldoAntes - 0.004;
+  let mensajeOk;
 
   if(dividiendo){
-    // El cliente decide, al momento de cobrar, repartir el saldo entre dos medios
-    // (ej. "la mitad por transferencia y la otra con tarjeta") — ambas casillas de
-    // esta cita estaban libres, así que caben los dos medios completos.
+    // Reparte EL ABONO de hoy (no necesariamente el saldo completo) entre dos medios —
+    // ambas casillas de esta cita estaban libres, así que caben los dos medios.
     const ids = {monto1:'cobrar-pendiente-split-monto1', medio2:'cobrar-pendiente-split-medio2', terminal2:'cobrar-pendiente-terminal2'};
-    const r = leerSplitDosMedios(ids, medio, monto, esMedioTarjeta(medio) ? terminal : null);
+    const r = leerSplitDosMedios(ids, medio, abono, esMedioTarjeta(medio) ? terminal : null);
     if(!r.ok){ toast(r.msg); return; }
     c.medioPago = medio;
     c.montoPagado = r.monto1;
@@ -7471,22 +7588,26 @@ function guardarCobrarPendiente(){
     c.medioPago2 = r.medio2;
     c.montoPagado2 = r.monto2;
     c.terminalPago2 = r.terminal2;
-    mensajeOk = '✓ Saldo pendiente cobrado, dividido en dos medios';
+    mensajeOk = liquida ? '✓ Saldo liquidado, dividido en dos medios' : '✓ Abono registrado (dividido en dos medios) — queda debiendo $'+(saldoAntes-abono).toLocaleString('es-MX',{minimumFractionDigits:2});
   }else if(!c.medioPago){
-    // no se había cobrado nada todavía — este queda como el único medio
+    // no se había cobrado nada todavía — este es el primer medio; si no alcanza a liquidar,
+    // el segundo medio queda libre para un abono posterior.
     c.medioPago = medio;
-    c.montoPagado = monto;
+    c.montoPagado = abono;
     c.terminalPago = esMedioTarjeta(medio) ? terminal : null;
+    mensajeOk = liquida ? '✓ Saldo pendiente cobrado' : '✓ Abono registrado — queda debiendo $'+(saldoAntes-abono).toLocaleString('es-MX',{minimumFractionDigits:2});
   }else if(!c.medioPago2){
-    // ya había un primer medio cobrado — este completa el saldo como segundo medio
+    // ya había un primer medio — este es el último disponible, forzosamente liquida todo (validado arriba)
     c.medioPago2 = medio;
-    c.montoPagado2 = monto;
+    c.montoPagado2 = abono;
     c.terminalPago2 = esMedioTarjeta(medio) ? terminal : null;
+    mensajeOk = '✓ Saldo pendiente cobrado';
   }else{
     // caso raro: ya había dos medios y aun así queda saldo — se suma al segundo
-    c.montoPagado2 = Number(c.montoPagado2||0) + monto;
+    c.montoPagado2 = Number(c.montoPagado2||0) + abono;
+    mensajeOk = liquida ? '✓ Saldo pendiente cobrado' : '✓ Abono registrado — queda debiendo $'+(saldoAntes-abono).toLocaleString('es-MX',{minimumFractionDigits:2});
   }
-  c.saldoPendiente = 0;
+  c.saldoPendiente = Math.max(0, Math.round((saldoAntes - abono)*100)/100);
   guardarLocal(c);
   cerrarCobrarPendienteModal();
   render();
