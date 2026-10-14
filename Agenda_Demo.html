@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-135">
+<meta name="app-version" content="2026-10-05-136">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1995,7 +1995,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-135';
+const APP_VERSION = '2026-10-05-136';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -3169,12 +3169,19 @@ function htmlSelectTerminalForm(nombre){
   }
   const valores = window._terminalServicioValores || {};
   const cat = CATALOGO_SERVICIOS.find(x=>x.nombre===nombre);
-  const v = valores[nombre] || (cat?.terminal_preferida==='canopy' ? 'canopy' : 'doctora');
+  const pref = cat?.terminal_preferida;
+  // Si el catálogo pide una terminal FIJA de otra doctora en concreto (ej. Derma → siempre
+  // Dra. Blanca Campos), se ofrece como tercera opción, ya preseleccionada por defecto.
+  const esFijo = pref && pref!=='doctora' && pref!=='canopy' && pref!==dueno;
+  const defecto = pref==='canopy' ? 'canopy' : (esFijo ? pref : 'doctora');
+  const v = valores[nombre] || defecto;
   const col = colorTerminal(v, dueno);
   const bloqueado = (typeof dineroEditablePermitido!=='undefined' && dineroEditablePermitido===false) || window._editandoPagada;
+  const opcionFija = esFijo ? `<option value="${esc(pref)}" ${v===pref?'selected':''}>Terminal · ${esc(pref)}</option>` : '';
   return `<div class="term-fila"><span class="term-etq">INGRESA POR</span>
     <select class="term-sel" data-term-servicio="${esc(nombre)}" ${bloqueado?'disabled':''} onchange="cambioTerminalServicioForm(this)" style="border-color:${col}88;color:${col};background:${col}12;">
       <option value="doctora" ${v==='doctora'?'selected':''}>Terminal · ${esc(dueno)}</option>
+      ${opcionFija}
       <option value="canopy" ${v==='canopy'?'selected':''}>${TERMINAL_CANOPY}</option></select></div>`;
 }
 function cambioTerminalServicioForm(sel){
@@ -3594,10 +3601,15 @@ function initSelects(){
   modD.innerHTML = '<option value="">Seleccionar doctora…</option>';
   const modT = document.getElementById('m-prestador');
   modT.innerHTML = '<option value="">Igual que el dueño del paciente</option>';
+  // Terminal preferida de un servicio: además de "la doctora dueña" o "Canopy", se puede fijar
+  // a una doctora EN CONCRETO (ej. Derma → siempre Dra. Blanca Campos, sin importar quién atienda).
+  const servT = document.getElementById('servicio-terminal-preferida');
+  if(servT) servT.innerHTML = `<option value="">Sin preferencia — se elige cada vez</option><option value="doctora">Terminal de la doctora dueña</option><option value="canopy">Canopy Pediatrics</option>`;
   DOCTORAS.forEach(d=>{
     filD.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
     modD.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
     modT.innerHTML += `<option value="${esc(d)}">${esc(d)}</option>`;
+    if(servT) servT.innerHTML += `<option value="${esc(d)}">Siempre: terminal de ${esc(d)}</option>`;
   });
   // "Enfermería" no es una doctora con perfil/login. YA NO puede ser la dueña del paciente
   // (así la productividad se perdía: no le contaba a ninguna doctora). Se elige como quien
@@ -6095,9 +6107,13 @@ function actualizarPagoParcial(){
 }
 function llenarSelectTerminal(selectId, doctora, sugerida){
   const sel = document.getElementById(selectId);
-  const marcarDoctora = sugerida==='doctora';
+  // "sugerida" puede ser 'doctora', 'canopy', o el nombre exacto de una doctora fija
+  // (ej. Derma siempre entra por Dra. Blanca Campos, sin importar la dueña de esta cita).
+  const esFijo = sugerida && sugerida!=='doctora' && sugerida!=='canopy';
+  const marcarDoctora = sugerida==='doctora' || (esFijo && sugerida===doctora);
   const marcarCanopy = sugerida==='canopy';
-  sel.innerHTML = `<option value="">Seleccionar...</option><option ${marcarDoctora?'selected':''}>${esc(doctora)}</option><option ${marcarCanopy?'selected':''}>${TERMINAL_CANOPY}</option>`;
+  const opcionFija = (esFijo && sugerida!==doctora) ? `<option selected>${esc(sugerida)}</option>` : '';
+  sel.innerHTML = `<option value="">Seleccionar...</option><option ${marcarDoctora?'selected':''}>${esc(doctora)}</option>${opcionFija}<option ${marcarCanopy?'selected':''}>${TERMINAL_CANOPY}</option>`;
 }
 // Aunque al dividir el pago se usa un solo selector de terminal (no uno
 // por servicio, para no complicar demasiado el formulario), sí se le
@@ -6106,12 +6122,18 @@ function llenarSelectTerminal(selectId, doctora, sugerida){
 // NO se divide el pago.
 function sugerirTerminalCita(c){
   const nombres = c.servicio ? c.servicio.split(' + ').map(s=>s.trim()).filter(Boolean) : [];
-  let votosCanopy = 0, votosDoctora = 0;
+  let votosCanopy = 0, votosDoctora = 0; const votosFijo = {};
   nombres.forEach(n=>{
     const cat = CATALOGO_SERVICIOS.find(s=>s.nombre===n);
-    if(cat?.terminal_preferida==='canopy') votosCanopy++;
-    else if(cat?.terminal_preferida==='doctora') votosDoctora++;
+    const pref = cat?.terminal_preferida;
+    if(pref==='canopy') votosCanopy++;
+    else if(pref==='doctora') votosDoctora++;
+    // Cualquier otro valor no vacío es el nombre EXACTO de una doctora fija (ej. "Dra. Blanca Campos")
+    // — una terminal preferida así, sin importar quién atienda. Pesa más que doctora/canopy.
+    else if(pref) votosFijo[pref] = (votosFijo[pref]||0) + 1;
   });
+  const fijo = Object.entries(votosFijo).sort((a,b)=>b[1]-a[1])[0];
+  if(fijo) return fijo[0];
   if(votosCanopy===0 && votosDoctora===0) return null;
   return votosCanopy>=votosDoctora ? 'canopy' : 'doctora';
 }
@@ -6151,14 +6173,20 @@ function renderTerminalesPorServicio(){
         </select>
       </div>`;
     }
-    const marcarDoctora = valorPrevio ? valorPrevio===c.doctora : sugerida==='doctora';
+    // "sugerida" (igual que en el pill del formulario) puede ser 'doctora', 'canopy', o el
+    // nombre exacto de una doctora fija (ej. Derma siempre entra por Dra. Blanca Campos).
+    const esFijo = sugerida && sugerida!=='doctora' && sugerida!=='canopy';
+    const marcarDoctora = valorPrevio ? valorPrevio===c.doctora : (sugerida==='doctora' || (esFijo && sugerida===c.doctora));
     const marcarCanopy = valorPrevio ? esTerminalCanopy(valorPrevio) : sugerida==='canopy';
+    const marcarFija = esFijo && sugerida!==c.doctora && (valorPrevio ? valorPrevio===sugerida : true);
+    const opcionFija = (esFijo && sugerida!==c.doctora) ? `<option ${marcarFija?'selected':''}>${esc(sugerida)}</option>` : '';
     return `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;${i<nombres.length-1?'border-bottom:1px solid var(--gray-100);':''}">
       <span style="font-size:12px;color:var(--gray-800);">${esc(n)}</span>
       <select data-servicio="${esc(n)}" onchange="colorearTerminalSel(this)" style="width:170px;font-size:12px;padding:5px 7px;">
         <option value="">Seleccionar...</option>
         <option ${marcarDoctora?'selected':''}>${esc(c.doctora)}</option>
+        ${opcionFija}
         <option ${marcarCanopy?'selected':''}>${TERMINAL_CANOPY}</option>
       </select>
     </div>`;
@@ -7529,9 +7557,12 @@ function llenarSelectTerminalCobro(selectId, c){
   if(c.doctora==='Enfermería'){
     sel.innerHTML = `<option value="${TERMINAL_CANOPY}" selected>${TERMINAL_CANOPY}</option>`;
   }else{
-    sel.innerHTML = `<option value="">Seleccionar...</option><option value="${esc(c.doctora)}">${esc(c.doctora)}</option><option value="${TERMINAL_CANOPY}">${TERMINAL_CANOPY}</option>`;
+    const esFijo = sugerida && sugerida!=='doctora' && sugerida!=='canopy';
+    const opcionFija = (esFijo && sugerida!==c.doctora) ? `<option value="${esc(sugerida)}">${esc(sugerida)}</option>` : '';
+    sel.innerHTML = `<option value="">Seleccionar...</option><option value="${esc(c.doctora)}">${esc(c.doctora)}</option>${opcionFija}<option value="${TERMINAL_CANOPY}">${TERMINAL_CANOPY}</option>`;
     if(sugerida==='doctora') sel.value = c.doctora;
     else if(sugerida==='canopy') sel.value = TERMINAL_CANOPY;
+    else if(esFijo) sel.value = sugerida;
   }
 }
 function actualizarCobrarPendienteTerminal(){
