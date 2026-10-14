@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-134">
+<meta name="app-version" content="2026-10-05-135">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1830,6 +1830,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
           <option>Servicios</option>
           <option>Hospitalización</option>
           <option>Cirugías o procedimientos</option>
+          <option>Derma</option>
           <option>Otros</option>
         </select>
       </div>
@@ -1994,7 +1995,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-134';
+const APP_VERSION = '2026-10-05-135';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -3060,7 +3061,7 @@ async function cargarGestiones(){
 // es_admin), igual patrón que el resto de módulos de administración.
 // ═══════════════════════════════════════════
 let CATALOGO_SERVICIOS = [];
-const CATEGORIAS_SERVICIO = ['Consultas','Servicios','Hospitalización','Cirugías o procedimientos','Otros'];
+const CATEGORIAS_SERVICIO = ['Consultas','Servicios','Hospitalización','Cirugías o procedimientos','Derma','Otros'];
 
 async function cargarCatalogoServicios(){
   const { data, error } = await sb.from('catalogo_servicios').select('id,categoria,nombre,precio,activo,terminal_preferida,es_vacuna,es_urgencia_referida,monto_prestador_referido');
