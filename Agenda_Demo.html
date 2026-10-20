@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-137">
+<meta name="app-version" content="2026-10-05-138">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1997,7 +1997,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-137';
+const APP_VERSION = '2026-10-05-138';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -5420,9 +5420,42 @@ function poblarDatalistsPacientes(){
 // apareció antes en el historial y, si sí, rellena teléfono/correo —
 // pero SOLO los campos que sigan vacíos, nunca pisa algo que ya se
 // haya escrito a mano.
+// Saldo pendiente (de cualquiera de sus citas activas) y transferencias aún
+// sin verificar de un paciente, buscado por nombre — para avisar justo al
+// agendarle, antes de que se nos olvide cobrarle lo que ya debe.
+function deudaDePaciente(nombrePaciente){
+  const key = (nombrePaciente||'').trim().toLowerCase();
+  if(!key) return null;
+  const propias = citas.filter(c => !c.deleted && !c.cancelada &&
+    c.paciente && c.paciente.trim().toLowerCase() === key);
+  const saldoTotal = propias.reduce((s,c)=> s + Math.max(0, Number(c.saldoPendiente)||0), 0);
+  const citasConSaldo = propias.filter(c => Number(c.saldoPendiente) > 0.005).length;
+  const porVerificar = propias.filter(c => (c.medioPago==='Transferencia' || c.medioPago2==='Transferencia') && !c.transferenciaVerificada).length;
+  if(saldoTotal <= 0.005 && !porVerificar) return null;
+  return { saldoTotal, citasConSaldo, porVerificar };
+}
+let ultimoAvisoDeudaPaciente = null;
+function avisarSiPacienteDebe(nombrePaciente){
+  if(modalEditId) return; // solo al agendar una cita nueva, no al editar una ya existente
+  const deuda = deudaDePaciente(nombrePaciente);
+  if(!deuda) return;
+  const clave = nombrePaciente.trim().toLowerCase();
+  if(ultimoAvisoDeudaPaciente === clave) return; // no repetir el mismo aviso varias veces en este modal
+  ultimoAvisoDeudaPaciente = clave;
+  const partes = [];
+  if(deuda.saldoTotal > 0.005) partes.push(`un saldo pendiente de <strong>${fmtM(deuda.saldoTotal)}</strong> (${deuda.citasConSaldo} cita${deuda.citasConSaldo!==1?'s':''})`);
+  if(deuda.porVerificar) partes.push(`<strong>${deuda.porVerificar}</strong> transferencia${deuda.porVerificar!==1?'s':''} todavía sin verificar`);
+  mostrarConfirm({
+    etiqueta:'Pagos pendientes', icono:'💰',
+    titulo:'Este paciente tiene pendientes',
+    mensaje:`<strong>${esc(nombrePaciente)}</strong> tiene ${partes.join(' y ')}. Puedes seguir agendando — es solo un aviso para que no se te pase cobrarle.`,
+    textoConfirmar:'Entendido', sinCancelar:true
+  }, ()=>{});
+}
 function autocompletarPorNombre(tipo){
   const nombreBuscado = document.getElementById(tipo==='tutor'?'m-tutor':'m-paciente').value.trim();
   if(!nombreBuscado) return;
+  if(tipo==='paciente') avisarSiPacienteDebe(nombreBuscado);
 
   // La coincidencia más reciente (por fecha) trae el dato de contacto
   // más actualizado.
@@ -5453,6 +5486,7 @@ function abrirModal(id, sinCita){
   if(id){
   }
   modalEditId = id || null;
+  ultimoAvisoDeudaPaciente = null;
   nuevaEsSinCita = !id && !!sinCita;
   poblarDatalistsPacientes();
   document.getElementById('modal-title').textContent = id ? 'Editar cita' : (nuevaEsSinCita ? '🚶 Paciente sin cita (llegó directo)' : 'Nueva cita');
