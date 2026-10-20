@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-136">
+<meta name="app-version" content="2026-10-05-137">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -84,6 +84,8 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .cita-linea1{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;row-gap:3px;}
 .cita-tutor{font-size:12px;color:var(--gray-600);font-weight:600;}
 .cita-tel{font-size:12px;color:var(--gray-400);}
+.rol-icono{font-size:11px;color:var(--gray-400);font-weight:500;display:inline-flex;align-items:center;gap:4px;cursor:default;}
+.rol-icono .pt{width:5px;height:5px;border-radius:50%;background:var(--gray-200);display:inline-block;}
 .cita-linea2{display:flex;align-items:center;gap:7px;margin-top:3px;flex-wrap:wrap;}
 .cita-doctora{font-size:10.5px;padding:2px 9px;border-radius:99px;font-weight:600;background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-border);}
 .cita-servicio{font-size:11.5px;color:var(--gray-400);font-weight:400;line-height:1.2;}
@@ -1995,7 +1997,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-136';
+const APP_VERSION = '2026-10-05-137';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -2897,6 +2899,9 @@ function citaDesdeDb(r){
     // Fecha en que ESE medio realmente entró a caja — la pone el servidor (trigger), nunca el navegador.
     // Distinta de "fecha" (el día de la cita): el Cierre debe agruparse por esta, no por esa.
     fechaPago:r.fecha_pago||null, fechaPago2:r.fecha_pago_2||null,
+    // Quién agendó esta cita — lo pone el servidor (trigger), nunca el navegador. Las citas de
+    // antes del 5 de octubre (cuando empezó la bitácora) no tienen este dato: quedan en null.
+    creadoPor:r.creado_por||null, creadoPorRol:r.creado_por_rol||null,
     saldoPendiente:Number(r.saldo_pendiente)||0,
     requiereFactura:!!r.requiere_factura, facturada:!!r.facturada, numeroFactura:r.numero_factura||null,
     terminalPago:r.terminal_pago||null, terminalPago2:r.terminal_pago_2||null, terminalPorServicio:r.terminal_por_servicio||null,
@@ -3721,6 +3726,7 @@ function render(){
             <span class="cita-paciente">${esc(c.paciente)}</span>
             ${c.nombreTutor?`<span class="cita-tutor">tutor: ${esc(c.nombreTutor)}</span>`:''}
             <span class="cita-tel">📞 ${esc(c.tel)}</span>
+            ${c.creadoPor?`<span class="rol-icono" title="Agendó · ${c.creadoPorRol==='doctora'?'Doctora':'Recepción'}"><span class="pt"></span>${esc(c.creadoPor)}</span>`:''}
           </div>
           <div class="cita-linea2">
             <span class="cita-servicio">${esc(c.servicio)}</span>
