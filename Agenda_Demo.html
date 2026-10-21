@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-138">
+<meta name="app-version" content="2026-10-05-141">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1476,11 +1476,12 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     <div class="form-group" id="pago-desglose-wrap" style="display:none;">
       <label style="color:#1C8A8A;font-weight:800;">Servicios a cobrar</label>
       <div id="pago-desglose" style="margin:6px 0 4px;"></div>
+      <div class="campo-elegir-servicio" onclick="abrirSelectorProductosPago()">+ Agregar producto</div>
     </div>
     <div class="form-group" id="pago-monto-wrap">
       <label id="pago-monto-label">Monto a cobrar</label>
       <div id="pago-monto-display" style="font-size:22px;font-weight:700;color:var(--gray-800);padding:6px 0;">$0.00</div>
-      <div style="font-size:10.5px;color:var(--gray-400);">Este monto lo define el médico al editar la cita.</div>
+      <div style="font-size:10.5px;color:var(--gray-400);">La consulta la define el médico al editar la cita — los productos se pueden agregar aquí mismo.</div>
     </div>
     <div class="form-group" id="pago-tipo-wrap">
       <label>¿Cómo queda el pago?</label>
@@ -1857,6 +1858,11 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     </div>
     <div class="form-group">
       <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;">
+        <input type="checkbox" id="servicio-es-producto" style="width:auto;flex-shrink:0;"> Es producto (recepción puede agregarlo y cobrarlo, sin que lo capture la doctora)
+      </label>
+    </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;">
         <input type="checkbox" id="servicio-es-urgencia" onchange="document.getElementById('servicio-monto-prestador-wrap').style.display=this.checked?'':'none';" style="width:auto;flex-shrink:0;"> Es urgencia referida (tiene acuerdo de reparto si el prestador es distinto al dueño)
       </label>
       <div id="servicio-monto-prestador-wrap" style="display:none;margin-top:8px;">
@@ -1997,7 +2003,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-138';
+const APP_VERSION = '2026-10-05-141';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -3069,7 +3075,7 @@ let CATALOGO_SERVICIOS = [];
 const CATEGORIAS_SERVICIO = ['Consultas','Servicios','Hospitalización','Cirugías o procedimientos','Derma','Otros'];
 
 async function cargarCatalogoServicios(){
-  const { data, error } = await sb.from('catalogo_servicios').select('id,categoria,nombre,precio,activo,terminal_preferida,es_vacuna,es_urgencia_referida,monto_prestador_referido');
+  const { data, error } = await sb.from('catalogo_servicios').select('id,categoria,nombre,precio,activo,terminal_preferida,es_vacuna,es_producto,es_urgencia_referida,monto_prestador_referido');
   if(error){ console.error('Error cargando catálogo de servicios:', error); CATALOGO_SERVICIOS = []; return; }
   CATALOGO_SERVICIOS = data||[];
 }
@@ -3080,8 +3086,29 @@ function soloVacunasActivo(){
   const sel = document.getElementById('m-prestador');
   return !!sel && sel.value==='Enfermería';
 }
+// Recepción, cuando NO es un "paciente sin cita", solo puede agregar/cobrar productos
+// (Derma y lo que se marque así en el catálogo) — las consultas y demás servicios
+// médicos los sigue capturando la doctora. Si recepción ya tiene vía libre (sin_cita)
+// o quien agenda es una doctora, esto no aplica: ve el catálogo completo de siempre.
+let selectorServiciosModo = 'cita';
+function soloProductosActivo(){
+  if(selectorServiciosModo==='pago') return true;
+  return sesionActual==='recepcion' && !nuevaEsSinCita;
+}
+function esProductoServicio(nombre){
+  const n = normNombreServicio(nombre);
+  const enCatalogo = CATALOGO_SERVICIOS.find(s => normNombreServicio(s.nombre) === n);
+  return !!(enCatalogo && enCatalogo.es_producto);
+}
+// ¿Se puede editar el precio/terminal de ESTE servicio en particular? Normalmente sigue
+// la regla general (dineroEditablePermitido); pero si recepción está agendando (no
+// sin_cita) y el servicio es un producto marcado como tal, se le abre esa fila sola.
+function puedeEditarPrecioServicio(nombre){
+  if(typeof dineroEditablePermitido==='undefined' || dineroEditablePermitido) return true;
+  return soloProductosActivo() && esProductoServicio(nombre);
+}
 function serviciosActivosPorCategoria(cat){
-  return CATALOGO_SERVICIOS.filter(s=>s.categoria===cat && s.activo!==false && (!soloVacunasActivo() || s.es_vacuna)).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+  return CATALOGO_SERVICIOS.filter(s=>s.categoria===cat && s.activo!==false && (!soloVacunasActivo() || s.es_vacuna) && (!soloProductosActivo() || s.es_producto)).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
 }
 
 // -- Selector multi-servicio, usado al agendar/editar una cita --
@@ -3089,6 +3116,7 @@ let serviciosPickerTabActiva = CATEGORIAS_SERVICIO[0];
 let serviciosPickerSeleccionados = new Set();
 
 function abrirSelectorServiciosCita(){
+  selectorServiciosModo = 'cita';
   const actual = document.getElementById('m-servicio').value;
   serviciosPickerSeleccionados = new Set(actual ? actual.split(' + ').map(s=>s.trim()).filter(Boolean) : []);
   serviciosPickerTabActiva = soloVacunasActivo() ? 'Servicios' : CATEGORIAS_SERVICIO[0];
@@ -3100,11 +3128,22 @@ function abrirSelectorServiciosCita(){
 function cerrarSelectorServiciosPicker(){
   document.getElementById('selector-servicios-modal-overlay').classList.remove('open');
 }
+function abrirSelectorProductosPago(){
+  selectorServiciosModo = 'pago';
+  serviciosPickerSeleccionados = new Set();
+  serviciosPickerTabActiva = CATEGORIAS_SERVICIO.find(cat=>CATALOGO_SERVICIOS.some(s=>s.categoria===cat && s.es_producto && s.activo!==false)) || CATEGORIAS_SERVICIO[0];
+  document.getElementById('servicios-buscar').value = '';
+  renderTabsServiciosPicker();
+  renderListaServiciosPicker();
+  document.getElementById('selector-servicios-modal-overlay').classList.add('open');
+}
 function renderTabsServiciosPicker(){
   const soloVacunas = soloVacunasActivo();
+  const soloProductos = soloProductosActivo();
   document.getElementById('servicios-tabs').innerHTML = CATEGORIAS_SERVICIO.map(cat=>{
     // Con Enfermería solo existe la pestaña "Servicios" (ahí viven las vacunas) — las demás se ven apagadas y no se pueden abrir.
-    const deshabilitada = soloVacunas && cat!=='Servicios';
+    // Con recepción agendando (no sin_cita), solo quedan abiertas las categorías que tengan algún producto marcado.
+    const deshabilitada = (soloVacunas && cat!=='Servicios') || (soloProductos && !CATALOGO_SERVICIOS.some(s=>s.categoria===cat && s.es_producto));
     return `<div class="serv-tab ${cat===serviciosPickerTabActiva?'activa':''}" style="${deshabilitada?'opacity:.4;cursor:not-allowed;':''}" onclick="${deshabilitada?'':`cambiarTabServiciosPicker('${esc(cat).replace(/'/g,"\\'")}')`}">${esc(cat)}</div>`;
   }).join('');
 }
@@ -3116,17 +3155,19 @@ function cambiarTabServiciosPicker(cat){
 function renderListaServiciosPicker(){
   const busq = document.getElementById('servicios-buscar').value.trim().toLowerCase();
   const soloVacunas = soloVacunasActivo();
+  const soloProductosBusq = soloProductosActivo();
   const items = busq
-    ? CATALOGO_SERVICIOS.filter(s=>s.activo!==false && s.nombre.toLowerCase().includes(busq) && (!soloVacunas || s.es_vacuna)).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'))
+    ? CATALOGO_SERVICIOS.filter(s=>s.activo!==false && s.nombre.toLowerCase().includes(busq) && (!soloVacunas || s.es_vacuna) && (!soloProductosBusq || s.es_producto)).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'))
     : serviciosActivosPorCategoria(serviciosPickerTabActiva);
 
   const avisoVacunas = soloVacunas ? `<div style="padding:8px 12px;font-size:11px;font-weight:700;color:#9A6010;background:#FDF6EC;border-bottom:1px solid #EDD49A;">💉 Enfermería solo aplica vacunas — el buscador solo muestra vacunas. Para otro servicio, cambia «Prestador» a la doctora.</div>` : '';
+  const avisoProductos = (!soloVacunas && soloProductosBusq) ? `<div style="padding:8px 12px;font-size:11px;font-weight:700;color:#8A5A1C;background:#FDF6EC;border-bottom:1px solid #EDD49A;">🧴 Solo se muestran productos — el resto de los servicios los agenda la doctora.</div>` : '';
   const itemsHtml = items.map(s=>`
     <label class="serv-item">
       <input type="checkbox" ${serviciosPickerSeleccionados.has(s.nombre)?'checked':''} onchange="toggleServicioPicker('${esc(s.nombre).replace(/'/g,"\\'")}')">
       ${esc(s.nombre)}
     </label>`).join('') || '<div style="padding:14px;font-size:12px;color:var(--gray-400);">Sin resultados.</div>';
-  document.getElementById('servicios-lista-picker').innerHTML = avisoVacunas + itemsHtml;
+  document.getElementById('servicios-lista-picker').innerHTML = avisoVacunas + avisoProductos + itemsHtml;
 
   actualizarChipsSeleccionPicker();
 }
@@ -3140,9 +3181,43 @@ function actualizarChipsSeleccionPicker(){
   document.getElementById('servicios-sel-chips').innerHTML = [...serviciosPickerSeleccionados].map(n=>`<span class="chip-servicio">${esc(n)}</span>`).join('') || '<div style="font-size:11.5px;color:var(--gray-400);">Ninguno todavía</div>';
 }
 function confirmarSelectorServiciosCita(){
+  if(selectorServiciosModo==='pago'){ confirmarProductosPago(); return; }
   document.getElementById('m-servicio').value = [...serviciosPickerSeleccionados].join(' + ');
   renderChipsServicioCita();
   cerrarSelectorServiciosPicker();
+}
+// Agrega los productos elegidos directo a la cita que se está cobrando, sin pasar por
+// Editar cita — útil cuando el paciente se lleva algo de Derma justo al momento de pagar.
+// Solo AGREGA filas nuevas (nunca toca el precio de lo que ya tenía la cita) y el servidor
+// vuelve a validar esto mismo al guardar, así que aunque algo raro pase aquí, no hay forma
+// de colarle precio a una consulta por este camino.
+function confirmarProductosPago(){
+  const c = citas.find(x=>x.id===pagoModalId);
+  cerrarSelectorServiciosPicker();
+  if(!c || !serviciosPickerSeleccionados.size) return;
+  const nombresActuales = c.servicio ? c.servicio.split(' + ').map(x=>x.trim()).filter(Boolean) : [];
+  const desglose = Object.assign({}, c.precioDesglose||{});
+  const terminalPS = Object.assign({}, c.terminalPorServicio||{});
+  let agregados = 0;
+  serviciosPickerSeleccionados.forEach(nombre=>{
+    if(nombresActuales.includes(nombre)) return; // ya estaba en la cita
+    const cat = CATALOGO_SERVICIOS.find(s=>s.nombre===nombre);
+    if(!cat || !cat.es_producto) return; // candado extra, por si acaso
+    desglose[nombre] = Number(cat.precio)||0;
+    nombresActuales.push(nombre);
+    const pref = cat.terminal_preferida;
+    terminalPS[nombre] = (pref && pref!=='doctora' && pref!=='canopy') ? pref : c.doctora;
+    agregados++;
+  });
+  if(!agregados) return;
+  c.servicio = nombresActuales.join(' + ');
+  c.precioDesglose = desglose;
+  c.terminalPorServicio = terminalPS;
+  c.precio = Object.values(desglose).reduce((s,v)=>s+(Number(v)||0),0);
+  guardarLocal(c);
+  render();
+  toast(`✓ ${agregados>1?'Productos agregados':'Producto agregado'}`);
+  abrirPagoModal(pagoModalId); // refresca el resumen de "Servicios a cobrar" con el nuevo total
 }
 function renderChipsServicioCita(){
   const valor = document.getElementById('m-servicio').value;
@@ -3181,7 +3256,7 @@ function htmlSelectTerminalForm(nombre){
   const defecto = pref==='canopy' ? 'canopy' : (esFijo ? pref : 'doctora');
   const v = valores[nombre] || defecto;
   const col = colorTerminal(v, dueno);
-  const bloqueado = (typeof dineroEditablePermitido!=='undefined' && dineroEditablePermitido===false) || window._editandoPagada;
+  const bloqueado = !puedeEditarPrecioServicio(nombre) || window._editandoPagada;
   const opcionFija = esFijo ? `<option value="${esc(pref)}" ${v===pref?'selected':''}>Terminal · ${esc(pref)}</option>` : '';
   return `<div class="term-fila"><span class="term-etq">INGRESA POR</span>
     <select class="term-sel" data-term-servicio="${esc(nombre)}" ${bloqueado?'disabled':''} onchange="cambioTerminalServicioForm(this)" style="border-color:${col}88;color:${col};background:${col}12;">
@@ -3354,6 +3429,7 @@ function resetFormularioServicio(){
   document.getElementById('servicio-precio').value = 0;
   document.getElementById('servicio-terminal-preferida').value = '';
   document.getElementById('servicio-es-vacuna').checked = false;
+  document.getElementById('servicio-es-producto').checked = false;
   document.getElementById('servicio-es-urgencia').checked = false;
   document.getElementById('servicio-monto-prestador').value = '';
   document.getElementById('servicio-monto-prestador-wrap').style.display = 'none';
@@ -3409,7 +3485,7 @@ function renderListaServiciosAdmin(){
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--gray-100);gap:8px;">
       <div style="min-width:0;">
         <div style="font-size:12px;font-weight:700;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-          ${esc(s.nombre)} ${s.es_vacuna?'<span style="font-size:9.5px;font-weight:700;color:#1C8A8A;background:#EAF9F9;border:1px solid #9FDCDC;padding:1px 6px;border-radius:5px;margin-left:5px;">💉 VACUNA</span>':''}${s.es_urgencia_referida?(Number(s.monto_prestador_referido)>0?`<span style="font-size:9.5px;font-weight:700;color:#1B5C9E;background:#EEF5FC;border:1px solid #BDD5F0;padding:1px 6px;border-radius:5px;margin-left:5px;">🚑 $${Number(s.monto_prestador_referido).toLocaleString('es-MX',{minimumFractionDigits:0})} al prestador</span>`:`<span style="font-size:9.5px;font-weight:700;color:var(--danger);background:#FDF6EC;border:1px solid #EDD49A;padding:1px 6px;border-radius:5px;margin-left:5px;">🚑 Falta definir monto</span>`):''}${s.activo===false?'<span style="font-size:9.5px;font-weight:700;color:var(--danger);background:#FDF6EC;border:1px solid #EDD49A;padding:1px 6px;border-radius:5px;margin-left:5px;">INACTIVO</span>':''}
+          ${esc(s.nombre)} ${s.es_vacuna?'<span style="font-size:9.5px;font-weight:700;color:#1C8A8A;background:#EAF9F9;border:1px solid #9FDCDC;padding:1px 6px;border-radius:5px;margin-left:5px;">💉 VACUNA</span>':''}${s.es_producto?'<span style="font-size:9.5px;font-weight:700;color:#8A5A1C;background:#FDF6EC;border:1px solid #EDD49A;padding:1px 6px;border-radius:5px;margin-left:5px;">🧴 PRODUCTO</span>':''}${s.es_urgencia_referida?(Number(s.monto_prestador_referido)>0?`<span style="font-size:9.5px;font-weight:700;color:#1B5C9E;background:#EEF5FC;border:1px solid #BDD5F0;padding:1px 6px;border-radius:5px;margin-left:5px;">🚑 $${Number(s.monto_prestador_referido).toLocaleString('es-MX',{minimumFractionDigits:0})} al prestador</span>`:`<span style="font-size:9.5px;font-weight:700;color:var(--danger);background:#FDF6EC;border:1px solid #EDD49A;padding:1px 6px;border-radius:5px;margin-left:5px;">🚑 Falta definir monto</span>`):''}${s.activo===false?'<span style="font-size:9.5px;font-weight:700;color:var(--danger);background:#FDF6EC;border:1px solid #EDD49A;padding:1px 6px;border-radius:5px;margin-left:5px;">INACTIVO</span>':''}
         </div>
         <div style="font-size:10.5px;color:var(--gray-400);">$${Number(s.precio).toLocaleString('es-MX',{minimumFractionDigits:2})}${s.terminal_preferida?' · Terminal: '+(s.terminal_preferida==='doctora'?'del médico dueño':'Canopy Pediatrics'):''}</div>
       </div>
@@ -3427,6 +3503,7 @@ function iniciarEdicionServicio(id){
   document.getElementById('servicio-precio').value = s.precio;
   document.getElementById('servicio-terminal-preferida').value = s.terminal_preferida || '';
   document.getElementById('servicio-es-vacuna').checked = !!s.es_vacuna;
+  document.getElementById('servicio-es-producto').checked = !!s.es_producto;
   document.getElementById('servicio-es-urgencia').checked = !!s.es_urgencia_referida;
   document.getElementById('servicio-monto-prestador').value = s.monto_prestador_referido ?? '';
   document.getElementById('servicio-monto-prestador-wrap').style.display = s.es_urgencia_referida ? '' : 'none';
@@ -3452,9 +3529,10 @@ async function crearServicioCatalogo(){
   // El id de catalogo_servicios se autogenera en la base (a diferencia de
   // citas/bloqueos/horarios) — no se manda aquí, o Postgres lo rechaza.
   const esVacuna = document.getElementById('servicio-es-vacuna').checked;
+  const esProducto = document.getElementById('servicio-es-producto').checked;
   const esUrgencia = document.getElementById('servicio-es-urgencia').checked;
   const montoPrestador = esUrgencia ? (Number(document.getElementById('servicio-monto-prestador').value)||0) : null;
-  const { error } = await sb.from('catalogo_servicios').insert({ categoria, nombre, precio, terminal_preferida:terminalPreferida, es_vacuna:esVacuna, es_urgencia_referida:esUrgencia, monto_prestador_referido:montoPrestador, activo:true });
+  const { error } = await sb.from('catalogo_servicios').insert({ categoria, nombre, precio, terminal_preferida:terminalPreferida, es_vacuna:esVacuna, es_producto:esProducto, es_urgencia_referida:esUrgencia, monto_prestador_referido:montoPrestador, activo:true });
   if(error){ elError.textContent = error.message; return; }
   toast('✓ Servicio agregado: '+nombre);
   resetFormularioServicio();
@@ -3474,9 +3552,10 @@ async function guardarEdicionServicioCatalogo(){
   if(!nombre){ elError.textContent = 'El nombre no puede quedar vacío.'; return; }
 
   const esVacuna = document.getElementById('servicio-es-vacuna').checked;
+  const esProducto = document.getElementById('servicio-es-producto').checked;
   const esUrgencia = document.getElementById('servicio-es-urgencia').checked;
   const montoPrestador = esUrgencia ? (Number(document.getElementById('servicio-monto-prestador').value)||0) : null;
-  const { error } = await sb.from('catalogo_servicios').update({ nombre, categoria, precio, terminal_preferida:terminalPreferida, es_vacuna:esVacuna, es_urgencia_referida:esUrgencia, monto_prestador_referido:montoPrestador, activo }).eq('id', id);
+  const { error } = await sb.from('catalogo_servicios').update({ nombre, categoria, precio, terminal_preferida:terminalPreferida, es_vacuna:esVacuna, es_producto:esProducto, es_urgencia_referida:esUrgencia, monto_prestador_referido:montoPrestador, activo }).eq('id', id);
   if(error){ elError.textContent = error.message; return; }
   toast('✓ Cambios guardados');
   resetFormularioServicio();
@@ -4114,6 +4193,26 @@ function elegirReprogramar(){
   abrirModal(id); // la cita NO se marca como cancelada — solo se reagenda
 }
 
+// Solo avisa si el folio ya está usado en otra factura — no bloquea nada,
+// la captura se guarda igual (puede que de verdad se haya repetido el folio
+// por una razón válida; aquí solo evitamos que pase inadvertido un error
+// de dedo).
+function folioDuplicado(folio, idExcluir){
+  const key = (folio||'').trim().toLowerCase();
+  if(!key) return null;
+  return activeCitas().find(c => c.id !== idExcluir && c.facturada && c.numeroFactura &&
+    c.numeroFactura.trim().toLowerCase() === key);
+}
+function avisarSiFolioDuplicado(folio, idExcluir){
+  const dup = folioDuplicado(folio, idExcluir);
+  if(!dup) return;
+  mostrarConfirm({
+    etiqueta:'Folio repetido', icono:'⚠️',
+    titulo:'Ese folio ya se usó antes',
+    mensaje:`El folio <strong>${esc(folio.trim())}</strong> ya está registrado en la factura de <strong>${esc(dup.paciente)}</strong> (${fmtDDMMYYYY(dup.fecha)}). Revisa que no haya sido un error de captura — se guardó de todas formas, por si de verdad se repitió.`,
+    textoConfirmar:'Entendido', sinCancelar:true
+  }, ()=>{});
+}
 function marcarFacturada(id){
   const c = citas.find(x=>x.id===id);
   if(!c)return;
@@ -4129,6 +4228,7 @@ function marcarFacturada(id){
     render();
     if(document.getElementById('section-historico').style.display!=='none') renderHistorico();
     toast('✓ Marcada como facturada');
+    if(c.numeroFactura) avisarSiFolioDuplicado(c.numeroFactura, c.id);
   });
 }
 
@@ -4153,6 +4253,7 @@ function editarNumeroFactura(id){
     }
     guardarLocal(c);
     render();
+    if(c.numeroFactura) avisarSiFolioDuplicado(c.numeroFactura, c.id);
     if(document.getElementById('section-historico').style.display!=='none') renderHistorico();
   });
 }
@@ -4656,7 +4757,7 @@ const BIT_ETIQUETAS = {
   medio_pago_2:'Medio de pago (2)', saldo_pendiente:'Saldo pendiente', requiere_factura:'Requiere factura', facturada:'Facturada',
   numero_factura:'No. de factura', terminal_pago:'Terminal', terminal_pago_2:'Terminal (2)', terminal_por_servicio:'Terminal por servicio',
   transferencia_verificada:'Transferencia verificada', deleted:'En papelera', activo:'Activo', nombre:'Nombre', categoria:'Categoría',
-  terminal_preferida:'Terminal preferida', es_vacuna:'Es vacuna', es_urgencia_referida:'Es urgencia referida',
+  terminal_preferida:'Terminal preferida', es_vacuna:'Es vacuna', es_producto:'Es producto', es_urgencia_referida:'Es urgencia referida',
   monto_prestador_referido:'Monto al prestador', rol:'Rol', es_admin:'Administrador', puede_servicios:'Puede editar servicios',
   todo_dia:'Todo el día', hora_inicio:'Hora de inicio', hora_fin:'Hora de fin', motivo:'Motivo', canal:'Canal', resultado:'Resultado',
   eliminada:'Eliminado', monto:'Monto', medio:'Medio', nota:'Nota', descripcion:'Descripción', facturacion:'Facturación'
@@ -5394,10 +5495,17 @@ function aplicarBloqueoDinero(permitido){
   const desc = document.getElementById('m-descuento');
   const cortesia = document.getElementById('m-cortesia');
   const aviso = document.getElementById('m-dinero-bloqueado-aviso');
-  const inputsDesglose = document.querySelectorAll('#m-precio-desglose input[data-servicio], #m-precio-desglose select[data-term-servicio]');
-  [precio,desc,cortesia,...inputsDesglose].forEach(el=>{
+  [precio,desc,cortesia].forEach(el=>{
     el.disabled = !permitido;
     el.style.background = permitido ? '' : 'var(--gray-100)';
+  });
+  // Cada fila del desglose se abre o cierra por su cuenta (un producto puede quedar
+  // editable para recepción aunque el resto del formulario de dinero siga bloqueado).
+  document.querySelectorAll('#m-precio-desglose input[data-servicio], #m-precio-desglose select[data-term-servicio]').forEach(el=>{
+    const nombreServ = el.dataset.servicio || el.dataset.termServicio;
+    const abierto = puedeEditarPrecioServicio(nombreServ);
+    el.disabled = !abierto;
+    el.style.background = abierto ? '' : 'var(--gray-100)';
   });
   aviso.style.display = permitido ? 'none' : 'block';
 }
@@ -5600,9 +5708,12 @@ function toggleCortesiaForm(){
   descInput.disabled = bloqueado;
   precioInput.style.background = bloqueado ? 'var(--gray-100)' : '';
   descInput.style.background = bloqueado ? 'var(--gray-100)' : '';
+  // Igual que en aplicarBloqueoDinero: si es cortesía, no se cobra nada y se cierra
+  // todo; si no, cada fila decide por su cuenta (producto de recepción sigue abierto).
   document.querySelectorAll('#m-precio-desglose input[data-servicio]').forEach(el=>{
-    el.disabled = bloqueado;
-    el.style.background = bloqueado ? 'var(--gray-100)' : '';
+    const abierto = !esCortesia && puedeEditarPrecioServicio(el.dataset.servicio);
+    el.disabled = !abierto;
+    el.style.background = abierto ? '' : 'var(--gray-100)';
   });
   const precio = parseFloat(precioInput.value)||0;
   const desc = parseFloat(descInput.value)||0;
