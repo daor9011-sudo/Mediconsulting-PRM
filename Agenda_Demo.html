@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-141">
+<meta name="app-version" content="2026-10-05-142">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2003,7 +2003,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-141';
+const APP_VERSION = '2026-10-05-142';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -3091,9 +3091,15 @@ function soloVacunasActivo(){
 // médicos los sigue capturando la doctora. Si recepción ya tiene vía libre (sin_cita)
 // o quien agenda es una doctora, esto no aplica: ve el catálogo completo de siempre.
 let selectorServiciosModo = 'cita';
+// OJO: esto solo restringe QUÉ aparece en el selector (pestañas/búsqueda). Se usa
+// nada más en el modo "pago" (agregar un producto de último momento al cobrar) —
+// ahí sí tiene sentido limitarlo a productos, porque es la única razón de abrir el
+// selector desde esa pantalla. En el modo normal de agendar/editar una cita, recepción
+// sigue viendo el catálogo COMPLETO, igual que siempre (así elige qué servicio es la
+// cita); lo único que cambia es qué fila de precio puede editar — eso lo decide
+// puedeEditarPrecioServicio, más abajo, no esto.
 function soloProductosActivo(){
-  if(selectorServiciosModo==='pago') return true;
-  return sesionActual==='recepcion' && !nuevaEsSinCita;
+  return selectorServiciosModo==='pago';
 }
 function esProductoServicio(nombre){
   const n = normNombreServicio(nombre);
@@ -3105,7 +3111,8 @@ function esProductoServicio(nombre){
 // sin_cita) y el servicio es un producto marcado como tal, se le abre esa fila sola.
 function puedeEditarPrecioServicio(nombre){
   if(typeof dineroEditablePermitido==='undefined' || dineroEditablePermitido) return true;
-  return soloProductosActivo() && esProductoServicio(nombre);
+  const recepcionAgendando = sesionActual==='recepcion' && !nuevaEsSinCita;
+  return recepcionAgendando && esProductoServicio(nombre);
 }
 function serviciosActivosPorCategoria(cat){
   return CATALOGO_SERVICIOS.filter(s=>s.categoria===cat && s.activo!==false && (!soloVacunasActivo() || s.es_vacuna) && (!soloProductosActivo() || s.es_producto)).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
