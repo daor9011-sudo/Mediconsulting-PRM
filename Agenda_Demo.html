@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-143">
+<meta name="app-version" content="2026-10-05-144">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -145,10 +145,11 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .vista-toggle button.active{background:#fff;color:var(--gold);box-shadow:0 1px 3px rgba(11,22,40,0.1);}
 
 /* Tabs principales */
-.main-tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--gray-200);}
-.main-tabs button{background:none;border:none;padding:10px 18px;font-size:13.5px;font-weight:600;color:var(--gray-400);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;transition:all .15s;}
+.main-tabs{display:flex;gap:0;flex-wrap:nowrap;position:relative;background:var(--white);padding:0 0 10px;border-bottom:2px solid var(--gray-100);margin-bottom:16px;}
+.main-tabs button{background:none;border:none;padding:12px 18px;font-size:13.5px;font-weight:700;color:var(--gray-400);cursor:pointer;border-bottom:none;margin-bottom:0;position:relative;z-index:1;transition:color .15s;}
 .main-tabs button:hover{color:var(--gray-600);}
-.main-tabs button.active{color:var(--gold);border-bottom-color:var(--gold);}
+.main-tabs button.active{color:#fff;font-weight:800;}
+.main-tabs button.active::before{content:'';position:absolute;inset:-2px -4px;z-index:-1;background:linear-gradient(100deg,var(--gold),var(--gray-800) 120%);border-radius:9px;transform:skewX(-8deg);box-shadow:0 6px 16px rgba(42,191,191,.4);}
 
 /* Cierre: layout estilo QUAD387/MARE */
 .total-bar{background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:8px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
@@ -328,7 +329,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 @media(max-width:640px){
-  .main-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;}
+  .main-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   .main-tabs button{padding:9px 12px;font-size:12.5px;white-space:nowrap;flex-shrink:0;}
   .day-summary{grid-template-columns:repeat(2,1fr);}
   .cita-actions{width:100%;justify-content:flex-start;align-items:stretch;}
@@ -2004,7 +2005,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-143';
+const APP_VERSION = '2026-10-05-144';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
