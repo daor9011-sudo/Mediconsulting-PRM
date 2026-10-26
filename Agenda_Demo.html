@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-142">
+<meta name="app-version" content="2026-10-05-143">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1348,6 +1348,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
           <option value="15">15 min</option>
           <option value="30">30 min</option>
           <option value="45">45 min</option>
+          <option value="50">50 min</option>
           <option value="60" selected>60 min</option>
           <option value="90">90 min</option>
           <option value="120">120 min</option>
@@ -2003,7 +2004,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-142';
+const APP_VERSION = '2026-10-05-143';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -5642,11 +5643,11 @@ function abrirModal(id, sinCita){
     const ahora = new Date();
     document.getElementById('m-fecha').value = fechaActual;
     document.getElementById('m-hora').value = nuevaEsSinCita ? ahora.toTimeString().slice(0,5) : '';
-    document.getElementById('m-duracion').value = 60;
     // Sin cita desde recepción: la dueña NO se adivina (debe asignarse); quien aplica es Enfermería.
     document.getElementById('m-doctora').value = (sesionActual!=='recepcion' && DOCTORAS.includes(sesionActual))
       ? sesionActual
       : (nuevaEsSinCita ? '' : (DOCTORAS[0]||''));
+    document.getElementById('m-duracion').value = duracionDefaultPara(document.getElementById('m-doctora').value);
     document.getElementById('m-prestador').value = (nuevaEsSinCita && sesionActual==='recepcion') ? 'Enfermería' : '';
     document.getElementById('m-tutor').value = '';
     document.getElementById('m-paciente').value = '';
@@ -5782,10 +5783,22 @@ function actualizarHintPrestador(){
     pr==='Enfermería' ? '💉 Aplica Enfermería (solo vacunas). La cita queda en la agenda de Enfermería y cuenta en la productividad de '+(dueno || 'la doctora dueña')+'.'
     : (pr && pr!==dueno) ? '🔀 Paciente referido: la cita aparece en la agenda de '+pr+'.' : '';
 }
+// Duración sugerida al agendar una cita nueva, según quién es la dueña del paciente.
+// Si una doctora no aparece aquí, se usan los 60 min de siempre. Esto solo sugiere el
+// valor por defecto — se puede cambiar a mano en el campo "Duración" sin problema.
+const DURACION_DEFAULT_DOCTORA = { 'Dra. Irene Botas': 50 };
+function duracionDefaultPara(doctora){
+  return DURACION_DEFAULT_DOCTORA[doctora] || 60;
+}
 function onCambioDuenoCita(){
   actualizarHintPrestador();
   sugerirHoraPorHorario();
   renderChipsServicioCita(); // refresca las terminales (la del dueño cambió)
+  // Solo al agendar una cita nueva — si ya se está editando una existente, su
+  // duración guardada no se toca nada más por cambiar quién es la dueña.
+  if(!modalEditId){
+    document.getElementById('m-duracion').value = duracionDefaultPara(document.getElementById('m-doctora').value);
+  }
 }
 function onCambioPrestadorCita(){
   actualizarHintPrestador();
