@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-147">
+<meta name="app-version" content="2026-10-05-148">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2005,7 +2005,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-147';
+const APP_VERSION = '2026-10-05-148';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -4567,7 +4567,19 @@ function enviarRecordatorioWhatsApp(id){
   const numero = telParaWhatsApp(c.tel);
   if(!numero){ toast('⚠ Esta cita no tiene teléfono guardado'); return; }
   const aQuien = c.nombreTutor || c.paciente;
-  const texto = `Hola ${aQuien}, le recordamos la cita de ${c.paciente} el ${fmtDDMMYYYY(c.fecha)} a las ${c.hora} con ${c.doctora} en CANOPY PEDIATRICS. ¡La esperamos!`;
+  const texto = `Hola ${aQuien} 👋, le recordamos la cita de ${c.paciente}:
+
+📅 ${fmtDDMMYYYY(c.fecha)}
+🕐 ${c.hora}
+👩‍⚕️ ${c.doctora}
+📍 Ubicación:
+Hospital ABC Santa Fe
+Torre de Ginecología y Pediatría, Planta Baja.
+
+🚶‍♂️ ¿Cómo llegar al consultorio?
+Ingrese por la puerta giratoria a la sala de espera (donde están las máquinas expendedoras). Camine hacia adelante: a su izquierda verá los sanitarios y a su derecha encontrará el Consultorio 5 (Canopy Pediatrics) 🌳🐿️🐇
+
+¡La esperamos! 😊`;
   window.open(`https://wa.me/${numero}?text=`+encodeURIComponent(texto), '_blank');
 }
 function compartirEnlaceGoogleWhatsApp(){
