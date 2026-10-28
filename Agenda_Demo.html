@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-152">
+<meta name="app-version" content="2026-10-05-153">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2053,7 +2053,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-152';
+const APP_VERSION = '2026-10-05-153';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -3287,7 +3287,7 @@ function renderInventario(){
         <div style="font-weight:700;color:var(--gray-800);">${esc(l.numeroLote)}${etiquetaPrimero}</div>
         <div style="color:var(--gray-600);">${fmtDDMMYYYY(l.fechaCaducidad)}</div>
         <div>${edicion}</div>
-        <div style="color:${sem.color};font-weight:700;">${dias>=0?dias+' días':'VENCIDO'}</div>
+        <div style="color:${sem.color};font-weight:700;">${dias>=0?`Caducidad: ${dias} días`:'Caducidad: VENCIDO'}</div>
       </div>`;
     }).join('') || `<div style="border-top:1px solid #EAF0F6;background:var(--gray-50);padding:9px 18px;font-size:11.5px;color:var(--gray-400);font-style:italic;">Todavía no tiene lote, caducidad ni existencias capturadas.</div>`;
 
