@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-149">
+<meta name="app-version" content="2026-10-05-150">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1077,6 +1077,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     <button id="tab-cierre" onclick="cambiarSeccion('cierre')">📊 Cierre</button>
     <button id="tab-gastos" style="display:none;" onclick="cambiarSeccion('gastos')">💸 Gastos</button>
     <button id="tab-dashboard" style="display:none;" onclick="cambiarSeccion('dashboard')">📈 Dashboard</button>
+    <button id="tab-inventario" onclick="cambiarSeccion('inventario')">📦 Inventario</button>
     <button id="tab-prm" onclick="cambiarSeccion('prm')">🎯 PRM</button>
     <button id="tab-faqs" onclick="cambiarSeccion('faqs')">❓ Ayuda</button>
   </div>
@@ -1263,6 +1264,21 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   </div>
 
   <!-- ═══ PRM ═══ -->
+  <div id="section-inventario" style="display:none">
+    <h1 style="font-size:20px;font-weight:900;color:var(--navy);margin:0 0 4px;">📦 Inventario de Vacunas</h1>
+    <p style="font-size:12.5px;color:var(--gray-600);margin:0 0 16px;max-width:640px;">Existencias, lotes, caducidad y pronóstico de demanda — el lote que vence primero se usa primero.</p>
+
+    <div style="display:flex;gap:6px;margin-bottom:16px;background:#fff;border:1px solid var(--gray-200);padding:5px;border-radius:999px;width:fit-content;box-shadow:0 1px 4px rgba(11,22,40,.05);">
+      <button class="inv-ventana-btn" data-dias="3" onclick="cambiarVentanaInventario(3)" style="background:none;border:none;padding:7px 16px;border-radius:999px;font-size:12px;font-weight:800;color:var(--gray-600);cursor:pointer;">3 días</button>
+      <button class="inv-ventana-btn" data-dias="7" onclick="cambiarVentanaInventario(7)" style="background:linear-gradient(100deg,var(--gold),var(--teal-deep));border:none;padding:7px 16px;border-radius:999px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;">7 días</button>
+      <button class="inv-ventana-btn" data-dias="14" onclick="cambiarVentanaInventario(14)" style="background:none;border:none;padding:7px 16px;border-radius:999px;font-size:12px;font-weight:800;color:var(--gray-600);cursor:pointer;">14 días</button>
+    </div>
+
+    <div id="inventario-kpis" style="display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px;"></div>
+    <div id="inventario-leyenda" style="display:flex;gap:16px;font-size:11px;color:var(--gray-600);margin-bottom:10px;"></div>
+    <div id="inventario-lista"></div>
+  </div>
+
   <div id="section-prm" style="display:none">
 
     <div style="background:#fff;border:1px solid var(--gray-200);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">
@@ -1887,6 +1903,35 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   </div>
 </div>
 
+<div class="modal-overlay" id="inventario-lote-modal-overlay">
+  <div class="modal" style="max-width:420px;">
+    <h3>📦 Agregar lote al inventario</h3>
+    <div class="form-group">
+      <label>Vacuna</label>
+      <select id="inv-form-vacuna"></select>
+    </div>
+    <div class="form-group">
+      <label>Número de lote</label>
+      <input type="text" id="inv-form-lote" placeholder='Ej. "HX-2241"'>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Caduca</label>
+        <input type="date" id="inv-form-caducidad">
+      </div>
+      <div class="form-group">
+        <label>Cantidad (dosis)</label>
+        <input type="number" id="inv-form-cantidad" min="0" value="1">
+      </div>
+    </div>
+    <div id="inv-form-error" style="color:var(--danger);font-size:12px;margin-bottom:8px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-gold" onclick="guardarNuevoLote()">✓ Agregar lote</button>
+      <button class="btn btn-outline" onclick="cerrarInventarioLoteModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal de Historial de actividad (audit_log) — solo visible para admins -->
 <div class="modal-overlay" id="auditoria-modal-overlay">
   <div class="modal" style="max-width:820px;">
@@ -2005,7 +2050,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-149';
+const APP_VERSION = '2026-10-05-150';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -3081,6 +3126,197 @@ async function cargarCatalogoServicios(){
   if(error){ console.error('Error cargando catálogo de servicios:', error); CATALOGO_SERVICIOS = []; return; }
   CATALOGO_SERVICIOS = data||[];
 }
+// ═══════════════════════════════════════════════════════════════════════════
+// INVENTARIO DE VACUNAS — existencias por lote, caducidad y pronóstico de
+// demanda contra las citas ya agendadas. El descuento real al procesar un
+// pago lo hace un trigger en el servidor (FEFO); aquí solo se muestra y se
+// administra (agregar/editar lotes), siempre que quien lo haga sea admin.
+// ═══════════════════════════════════════════════════════════════════════════
+let INVENTARIO_LOTES = [];
+let inventarioVentanaDias = 7;
+let inventarioCargado = false;
+
+function loteDesdeDb(r){
+  return { id:r.id, servicioNombre:r.servicio_nombre, numeroLote:r.numero_lote, fechaCaducidad:r.fecha_caducidad,
+    cantidad:Number(r.cantidad)||0, activo:r.activo!==false, creadoPor:r.creado_por, actualizadoPor:r.actualizado_por };
+}
+
+async function cargarInventarioLotes(){
+  const { data, error } = await sb.from('inventario_lotes').select('*').eq('activo', true).order('fecha_caducidad', { ascending:true });
+  if(error){ console.error('Error cargando inventario:', error); INVENTARIO_LOTES = []; return; }
+  INVENTARIO_LOTES = (data||[]).map(loteDesdeDb);
+}
+
+async function abrirInventario(){
+  if(!inventarioCargado){ await cargarInventarioLotes(); inventarioCargado = true; }
+  renderInventario();
+}
+
+function cambiarVentanaInventario(dias){
+  inventarioVentanaDias = dias;
+  document.querySelectorAll('.inv-ventana-btn').forEach(b=>{
+    const activa = Number(b.dataset.dias)===dias;
+    b.style.background = activa ? 'linear-gradient(100deg,var(--gold),var(--teal-deep))' : 'none';
+    b.style.color = activa ? '#fff' : 'var(--gray-600)';
+  });
+  renderInventario();
+}
+
+// Días que faltan para que caduque un lote, y a qué color de semáforo corresponde.
+function diasParaCaducar(fecha){
+  const hoy = new Date(fechaLocalISO()+'T00:00:00');
+  const cad = new Date(fecha+'T00:00:00');
+  return Math.round((cad - hoy) / 86400000);
+}
+function colorSemaforo(dias){
+  if(dias < 30) return { color:'#E0433A', nombre:'rojo' };
+  if(dias < 90) return { color:'#D98A1E', nombre:'amarillo' };
+  return { color:'#1E9E63', nombre:'verde' };
+}
+
+// Cuántas dosis de esta vacuna hay ya agendadas en los próximos N días (citas
+// activas, no canceladas, no eliminadas) — mismo criterio de "cantidad" que ya
+// usa el formulario de agendar (monto de esa fila del desglose ÷ precio unitario).
+function demandaVacuna(nombreServicio, dias){
+  const hoy = fechaLocalISO();
+  const limite = new Date(hoy+'T00:00:00'); limite.setDate(limite.getDate()+dias);
+  const limiteISO = limite.toISOString().slice(0,10);
+  const cat = CATALOGO_SERVICIOS.find(s=>s.nombre===nombreServicio);
+  const precioUnit = cat ? Number(cat.precio)||0 : 0;
+  let total = 0;
+  activeCitas().forEach(c=>{
+    if(c.cancelada) return;
+    if(c.fecha < hoy || c.fecha > limiteISO) return;
+    const desglose = c.precioDesglose || {};
+    if(!(nombreServicio in desglose)) return;
+    const monto = Number(desglose[nombreServicio])||0;
+    total += (precioUnit>0) ? Math.max(1, Math.round(monto/precioUnit)) : 1;
+  });
+  return total;
+}
+
+function lotesDe(nombreServicio){
+  return INVENTARIO_LOTES.filter(l=>l.servicioNombre===nombreServicio && l.activo)
+    .sort((a,b)=>a.fechaCaducidad.localeCompare(b.fechaCaducidad));
+}
+
+function renderInventario(){
+  const puedeEditar = !!(currentUser && currentUser.esAdmin);
+  const nombresVacunas = [...new Set(INVENTARIO_LOTES.map(l=>l.servicioNombre))].sort((a,b)=>a.localeCompare(b,'es'));
+
+  const filas = nombresVacunas.map(nombre=>{
+    const lotes = lotesDe(nombre);
+    const existencias = lotes.reduce((s,l)=>s+l.cantidad, 0);
+    const demanda = demandaVacuna(nombre, inventarioVentanaDias);
+    const alerta = demanda > existencias;
+    const faltan = demanda - existencias;
+    const maxref = Math.max(existencias, demanda, 1);
+    const wE = Math.min(100, Math.round(existencias/maxref*100));
+    const wD = Math.min(100, Math.round(demanda/maxref*100));
+    const badge = alerta
+      ? `<span style="font-size:10.5px;font-weight:800;padding:5px 12px;border-radius:999px;background:#FDEEEA;color:#E0433A;border:1px solid #F3B9AC;">⚠ Faltan ${faltan}</span>`
+      : `<span style="font-size:10.5px;font-weight:800;padding:5px 12px;border-radius:999px;background:#E7F9EE;color:#1E9E63;border:1px solid #A8DDBA;">✓ Suficiente</span>`;
+    const borde = alerta ? 'border:1.5px solid #F3B9AC;' : 'border:1px solid var(--gray-200);';
+
+    // la fila de cada lote — el primero con existencias es el que "sale primero" (FEFO)
+    let yaMarcoPrimero = false;
+    const filasLote = lotes.map(l=>{
+      const dias = diasParaCaducar(l.fechaCaducidad);
+      const sem = colorSemaforo(dias);
+      const esPrimero = !yaMarcoPrimero && l.cantidad>0;
+      if(esPrimero) yaMarcoPrimero = true;
+      const etiquetaPrimero = esPrimero ? ' <span style="background:linear-gradient(100deg,var(--gold),var(--teal-deep));color:#fff;font-size:8.5px;font-weight:900;padding:2px 7px;border-radius:999px;margin-left:6px;">👉 USAR PRIMERO</span>' : '';
+      const edicion = puedeEditar
+        ? `<input type="number" min="0" value="${l.cantidad}" id="inv-cant-${l.id}" style="width:54px;padding:5px 7px;font-size:11.5px;border:1px solid var(--gray-200);border-radius:7px;"><button onclick="guardarCantidadLote(${l.id})" style="background:linear-gradient(100deg,var(--gold),var(--teal-deep));color:#fff;border:none;padding:6px 10px;border-radius:7px;font-size:10.5px;font-weight:800;margin-left:4px;cursor:pointer;">Guardar</button>`
+        : `<span style="color:var(--gray-600);">${l.cantidad} dosis</span>`;
+      return `<div style="border-top:1px solid #EAF0F6;background:var(--gray-50);padding:8px 18px;display:grid;grid-template-columns:.3fr 1.3fr 1.2fr .7fr 1.2fr;gap:8px;font-size:11.5px;align-items:center;">
+        <div><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:${sem.color};"></span></div>
+        <div style="font-weight:700;color:var(--navy);">${esc(l.numeroLote)}${etiquetaPrimero}</div>
+        <div style="color:var(--gray-600);">${fmtDDMMYYYY(l.fechaCaducidad)}</div>
+        <div>${edicion}</div>
+        <div style="color:${sem.color};font-weight:700;">${dias>=0?dias+' días':'VENCIDO'}</div>
+      </div>`;
+    }).join('');
+
+    return `<div style="background:#fff;${borde}border-radius:16px;margin-bottom:10px;overflow:hidden;">
+      <div style="display:grid;grid-template-columns:1.3fr 1.6fr 1fr;gap:14px;padding:14px 18px;align-items:center;">
+        <div><div style="font-weight:900;font-size:14.5px;color:var(--navy);">${esc(nombre)}</div><div style="font-size:11px;color:var(--gray-600);margin-top:2px;">${existencias} en stock · ${demanda} citadas</div></div>
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;"><span style="font-size:9.5px;color:var(--gray-400);width:52px;">Stock</span><div style="flex:1;height:9px;background:var(--gray-100);border-radius:5px;overflow:hidden;"><div style="height:100%;width:${wE}%;background:var(--gold);border-radius:5px;"></div></div></div>
+          <div style="display:flex;align-items:center;gap:6px;"><span style="font-size:9.5px;color:var(--gray-400);width:52px;">Demanda</span><div style="flex:1;height:9px;background:var(--gray-100);border-radius:5px;overflow:hidden;"><div style="height:100%;width:${wD}%;background:#7C5CBF;border-radius:5px;"></div></div></div>
+        </div>
+        <div style="text-align:right;">${badge}${puedeEditar?` <button onclick="abrirAgregarLoteModal('${esc(nombre).replace(/'/g,"\\'")}')" style="display:block;margin-top:6px;margin-left:auto;background:none;border:1px dashed var(--gray-200);color:var(--gray-600);font-size:10px;font-weight:700;padding:4px 10px;border-radius:7px;cursor:pointer;">+ Agregar lote</button>`:''}</div>
+      </div>
+      ${filasLote}
+    </div>`;
+  }).join('') || `<div style="padding:30px;text-align:center;color:var(--gray-400);font-size:13px;background:#fff;border:1px solid var(--gray-200);border-radius:14px;">Todavía no hay lotes registrados.${puedeEditar?' Usa "+ Agregar vacuna al inventario" abajo para empezar.':''}</div>`;
+
+  const totalVacunas = nombresVacunas.length;
+  const conAlerta = nombresVacunas.filter(n=>demandaVacuna(n,inventarioVentanaDias) > lotesDe(n).reduce((s,l)=>s+l.cantidad,0)).length;
+  const porCaducar = INVENTARIO_LOTES.filter(l=>l.cantidad>0 && diasParaCaducar(l.fechaCaducidad)<30).length;
+  const dosisAgendadas = nombresVacunas.reduce((s,n)=>s+demandaVacuna(n,inventarioVentanaDias),0);
+  const pctOk = totalVacunas ? Math.round((totalVacunas-conAlerta)/totalVacunas*100) : 100;
+  const circunf = 2*Math.PI*21;
+  const offset = circunf*(1-pctOk/100);
+
+  document.getElementById('inventario-kpis').innerHTML = `
+    <div style="background:#fff;border:1px solid var(--gray-200);border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:12px;">
+      <svg width="46" height="46" viewBox="0 0 52 52"><circle cx="26" cy="26" r="21" fill="none" stroke="var(--gray-100)" stroke-width="6"/><circle cx="26" cy="26" r="21" fill="none" stroke="#1E9E63" stroke-width="6" stroke-dasharray="${circunf.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="round" transform="rotate(-90 26 26)"/></svg>
+      <div><div style="font-size:15px;font-weight:900;color:var(--navy);">${pctOk}%</div><div style="font-size:8px;color:var(--gray-400);font-weight:800;">STOCK OK</div></div>
+    </div>
+    <div style="background:#fff;border:1px solid ${conAlerta?'#F3B9AC':'var(--gray-200)'};border-radius:14px;padding:11px 14px;"><div style="font-size:9px;color:var(--gray-400);font-weight:800;">CON ALERTA</div><div style="font-size:19px;font-weight:900;color:${conAlerta?'#E0433A':'var(--navy)'};">${conAlerta}</div></div>
+    <div style="background:#fff;border:1px solid ${porCaducar?'#F3B9AC':'var(--gray-200)'};border-radius:14px;padding:11px 14px;"><div style="font-size:9px;color:var(--gray-400);font-weight:800;">POR CADUCAR</div><div style="font-size:19px;font-weight:900;color:${porCaducar?'#E0433A':'var(--navy)'};">${porCaducar}</div></div>
+    <div style="background:#fff;border:1px solid var(--gray-200);border-radius:14px;padding:11px 14px;"><div style="font-size:9px;color:var(--gray-400);font-weight:800;">DOSIS AGENDADAS</div><div style="font-size:19px;font-weight:900;color:var(--teal-deep);">${dosisAgendadas}</div></div>
+  `;
+  document.getElementById('inventario-leyenda').innerHTML = `<span><span style="width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px;background:var(--gold);"></span>Stock</span><span><span style="width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px;background:#7C5CBF;"></span>Demanda agendada</span>` + (puedeEditar ? `<button onclick="abrirAgregarLoteModal('')" style="margin-left:auto;background:var(--gold);color:#fff;border:none;padding:6px 14px;border-radius:7px;font-size:11px;font-weight:800;cursor:pointer;">+ Agregar vacuna al inventario</button>` : '');
+  document.getElementById('inventario-lista').innerHTML = filas;
+}
+
+// Solo admin llega aquí (el botón ni se muestra para los demás) — y la base de
+// datos también lo exige del lado del servidor, así que no pasa nada aunque
+// alguien intente saltarse el botón.
+async function guardarCantidadLote(loteId){
+  const input = document.getElementById(`inv-cant-${loteId}`);
+  const nueva = Math.max(0, parseInt(input.value)||0);
+  const lote = INVENTARIO_LOTES.find(l=>l.id===loteId);
+  if(!lote) return;
+  const { error } = await sb.from('inventario_lotes').update({ cantidad: nueva }).eq('id', loteId);
+  if(error){ toast('⚠ No se pudo guardar: '+error.message); return; }
+  lote.cantidad = nueva;
+  toast('✓ Existencias actualizadas');
+  renderInventario();
+}
+
+function abrirAgregarLoteModal(nombrePrellenado){
+  const vacunas = CATALOGO_SERVICIOS.filter(s=>s.es_vacuna && s.activo!==false).map(s=>s.nombre).sort((a,b)=>a.localeCompare(b,'es'));
+  const sel = document.getElementById('inv-form-vacuna');
+  sel.innerHTML = vacunas.map(n=>`<option value="${esc(n)}" ${n===nombrePrellenado?'selected':''}>${esc(n)}</option>`).join('');
+  document.getElementById('inv-form-lote').value = '';
+  document.getElementById('inv-form-caducidad').value = '';
+  document.getElementById('inv-form-cantidad').value = '1';
+  document.getElementById('inv-form-error').textContent = '';
+  document.getElementById('inventario-lote-modal-overlay').classList.add('open');
+}
+function cerrarInventarioLoteModal(){
+  document.getElementById('inventario-lote-modal-overlay').classList.remove('open');
+}
+
+async function guardarNuevoLote(){
+  const nombre = document.getElementById('inv-form-vacuna').value;
+  const numeroLote = document.getElementById('inv-form-lote').value.trim();
+  const caducidad = document.getElementById('inv-form-caducidad').value;
+  const cantidad = Math.max(0, parseInt(document.getElementById('inv-form-cantidad').value)||0);
+  const elError = document.getElementById('inv-form-error');
+  elError.textContent = '';
+  if(!nombre || !numeroLote || !caducidad){ elError.textContent = 'Completa vacuna, lote y fecha de caducidad.'; return; }
+  const { data, error } = await sb.from('inventario_lotes').insert({ servicio_nombre:nombre, numero_lote:numeroLote, fecha_caducidad:caducidad, cantidad }).select().single();
+  if(error){ elError.textContent = 'No se pudo agregar: '+error.message; return; }
+  INVENTARIO_LOTES.push(loteDesdeDb(data));
+  cerrarInventarioLoteModal();
+  toast('✓ Lote agregado');
+  renderInventario();
+}
+
 // Enfermería no tiene consultorio ni ve pacientes — solo aplica vacunas.
 // Mientras sea quien APLICA (prestador), el buscador de servicios solo debe
 // ofrecer lo marcado como vacuna en el catálogo.
@@ -6726,11 +6962,13 @@ function cambiarSeccion(sec){
   document.getElementById('tab-historico').classList.toggle('active', sec==='historico');
   document.getElementById('tab-prm').classList.toggle('active', sec==='prm');
   document.getElementById('tab-faqs').classList.toggle('active', sec==='faqs');
+  document.getElementById('tab-inventario').classList.toggle('active', sec==='inventario');
   document.getElementById('section-agenda').style.display = sec==='agenda' ? '' : 'none';
   document.getElementById('section-directorio').style.display = sec==='directorio' ? '' : 'none';
   document.getElementById('section-cierre').style.display = sec==='cierre' ? '' : 'none';
   document.getElementById('section-historico').style.display = sec==='historico' ? '' : 'none';
   document.getElementById('section-prm').style.display = sec==='prm' ? '' : 'none';
+  document.getElementById('section-inventario').style.display = sec==='inventario' ? '' : 'none';
   document.getElementById('section-faqs').style.display = sec==='faqs' ? '' : 'none';
   document.getElementById('tab-gastos').classList.toggle('active', sec==='gastos');
   document.getElementById('tab-dashboard').classList.toggle('active', sec==='dashboard');
@@ -6743,6 +6981,7 @@ function cambiarSeccion(sec){
   if(sec==='historico') renderHistorico();
   if(sec==='prm') renderPRM();
   if(sec==='faqs') renderFAQs();
+  if(sec==='inventario') abrirInventario();
 }
 
 function cambiarModoCierre(m){
