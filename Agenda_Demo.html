@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-154">
+<meta name="app-version" content="2026-10-05-155">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2053,7 +2053,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-154';
+const APP_VERSION = '2026-10-05-155';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -3442,7 +3442,7 @@ let selectorServiciosModo = 'cita';
 // cita); lo único que cambia es qué fila de precio puede editar — eso lo decide
 // puedeEditarPrecioServicio, más abajo, no esto.
 function soloProductosActivo(){
-  return selectorServiciosModo==='pago';
+  return selectorServiciosModo==='pago' || selectorServiciosModo==='pago-cerrado';
 }
 function esProductoServicio(nombre){
   const n = normNombreServicio(nombre);
@@ -3532,6 +3532,7 @@ function actualizarChipsSeleccionPicker(){
 }
 function confirmarSelectorServiciosCita(){
   if(selectorServiciosModo==='pago'){ confirmarProductosPago(); return; }
+  if(selectorServiciosModo==='pago-cerrado'){ confirmarProductoPagoCerrado(); return; }
   document.getElementById('m-servicio').value = [...serviciosPickerSeleccionados].join(' + ');
   renderChipsServicioCita();
   cerrarSelectorServiciosPicker();
@@ -3568,6 +3569,69 @@ function confirmarProductosPago(){
   render();
   toast(`✓ ${agregados>1?'Productos agregados':'Producto agregado'}`);
   abrirPagoModal(pagoModalId); // refresca el resumen de "Servicios a cobrar" con el nuevo total
+}
+
+// Solo administración llega aquí (el botón "🧴+ Producto" ni se muestra para
+// los demás) — caso real: el paciente ya pagó su consulta y, antes de irse,
+// pide un producto en recepción. La base de datos también lo exige del lado
+// del servidor, así que no hay forma de colarlo aunque alguien se salte el botón.
+function abrirAgregarProductoPagada(id){
+  if(!currentUser || !currentUser.esAdmin){ toast('⚠ Solo un administrador puede hacer esto'); return; }
+  pagoModalId = id;
+  selectorServiciosModo = 'pago-cerrado';
+  serviciosPickerSeleccionados = new Set();
+  serviciosPickerTabActiva = CATEGORIAS_SERVICIO.find(cat=>CATALOGO_SERVICIOS.some(s=>s.categoria===cat && s.es_producto && s.activo!==false)) || CATEGORIAS_SERVICIO[0];
+  document.getElementById('servicios-buscar').value = '';
+  renderTabsServiciosPicker();
+  renderListaServiciosPicker();
+  document.getElementById('selector-servicios-modal-overlay').classList.add('open');
+}
+
+function confirmarProductoPagoCerrado(){
+  const c = citas.find(x=>x.id===pagoModalId);
+  const seleccionados = [...serviciosPickerSeleccionados];
+  cerrarSelectorServiciosPicker();
+  if(!c || !seleccionados.length) return;
+  const nombresActuales = c.servicio ? c.servicio.split(' + ').map(x=>x.trim()).filter(Boolean) : [];
+  const desglose = Object.assign({}, c.precioDesglose||{});
+  const terminalPS = Object.assign({}, c.terminalPorServicio||{});
+  let montoAgregado = 0, agregados = 0;
+  const nombresAgregados = [];
+  seleccionados.forEach(nombre=>{
+    if(nombresActuales.includes(nombre)) return;
+    const cat = CATALOGO_SERVICIOS.find(s=>s.nombre===nombre);
+    if(!cat || !cat.es_producto) return;
+    const precio = Number(cat.precio)||0;
+    desglose[nombre] = precio;
+    nombresActuales.push(nombre);
+    const pref = cat.terminal_preferida;
+    terminalPS[nombre] = (pref && pref!=='doctora' && pref!=='canopy') ? pref : c.doctora;
+    montoAgregado += precio;
+    agregados++;
+    nombresAgregados.push(nombre);
+  });
+  if(!agregados) return;
+  // Es un cobro nuevo sobre una cita ya cerrada — pregunta cómo se cobró
+  // antes de guardar nada, para dejarlo bien registrado en el Cierre.
+  mostrarSelectorOpciones(`¿Cómo se cobró ${esc(nombresAgregados.join(', '))}? ($${montoAgregado.toLocaleString('es-MX',{minimumFractionDigits:2})})`, MEDIOS_PAGO_EDITABLES, (medio)=>{
+    c.servicio = nombresActuales.join(' + ');
+    c.precioDesglose = desglose;
+    c.terminalPorServicio = terminalPS;
+    c.precio = Object.values(desglose).reduce((s,v)=>s+(Number(v)||0),0);
+    if(!c.medioPago2){
+      c.medioPago2 = medio;
+      c.montoPagado2 = (Number(c.montoPagado2)||0) + montoAgregado;
+    }else{
+      // ya se habían usado los dos medios de pago — se suma al primero y se
+      // deja constancia en notas, para no perder el dato de cómo se cobró.
+      c.montoPagado = (Number(c.montoPagado)||0) + montoAgregado;
+      const nota = `Producto agregado después del pago (${fechaLocalISO()}, ${currentUser.nombre}): $${montoAgregado.toLocaleString('es-MX',{minimumFractionDigits:2})} vía ${medio}.`;
+      c.notas = c.notas ? c.notas+'\n'+nota : nota;
+    }
+    guardarLocal(c);
+    render();
+    toast(`✓ ${agregados>1?'Productos agregados':'Producto agregado'} y cobrado`);
+  }, '🧴');
 }
 function renderChipsServicioCita(){
   const valor = document.getElementById('m-servicio').value;
@@ -4174,6 +4238,7 @@ function render(){
           ${esMia ? `
           ${(!c.cancelada && !c.pagado)?`<button class="btn-sm" style="background:#E7F9EE;color:#1E8E52;border:1px solid #A8DDBA;" onclick="event.stopPropagation();enviarRecordatorioWhatsApp(${c.id})" title="Abre WhatsApp con el chat del paciente y el recordatorio ya escrito"><svg viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px;margin-right:3px;" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.48 1.32 4.99L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01C17.19 3.03 14.7 2 12.04 2zm0 1.67c2.23 0 4.32.87 5.9 2.45a8.23 8.23 0 0 1 2.43 5.87c0 4.58-3.73 8.31-8.31 8.31a8.3 8.3 0 0 1-4.22-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.26 8.26 0 0 1-1.27-4.42c0-4.58 3.73-8.35 8.26-8.35zm-4.52 4.3c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.6.13.17 1.76 2.8 4.35 3.83 2.15.85 2.59.68 3.06.64.47-.04 1.5-.61 1.72-1.2.21-.58.21-1.08.15-1.19-.06-.1-.23-.17-.48-.29-.25-.13-1.5-.74-1.73-.83-.23-.08-.4-.13-.57.13-.17.25-.65.83-.8 1-.15.17-.29.19-.54.06-.25-.13-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.38-1.72-.15-.25-.02-.38.11-.5.11-.11.25-.29.38-.44.13-.15.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.57-1.4-.79-1.9-.21-.5-.42-.44-.57-.44z"/></svg>Recordatorio</button>`:''}
           ${(!c.cancelada && !c.pagado && !c.noLlego)?`${btnProcesarPago(c, true)}`:''}
+          ${(!c.cancelada && c.pagado && currentUser && currentUser.esAdmin)?`<button class="btn-sm" style="background:#FDF6EC;color:#9A6010;border:1px solid #EDD49A;" onclick="event.stopPropagation();abrirAgregarProductoPagada(${c.id})" title="Agregar un producto a esta cita ya pagada (solo administración)">🧴+ Producto</button>`:''}
           <button class="btn-sm btn-sm-edit" onclick="abrirModal(${c.id})">✎ Editar</button>
           ${!c.cancelada?`<button class="btn-sm btn-sm-cancel" onclick="cancelarCita(${c.id})">⊘ Cancelar</button>`:''}
           ${(!c.cancelada && !c.noLlego && !c.pagado)?`<button class="btn-sm" style="background:#F5EEF8;color:#7D3C98;border:1px solid #D9B3D9;" onclick="marcarNoLlego(${c.id})">👻 No <br>llegó</button>`:''}
@@ -4184,6 +4249,7 @@ function render(){
           ` : `
           ${(!c.cancelada && !c.pagado)?`<button class="btn-sm" style="background:#E7F9EE;color:#1E8E52;border:1px solid #A8DDBA;" onclick="event.stopPropagation();enviarRecordatorioWhatsApp(${c.id})" title="Abre WhatsApp con el chat del paciente y el recordatorio ya escrito"><svg viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px;margin-right:3px;" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.48 1.32 4.99L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01C17.19 3.03 14.7 2 12.04 2zm0 1.67c2.23 0 4.32.87 5.9 2.45a8.23 8.23 0 0 1 2.43 5.87c0 4.58-3.73 8.31-8.31 8.31a8.3 8.3 0 0 1-4.22-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.26 8.26 0 0 1-1.27-4.42c0-4.58 3.73-8.35 8.26-8.35zm-4.52 4.3c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.6.13.17 1.76 2.8 4.35 3.83 2.15.85 2.59.68 3.06.64.47-.04 1.5-.61 1.72-1.2.21-.58.21-1.08.15-1.19-.06-.1-.23-.17-.48-.29-.25-.13-1.5-.74-1.73-.83-.23-.08-.4-.13-.57.13-.17.25-.65.83-.8 1-.15.17-.29.19-.54.06-.25-.13-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.38-1.72-.15-.25-.02-.38.11-.5.11-.11.25-.29.38-.44.13-.15.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.57-1.4-.79-1.9-.21-.5-.42-.44-.57-.44z"/></svg>Recordatorio</button>`:''}
           ${(!c.cancelada && !c.pagado && !c.noLlego)?`${btnProcesarPago(c, true)}`:''}
+          ${(!c.cancelada && c.pagado && currentUser && currentUser.esAdmin)?`<button class="btn-sm" style="background:#FDF6EC;color:#9A6010;border:1px solid #EDD49A;" onclick="event.stopPropagation();abrirAgregarProductoPagada(${c.id})" title="Agregar un producto a esta cita ya pagada (solo administración)">🧴+ Producto</button>`:''}
           <button class="btn-sm btn-sm-edit" onclick="abrirModal(${c.id})">✎ Editar</button>
           `}
         </div>
