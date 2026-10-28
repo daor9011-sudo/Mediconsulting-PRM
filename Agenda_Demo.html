@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-153">
+<meta name="app-version" content="2026-10-05-154">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2053,7 +2053,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-153';
+const APP_VERSION = '2026-10-05-154';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -3293,7 +3293,7 @@ function renderInventario(){
 
     return `<div style="background:#fff;${borde}border-radius:16px;margin-bottom:10px;overflow:hidden;">
       <div style="display:grid;grid-template-columns:1.3fr 1.6fr 1fr;gap:14px;padding:14px 18px;align-items:center;">
-        <div><div style="font-weight:900;font-size:14.5px;color:var(--gray-800);">${esc(nombre)}</div><div style="font-size:11px;color:var(--gray-600);margin-top:2px;">${existencias} en stock · ${demanda} citadas</div></div>
+        <div><div style="font-weight:900;font-size:14.5px;color:var(--gray-800);">${esc(nombre)}${puedeEditar?` <button onclick="abrirEditarNombreVacuna('${esc(nombre).replace(/'/g,"\\'")}')" title="Editar nombre" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--gray-400);padding:0 2px;">✎</button><button onclick="confirmarEliminarVacuna('${esc(nombre).replace(/'/g,"\\'")}')" title="Eliminar vacuna del catálogo" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--gray-400);padding:0 2px;">🗑</button>`:''}</div><div style="font-size:11px;color:var(--gray-600);margin-top:2px;">${existencias} en stock · ${demanda} citadas</div></div>
         <div>
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;"><span style="font-size:9.5px;color:var(--gray-400);width:52px;">Stock</span><div style="flex:1;height:9px;background:var(--gray-100);border-radius:5px;overflow:hidden;"><div style="height:100%;width:${wE}%;background:var(--gold);border-radius:5px;"></div></div></div>
           <div style="display:flex;align-items:center;gap:6px;"><span style="font-size:9.5px;color:var(--gray-400);width:52px;">Demanda</span><div style="flex:1;height:9px;background:var(--gray-100);border-radius:5px;overflow:hidden;"><div style="height:100%;width:${wD}%;background:#7C5CBF;border-radius:5px;"></div></div></div>
@@ -3368,6 +3368,58 @@ async function guardarNuevoLote(){
   cerrarInventarioLoteModal();
   toast('✓ Lote agregado');
   renderInventario();
+}
+
+// Renombrar una vacuna del catálogo. Como los lotes y las citas identifican
+// cada vacuna por su NOMBRE exacto (no por un id), al renombrarla hay que
+// actualizar también sus lotes existentes — si no, se "perderían" del
+// inventario al quedar con el nombre viejo. Las citas YA agendadas con el
+// nombre anterior se dejan tal cual (son historial, no se tocan).
+function abrirEditarNombreVacuna(nombreActual){
+  mostrarPrompt({
+    titulo:'Editar nombre de la vacuna', icono:'✎',
+    mensaje:`Nuevo nombre para <strong>${esc(nombreActual)}</strong>. Los lotes que ya tenga se actualizan solos — las citas ya agendadas con el nombre anterior no cambian.`,
+    tipo:'text', valorInicial:nombreActual
+  }, async (nuevoNombre)=>{
+    if(nuevoNombre===null) return;
+    nuevoNombre = nuevoNombre.trim();
+    if(!nuevoNombre || nuevoNombre===nombreActual) return;
+    if(CATALOGO_SERVICIOS.some(s=>s.nombre===nuevoNombre)){ toast('⚠ Ya existe un servicio con ese nombre'); return; }
+    const item = CATALOGO_SERVICIOS.find(s=>s.nombre===nombreActual && s.es_vacuna);
+    if(!item){ toast('⚠ No se encontró esa vacuna en el catálogo'); return; }
+    const { error } = await sb.from('catalogo_servicios').update({ nombre:nuevoNombre }).eq('id', item.id);
+    if(error){ toast('⚠ No se pudo renombrar: '+error.message); return; }
+    item.nombre = nuevoNombre;
+    const lotesAfectados = INVENTARIO_LOTES.filter(l=>l.servicioNombre===nombreActual);
+    if(lotesAfectados.length){
+      const { error:errorLotes } = await sb.from('inventario_lotes').update({ servicio_nombre:nuevoNombre }).eq('servicio_nombre', nombreActual);
+      if(errorLotes){ toast('⚠ El nombre se cambió, pero sus lotes no se pudieron actualizar: '+errorLotes.message); }
+      else lotesAfectados.forEach(l=>{ l.servicioNombre = nuevoNombre; });
+    }
+    toast('✓ Vacuna renombrada');
+    renderInventario();
+  });
+}
+
+// "Eliminar" una vacuna = desactivarla en el catálogo (igual que el resto de
+// la app: nunca se borra de verdad, para no romper el historial de citas que
+// ya la usaron). Deja de aparecer para agendar, pero sus lotes existentes
+// siguen visibles por si todavía queda existencia física que gastar.
+function confirmarEliminarVacuna(nombre){
+  mostrarConfirm({
+    etiqueta:'Inventario', icono:'🗑',
+    titulo:'¿Eliminar esta vacuna del catálogo?',
+    mensaje:`<strong>${esc(nombre)}</strong> ya no se va a poder elegir al agendar una cita nueva. Si todavía tiene lotes con existencia, se quedan visibles aquí para que los termines de gastar o los retires a mano.`,
+    textoConfirmar:'Sí, eliminar',
+  }, async ()=>{
+    const item = CATALOGO_SERVICIOS.find(s=>s.nombre===nombre && s.es_vacuna);
+    if(!item) return;
+    const { error } = await sb.from('catalogo_servicios').update({ activo:false }).eq('id', item.id);
+    if(error){ toast('⚠ No se pudo eliminar: '+error.message); return; }
+    item.activo = false;
+    toast('✓ Vacuna eliminada del catálogo');
+    renderInventario();
+  });
 }
 
 // Enfermería no tiene consultorio ni ve pacientes — solo aplica vacunas.
