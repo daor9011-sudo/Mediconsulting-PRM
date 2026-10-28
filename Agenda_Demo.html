@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-151">
+<meta name="app-version" content="2026-10-05-152">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1268,10 +1268,13 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     <h1 style="font-size:20px;font-weight:900;color:var(--gray-800);margin:0 0 4px;">📦 Inventario de Vacunas</h1>
     <p style="font-size:12.5px;color:var(--gray-600);margin:0 0 16px;max-width:640px;">Existencias, lotes, caducidad y pronóstico de demanda — el lote que vence primero se usa primero.</p>
 
-    <div style="display:flex;gap:6px;margin-bottom:16px;background:#fff;border:1px solid var(--gray-200);padding:5px;border-radius:999px;width:fit-content;box-shadow:0 1px 4px rgba(11,22,40,.05);">
-      <button class="inv-ventana-btn" data-dias="3" onclick="cambiarVentanaInventario(3)" style="background:none;border:none;padding:7px 16px;border-radius:999px;font-size:12px;font-weight:800;color:var(--gray-600);cursor:pointer;">3 días</button>
-      <button class="inv-ventana-btn" data-dias="7" onclick="cambiarVentanaInventario(7)" style="background:linear-gradient(100deg,var(--gold),#0E8F8F);border:none;padding:7px 16px;border-radius:999px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;">7 días</button>
-      <button class="inv-ventana-btn" data-dias="14" onclick="cambiarVentanaInventario(14)" style="background:none;border:none;padding:7px 16px;border-radius:999px;font-size:12px;font-weight:800;color:var(--gray-600);cursor:pointer;">14 días</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <div style="display:flex;gap:6px;background:#fff;border:1px solid var(--gray-200);padding:5px;border-radius:999px;width:fit-content;box-shadow:0 1px 4px rgba(11,22,40,.05);">
+        <button class="inv-ventana-btn" data-dias="3" onclick="cambiarVentanaInventario(3)" style="background:none;border:none;padding:7px 16px;border-radius:999px;font-size:12px;font-weight:800;color:var(--gray-600);cursor:pointer;">3 días</button>
+        <button class="inv-ventana-btn" data-dias="7" onclick="cambiarVentanaInventario(7)" style="background:linear-gradient(100deg,var(--gold),#0E8F8F);border:none;padding:7px 16px;border-radius:999px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;">7 días</button>
+        <button class="inv-ventana-btn" data-dias="14" onclick="cambiarVentanaInventario(14)" style="background:none;border:none;padding:7px 16px;border-radius:999px;font-size:12px;font-weight:800;color:var(--gray-600);cursor:pointer;">14 días</button>
+      </div>
+      <button class="btn btn-outline" style="font-size:11.5px;padding:7px 12px;" onclick="actualizarInventario()">↻ Actualizar</button>
     </div>
 
     <div id="inventario-kpis" style="display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px;"></div>
@@ -2050,7 +2053,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-151';
+const APP_VERSION = '2026-10-05-152';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -2101,6 +2104,7 @@ let canalBloqueosRealtime = null;
 let canalHorariosRealtime = null;
 let canalGestionesRealtime = null;
 let canalPagosRealtime = null;
+let canalInventarioRealtime = null;
 
 // ═══════════════════════════════════════════
 // ACTUALIZACIÓN AUTOMÁTICA — para que nadie tenga que refrescar el link
@@ -2372,6 +2376,15 @@ function iniciarRealtime(){
       aplicarCambioRealtimeGestion(payload);
     })
     .subscribe();
+
+  // Inventario de vacunas: si alguien agrega un lote o cambia una cantidad
+  // desde otra sesión (o el trigger de FEFO descuenta al procesar un pago),
+  // se refleja solo, sin que nadie tenga que salir y volver a entrar a la pestaña.
+  canalInventarioRealtime = sb.channel('inventario-lotes-realtime')
+    .on('postgres_changes', { event:'*', schema:'public', table:'inventario_lotes' }, payload=>{
+      aplicarCambioRealtimeInventario(payload);
+    })
+    .subscribe();
 }
 
 function aplicarCambioRealtimeCita(payload){
@@ -2550,6 +2563,7 @@ function detenerRealtime(){
   if(canalHorariosRealtime) sb.removeChannel(canalHorariosRealtime);
   if(canalGestionesRealtime) sb.removeChannel(canalGestionesRealtime);
   if(canalPagosRealtime) sb.removeChannel(canalPagosRealtime);
+  if(canalInventarioRealtime) sb.removeChannel(canalInventarioRealtime);
 }
 
 let currentUser = null; // { id, rol, nombre }
@@ -3147,9 +3161,38 @@ async function cargarInventarioLotes(){
   INVENTARIO_LOTES = (data||[]).map(loteDesdeDb);
 }
 
+// Mantiene INVENTARIO_LOTES al día con lo que pase en cualquier otra sesión
+// (otra persona agregando un lote, el trigger de FEFO descontando al cobrar,
+// etc.) y refresca la pantalla al instante si el inventario está abierto.
+function aplicarCambioRealtimeInventario(payload){
+  if(payload.eventType==='DELETE'){
+    INVENTARIO_LOTES = INVENTARIO_LOTES.filter(l=>l.id!==payload.old.id);
+  }else{
+    const actualizado = loteDesdeDb(payload.new);
+    const i = INVENTARIO_LOTES.findIndex(l=>l.id===actualizado.id);
+    if(!actualizado.activo){
+      if(i>=0) INVENTARIO_LOTES.splice(i,1);
+    }else if(i>=0){
+      INVENTARIO_LOTES[i] = actualizado;
+    }else{
+      INVENTARIO_LOTES.push(actualizado);
+    }
+  }
+  if(document.getElementById('section-inventario').style.display!=='none') renderInventario();
+}
+
 async function abrirInventario(){
-  if(!inventarioCargado){ await cargarInventarioLotes(); inventarioCargado = true; }
+  // Siempre trae lo más reciente al entrar — el inventario lo puede estar
+  // tocando alguien más al mismo tiempo (otra recepción, otra pestaña), así
+  // que no conviene quedarse con lo que se cargó la primera vez.
+  await cargarInventarioLotes();
+  inventarioCargado = true;
   renderInventario();
+}
+async function actualizarInventario(){
+  await cargarInventarioLotes();
+  renderInventario();
+  toast('✓ Inventario actualizado');
 }
 
 function cambiarVentanaInventario(dias){
