@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-155">
+<meta name="app-version" content="2026-10-05-156">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2053,7 +2053,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-155';
+const APP_VERSION = '2026-10-05-156';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -2105,6 +2105,7 @@ let canalHorariosRealtime = null;
 let canalGestionesRealtime = null;
 let canalPagosRealtime = null;
 let canalInventarioRealtime = null;
+let canalCatalogoRealtime = null;
 
 // ═══════════════════════════════════════════
 // ACTUALIZACIÓN AUTOMÁTICA — para que nadie tenga que refrescar el link
@@ -2385,6 +2386,15 @@ function iniciarRealtime(){
       aplicarCambioRealtimeInventario(payload);
     })
     .subscribe();
+
+  // Catálogo de servicios (precios, categorías, etc.): si alguien cambia un
+  // precio desde otra sesión, se refleja al instante sin que nadie tenga
+  // que recargar la página.
+  canalCatalogoRealtime = sb.channel('catalogo-servicios-realtime')
+    .on('postgres_changes', { event:'*', schema:'public', table:'catalogo_servicios' }, payload=>{
+      aplicarCambioRealtimeCatalogo(payload);
+    })
+    .subscribe();
 }
 
 function aplicarCambioRealtimeCita(payload){
@@ -2564,6 +2574,7 @@ function detenerRealtime(){
   if(canalGestionesRealtime) sb.removeChannel(canalGestionesRealtime);
   if(canalPagosRealtime) sb.removeChannel(canalPagosRealtime);
   if(canalInventarioRealtime) sb.removeChannel(canalInventarioRealtime);
+  if(canalCatalogoRealtime) sb.removeChannel(canalCatalogoRealtime);
 }
 
 let currentUser = null; // { id, rol, nombre }
@@ -3153,6 +3164,21 @@ let inventarioCargado = false;
 function loteDesdeDb(r){
   return { id:r.id, servicioNombre:r.servicio_nombre, numeroLote:r.numero_lote, fechaCaducidad:r.fecha_caducidad,
     cantidad:Number(r.cantidad)||0, activo:r.activo!==false, creadoPor:r.creado_por, actualizadoPor:r.actualizado_por };
+}
+
+// Mantiene CATALOGO_SERVICIOS al día con lo que cambie cualquier otra
+// sesión (precio, nombre, categoría, activo/inactivo...) y refresca de
+// inmediato cualquier pantalla abierta que dependa de esos datos.
+function aplicarCambioRealtimeCatalogo(payload){
+  if(payload.eventType==='DELETE'){
+    CATALOGO_SERVICIOS = CATALOGO_SERVICIOS.filter(s=>s.id!==payload.old.id);
+  }else{
+    const i = CATALOGO_SERVICIOS.findIndex(s=>s.id===payload.new.id);
+    if(i>=0) CATALOGO_SERVICIOS[i] = payload.new;
+    else CATALOGO_SERVICIOS.push(payload.new);
+  }
+  if(document.getElementById('servicios-modal-overlay').classList.contains('open')) renderListaServiciosAdmin();
+  if(document.getElementById('section-inventario').style.display!=='none') renderInventario();
 }
 
 async function cargarInventarioLotes(){
