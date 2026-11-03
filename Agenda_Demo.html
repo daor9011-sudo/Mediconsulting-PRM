@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-156">
+<meta name="app-version" content="2026-10-05-157">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1251,6 +1251,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       <span class="hist-filtros-rapidos-label">Ver solo:</span>
       <label class="hist-filtro-link"><input type="checkbox" id="hist-solo-facturas-pendientes" onchange="onCambioFiltroExclusivo(this)"> 🧾 Facturas pendientes</label>
       <label class="hist-filtro-link"><input type="checkbox" id="hist-solo-facturado" onchange="onCambioFiltroExclusivo(this)"> ✓ Facturado</label>
+      <label class="hist-filtro-link"><input type="checkbox" id="hist-solo-no-facturado" onchange="onCambioFiltroExclusivo(this)"> ✗ No facturado</label>
       <label class="hist-filtro-link"><input type="checkbox" id="hist-solo-no-llegaron" onchange="onCambioFiltroExclusivo(this)"> 👻 No llegaron</label>
       <label class="hist-filtro-link"><input type="checkbox" id="hist-solo-cuentas-cobrar" onchange="onCambioFiltroExclusivo(this)"> 💰 Cuentas por cobrar</label>
       <label class="hist-filtro-link"><input type="checkbox" id="hist-solo-por-verificar" onchange="onCambioFiltroExclusivo(this)"> 🏦 Por verificar</label>
@@ -2053,7 +2054,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-156';
+const APP_VERSION = '2026-10-05-157';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -7991,7 +7992,7 @@ function cambiarPeriodoHistorico(delta){
 // tiene sentido combinarlos (ej. "Facturado" + "Facturas pendientes" a la
 // vez siempre da vacío). Al marcar uno, se apagan los demás. Fecha,
 // paciente y doctora siguen aplicando normal, se combinan con cualquiera.
-const FILTROS_EXCLUSIVOS_HIST = ['hist-solo-facturas-pendientes','hist-solo-facturado','hist-solo-no-llegaron','hist-solo-cuentas-cobrar','hist-solo-por-verificar'];
+const FILTROS_EXCLUSIVOS_HIST = ['hist-solo-facturas-pendientes','hist-solo-facturado','hist-solo-no-facturado','hist-solo-no-llegaron','hist-solo-cuentas-cobrar','hist-solo-por-verificar'];
 function onCambioFiltroExclusivo(elegido){
   if(elegido.checked){
     FILTROS_EXCLUSIVOS_HIST.forEach(idOtro=>{
@@ -8011,6 +8012,7 @@ function getFiltradoHistorico(){
   const filPac = document.getElementById('hist-paciente').value.trim().toLowerCase();
   const soloFacturasPendientes = document.getElementById('hist-solo-facturas-pendientes').checked;
   const soloFacturado = document.getElementById('hist-solo-facturado').checked;
+  const soloNoFacturado = document.getElementById('hist-solo-no-facturado').checked;
   const soloNoLlegaron = document.getElementById('hist-solo-no-llegaron').checked;
   const soloCuentasCobrar = document.getElementById('hist-solo-cuentas-cobrar').checked;
   const soloPorVerificar = document.getElementById('hist-solo-por-verificar').checked;
@@ -8030,6 +8032,7 @@ function getFiltradoHistorico(){
   if(filPac) filtrado = filtrado.filter(c=>c.paciente.toLowerCase().includes(filPac) || (c.nombreTutor||'').toLowerCase().includes(filPac));
   if(soloFacturasPendientes) filtrado = filtrado.filter(c=>c.requiereFactura && !c.facturada);
   if(soloFacturado) filtrado = filtrado.filter(c=>c.facturada);
+  if(soloNoFacturado) filtrado = filtrado.filter(c=>!c.facturada);
   if(soloCuentasCobrar) filtrado = filtrado.filter(c=>c.saldoPendiente>0);
   if(soloPorVerificar) filtrado = filtrado.filter(c=>(c.medioPago==='Transferencia' || c.medioPago2==='Transferencia') && !c.transferenciaVerificada);
   return filtrado;
