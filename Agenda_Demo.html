@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-158">
+<meta name="app-version" content="2026-10-05-159">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2055,7 +2055,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-158';
+const APP_VERSION = '2026-10-05-159';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -7411,6 +7411,19 @@ function renderCierre(){
     if(tarjeta>0) pillsHtml += `<span class="doc-pill tarjeta">💳 Tarjeta $${tarjeta.toLocaleString('es-MX',{minimumFractionDigits:2})}</span>`;
     if(transferencia>0) pillsHtml += `<span class="doc-pill transferencia">🏦 Transferencia $${transferencia.toLocaleString('es-MX',{minimumFractionDigits:2})}</span>`;
 
+    // Misma nota lila del total del corte, pero acotada a los pacientes de
+    // ESTA doctora — útil cuando recepción ve "Todo el personal" junto y
+    // quiere saber de un vistazo a quién le falta facturar a cada quien.
+    const pendFacturaDoc = sub.filter(c=>c.requiereFactura && !c.facturada);
+    let notaFacturaHtml = '';
+    if(pendFacturaDoc.length){
+      const totalPendDoc = pendFacturaDoc.reduce((s,c)=>s+montoTotalPagado(c),0);
+      notaFacturaHtml = `<div style="background:#F3EEFC;border:1px solid #D9C7F0;border-radius:8px;padding:7px 10px;margin:8px 0;font-size:11px;color:#6B3FA0;">
+        🧾 ${pendFacturaDoc.length} paciente(s) pendientes de facturar — $${totalPendDoc.toLocaleString('es-MX',{minimumFractionDigits:2})}
+        <div style="font-size:10px;margin-top:1px;">${pendFacturaDoc.map(c=>esc(c.paciente)).join(', ')}</div>
+      </div>`;
+    }
+
     const pacRows = [...sub].sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora)).map(c=>`
       <div class="doc-pac-row">
         <span>${modoCierre==='mes'?'<span style="color:var(--gray-400);font-weight:600;">'+fmtDDMMYYYY(c.fecha)+'</span> · ':''}<span class="nom">${esc(c.paciente)}</span>${c.requiereFactura?` <span style="font-size:11px;color:${c.facturada?'#1E9E63':'#E0433A'};" title="${c.facturada?'Ya facturada':'Pendiente de facturar'}">🧾</span>`:''}${c.sinCita?' <span style="font-size:10px;color:var(--gray-400)">(sin cita)</span>':''} <span class="serv">— ${esc(c.servicio)}</span></span>
@@ -7424,6 +7437,7 @@ function renderCierre(){
       </div>
       <div class="doc-card-sub">${sub.length} servicio(s) · ${nPacUnicos} paciente(s)</div>
       <div class="doc-pills-row">${pillsHtml}</div>
+      ${notaFacturaHtml}
       <div class="doc-toggle" onclick="toggleDocCard('${key}')">${abierto?'▲ Ocultar pacientes':'▼ Mostrar pacientes'}</div>
       <div class="doc-pac-list ${abierto?'':'collapsed'}" id="pac-list-${key}">${pacRows}</div>
     </div>`;
