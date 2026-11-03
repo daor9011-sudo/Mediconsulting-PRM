@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-157">
+<meta name="app-version" content="2026-10-05-158">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1183,6 +1183,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     <div id="cierre-rol-aviso" style="display:none;background:#EEF5FC;border:1px solid #BDD5F0;color:#1B5C9E;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;font-weight:600;"></div>
 
     <div id="cierre-alerta-pendientes" style="display:none;"></div>
+    <div id="cierre-alerta-no-facturado" style="display:none;"></div>
 
     <div id="cierre-summary"></div>
 
@@ -2054,7 +2055,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-157';
+const APP_VERSION = '2026-10-05-158';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -7306,6 +7307,24 @@ function renderCierre(){
     alertaPend.innerHTML = '';
   }
 
+  // Nota de lo pendiente por facturar — mismos pacientes que ya se muestran en el
+  // corte (del_dia), los que pidieron factura y todavía no se las han hecho.
+  const alertaFact = document.getElementById('cierre-alerta-no-facturado');
+  const pendientesFactura = del_dia.filter(c=>c.requiereFactura && !c.facturada);
+  if(pendientesFactura.length){
+    const totalPendFact = pendientesFactura.reduce((s,c)=>s+montoTotalPagado(c),0);
+    alertaFact.style.display = 'block';
+    alertaFact.innerHTML = `<div class="alerta-banner" style="background:#F3EEFC;border-color:#D9C7F0;">
+      <span class="ico">🧾</span>
+      <div class="alerta-banner-text" style="color:#6B3FA0;">${pendientesFactura.length} paciente(s) pendientes de facturar ${modoCierre==='dia'?'hoy':'este periodo'} — $${totalPendFact.toLocaleString('es-MX',{minimumFractionDigits:2})}
+        <small style="color:#6B3FA0;">${pendientesFactura.map(c=>esc(c.paciente)+' ($'+montoTotalPagado(c).toLocaleString('es-MX',{minimumFractionDigits:2})+')').join(', ')}</small>
+      </div>
+    </div>`;
+  }else{
+    alertaFact.style.display = 'none';
+    alertaFact.innerHTML = '';
+  }
+
   const total = del_dia.reduce((s,c)=>s+montoTotalPagado(c),0);
   // "Por cobrar" y "Cortesías" van por fecha de la CITA (citasDelPeriodoPorCita) — no son dinero que
   // haya entrado este periodo, son propiedades de las consultas que se atendieron este periodo.
@@ -7394,7 +7413,7 @@ function renderCierre(){
 
     const pacRows = [...sub].sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora)).map(c=>`
       <div class="doc-pac-row">
-        <span>${modoCierre==='mes'?'<span style="color:var(--gray-400);font-weight:600;">'+fmtDDMMYYYY(c.fecha)+'</span> · ':''}<span class="nom">${esc(c.paciente)}</span>${c.sinCita?' <span style="font-size:10px;color:var(--gray-400)">(sin cita)</span>':''} <span class="serv">— ${esc(c.servicio)}</span></span>
+        <span>${modoCierre==='mes'?'<span style="color:var(--gray-400);font-weight:600;">'+fmtDDMMYYYY(c.fecha)+'</span> · ':''}<span class="nom">${esc(c.paciente)}</span>${c.requiereFactura?` <span style="font-size:11px;color:${c.facturada?'#1E9E63':'#E0433A'};" title="${c.facturada?'Ya facturada':'Pendiente de facturar'}">🧾</span>`:''}${c.sinCita?' <span style="font-size:10px;color:var(--gray-400)">(sin cita)</span>':''} <span class="serv">— ${esc(c.servicio)}</span></span>
         <span class="val">${c.cortesia?'Cortesía':'$'+montoTotalPagado(c).toLocaleString('es-MX',{minimumFractionDigits:2})}${c._otroMedioEnOtroDia?' <span style="font-size:10px;color:var(--gray-400);font-weight:600;">(parte — el resto se cobró otro día)</span>':''}${c.saldoPendiente>0?` <span style="font-size:10px;color:var(--warn);font-weight:700;">(+ $${Number(c.saldoPendiente).toLocaleString('es-MX',{minimumFractionDigits:0})} pdte.)</span>`:''}</span>
       </div>`).join('');
 
