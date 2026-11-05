@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-159">
+<meta name="app-version" content="2026-10-05-160">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2055,7 +2055,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-159';
+const APP_VERSION = '2026-10-05-160';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -3390,6 +3390,23 @@ async function guardarNuevoLote(){
   const elError = document.getElementById('inv-form-error');
   elError.textContent = '';
   if(!nombre || !numeroLote || !caducidad){ elError.textContent = 'Completa vacuna, lote y fecha de caducidad.'; return; }
+
+  // Si ya existe un lote ACTIVO con el mismo nombre de vacuna y número de
+  // lote, no se duplica — se le suma la cantidad nueva a lo que ya había.
+  // Esto evita que la misma caja, cargada dos veces por error, se parta en
+  // dos filas distintas (lo que hacía parecer que "no se estaba guardando").
+  const yaExiste = INVENTARIO_LOTES.find(l=>l.activo && l.servicioNombre===nombre && l.numeroLote.trim().toLowerCase()===numeroLote.toLowerCase());
+  if(yaExiste){
+    const nuevaCant = yaExiste.cantidad + cantidad;
+    const { error } = await sb.from('inventario_lotes').update({ cantidad: nuevaCant }).eq('id', yaExiste.id);
+    if(error){ elError.textContent = 'No se pudo actualizar: '+error.message; return; }
+    yaExiste.cantidad = nuevaCant;
+    cerrarInventarioLoteModal();
+    toast(`✓ Ese lote ya existía — se sumó a su cantidad (ahora ${nuevaCant})`);
+    renderInventario();
+    return;
+  }
+
   const { data, error } = await sb.from('inventario_lotes').insert({ servicio_nombre:nombre, numero_lote:numeroLote, fecha_caducidad:caducidad, cantidad }).select().single();
   if(error){ elError.textContent = 'No se pudo agregar: '+error.message; return; }
   INVENTARIO_LOTES.push(loteDesdeDb(data));
