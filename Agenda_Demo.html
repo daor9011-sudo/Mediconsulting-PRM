@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-160">
+<meta name="app-version" content="2026-10-05-161">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1910,7 +1910,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 
 <div class="modal-overlay" id="inventario-lote-modal-overlay">
   <div class="modal" style="max-width:420px;">
-    <h3>📦 Agregar lote al inventario</h3>
+    <h3 id="inv-form-titulo">📦 Agregar lote al inventario</h3>
     <div class="form-group">
       <label>Vacuna</label>
       <select id="inv-form-vacuna"></select>
@@ -1931,7 +1931,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     </div>
     <div id="inv-form-error" style="color:var(--danger);font-size:12px;margin-bottom:8px;"></div>
     <div class="modal-footer">
-      <button class="btn btn-gold" onclick="guardarNuevoLote()">✓ Agregar lote</button>
+      <button class="btn btn-gold" id="inv-form-btn-guardar" onclick="guardarNuevoLote()">✓ Agregar lote</button>
       <button class="btn btn-outline" onclick="cerrarInventarioLoteModal()">Cancelar</button>
     </div>
   </div>
@@ -2055,7 +2055,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-160';
+const APP_VERSION = '2026-10-05-161';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -3312,7 +3312,7 @@ function renderInventario(){
         : `<span style="color:var(--gray-600);">${l.cantidad} dosis</span>`;
       return `<div style="border-top:1px solid #EAF0F6;background:var(--gray-50);padding:8px 18px;display:grid;grid-template-columns:.3fr 1.3fr 1.2fr .7fr 1.2fr;gap:8px;font-size:11.5px;align-items:center;">
         <div><span style="width:9px;height:9px;border-radius:50%;display:inline-block;background:${sem.color};"></span></div>
-        <div style="font-weight:700;color:var(--gray-800);">${esc(l.numeroLote)}${etiquetaPrimero}</div>
+        <div style="font-weight:700;color:var(--gray-800);">${esc(l.numeroLote)}${etiquetaPrimero}${puedeEditar?` <button onclick="abrirEditarLoteModal(${l.id})" title="Editar lote o fecha de caducidad" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--gray-400);padding:0 2px;vertical-align:middle;">✎</button>`:''}</div>
         <div style="color:var(--gray-600);">${fmtDDMMYYYY(l.fechaCaducidad)}</div>
         <div>${edicion}</div>
         <div style="color:${sem.color};font-weight:700;">${dias>=0?`Caducidad: ${dias} días`:'Caducidad: VENCIDO'}</div>
@@ -3368,18 +3368,44 @@ async function guardarCantidadLote(loteId){
   renderInventario();
 }
 
+// Cuando no es null, el modal de lote está en modo EDICIÓN sobre este id
+// (en vez de crear uno nuevo) — lote y caducidad quedan editables ahí mismo,
+// sin tener que borrar y volver a capturar todo.
+let inventarioLoteEditandoId = null;
+
 function abrirAgregarLoteModal(nombrePrellenado){
+  inventarioLoteEditandoId = null;
   const vacunas = CATALOGO_SERVICIOS.filter(s=>s.es_vacuna && s.activo!==false).map(s=>s.nombre).sort((a,b)=>a.localeCompare(b,'es'));
   const sel = document.getElementById('inv-form-vacuna');
+  sel.disabled = false;
   sel.innerHTML = vacunas.map(n=>`<option value="${esc(n)}" ${n===nombrePrellenado?'selected':''}>${esc(n)}</option>`).join('');
   document.getElementById('inv-form-lote').value = '';
   document.getElementById('inv-form-caducidad').value = '';
   document.getElementById('inv-form-cantidad').value = '1';
   document.getElementById('inv-form-error').textContent = '';
+  document.getElementById('inv-form-titulo').textContent = '📦 Agregar lote al inventario';
+  document.getElementById('inv-form-btn-guardar').textContent = '✓ Agregar lote';
+  document.getElementById('inventario-lote-modal-overlay').classList.add('open');
+}
+function abrirEditarLoteModal(loteId){
+  const lote = INVENTARIO_LOTES.find(l=>l.id===loteId);
+  if(!lote) return;
+  inventarioLoteEditandoId = loteId;
+  const sel = document.getElementById('inv-form-vacuna');
+  sel.innerHTML = `<option value="${esc(lote.servicioNombre)}" selected>${esc(lote.servicioNombre)}</option>`;
+  sel.disabled = true; // la vacuna de un lote no se cambia aquí — solo lote/caducidad/cantidad
+  document.getElementById('inv-form-lote').value = lote.numeroLote;
+  document.getElementById('inv-form-caducidad').value = lote.fechaCaducidad;
+  document.getElementById('inv-form-cantidad').value = lote.cantidad;
+  document.getElementById('inv-form-error').textContent = '';
+  document.getElementById('inv-form-titulo').textContent = '✎ Editar lote';
+  document.getElementById('inv-form-btn-guardar').textContent = '✓ Guardar cambios';
   document.getElementById('inventario-lote-modal-overlay').classList.add('open');
 }
 function cerrarInventarioLoteModal(){
   document.getElementById('inventario-lote-modal-overlay').classList.remove('open');
+  document.getElementById('inv-form-vacuna').disabled = false;
+  inventarioLoteEditandoId = null;
 }
 
 async function guardarNuevoLote(){
@@ -3390,6 +3416,23 @@ async function guardarNuevoLote(){
   const elError = document.getElementById('inv-form-error');
   elError.textContent = '';
   if(!nombre || !numeroLote || !caducidad){ elError.textContent = 'Completa vacuna, lote y fecha de caducidad.'; return; }
+
+  // ═══ Modo edición: actualiza el lote existente, en vez de crear uno nuevo ═══
+  if(inventarioLoteEditandoId){
+    const loteId = inventarioLoteEditandoId;
+    const loteActual = INVENTARIO_LOTES.find(l=>l.id===loteId);
+    // si cambiaron el número de lote a uno que ya coincide con OTRO lote
+    // activo de la misma vacuna, no se permite — se fusionaría sin avisar
+    const colision = INVENTARIO_LOTES.find(l=>l.id!==loteId && l.activo && l.servicioNombre===nombre && l.numeroLote.trim().toLowerCase()===numeroLote.toLowerCase());
+    if(colision){ elError.textContent = 'Ya existe otro lote activo con ese mismo número — edítalo a él en vez de crear una coincidencia.'; return; }
+    const { error } = await sb.from('inventario_lotes').update({ numero_lote:numeroLote, fecha_caducidad:caducidad, cantidad }).eq('id', loteId);
+    if(error){ elError.textContent = 'No se pudo guardar: '+error.message; return; }
+    if(loteActual){ loteActual.numeroLote = numeroLote; loteActual.fechaCaducidad = caducidad; loteActual.cantidad = cantidad; }
+    cerrarInventarioLoteModal();
+    toast('✓ Lote actualizado');
+    renderInventario();
+    return;
+  }
 
   // Si ya existe un lote ACTIVO con el mismo nombre de vacuna y número de
   // lote, no se duplica — se le suma la cantidad nueva a lo que ya había.
