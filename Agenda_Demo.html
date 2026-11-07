@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-161">
+<meta name="app-version" content="2026-10-05-163">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1886,6 +1886,11 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     </div>
     <div class="form-group">
       <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;">
+        <input type="checkbox" id="servicio-es-prueba" style="width:auto;flex-shrink:0;"> Es prueba (permite elegir cantidad de 1 a 10 al agendar, igual que una vacuna)
+      </label>
+    </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;">
         <input type="checkbox" id="servicio-es-urgencia" onchange="document.getElementById('servicio-monto-prestador-wrap').style.display=this.checked?'':'none';" style="width:auto;flex-shrink:0;"> Es urgencia referida (tiene acuerdo de reparto si el prestador es distinto al dueño)
       </label>
       <div id="servicio-monto-prestador-wrap" style="display:none;margin-top:8px;">
@@ -2055,7 +2060,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-161';
+const APP_VERSION = '2026-10-05-163';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -3149,7 +3154,7 @@ let CATALOGO_SERVICIOS = [];
 const CATEGORIAS_SERVICIO = ['Consultas','Servicios','Hospitalización','Cirugías o procedimientos','Derma','Otros'];
 
 async function cargarCatalogoServicios(){
-  const { data, error } = await sb.from('catalogo_servicios').select('id,categoria,nombre,precio,activo,terminal_preferida,es_vacuna,es_producto,es_urgencia_referida,monto_prestador_referido');
+  const { data, error } = await sb.from('catalogo_servicios').select('id,categoria,nombre,precio,activo,terminal_preferida,es_vacuna,es_producto,es_prueba,es_urgencia_referida,monto_prestador_referido');
   if(error){ console.error('Error cargando catálogo de servicios:', error); CATALOGO_SERVICIOS = []; return; }
   CATALOGO_SERVICIOS = data||[];
 }
@@ -3776,16 +3781,16 @@ function cambioTerminalServicioForm(sel){
 // multiplica solo por el precio por día que ya está en el catálogo.
 function esServicioPorDia(nombre){ return /hospitalizaci/i.test(nombre||''); }
 
-// Cualquier servicio marcado como vacuna en el catálogo (💉, el mismo checkbox "Es vacuna" de
-// Servicios) se cobra por UNIDADES: se elige cuántas (1 a 10) y el sistema multiplica por el precio
-// unitario — igual mecanismo que los días de hospitalización. Ya no es una lista fija de nombres:
-// agregar o quitar una vacuna en Servicios la agrega o la quita de aquí solo, sin tocar código.
+// Cualquier servicio marcado como vacuna O como prueba en el catálogo (los checkboxes "Es vacuna" /
+// "Es prueba" de Servicios) se cobra por UNIDADES: se elige cuántas (1 a 10) y el sistema multiplica
+// por el precio unitario — igual mecanismo que los días de hospitalización. Ya no es una lista fija
+// de nombres: marcar o desmarcar la casilla en Servicios lo agrega o lo quita de aquí solo.
 const CANTIDAD_MAX_VACUNA = 10;
 function normNombreServicio(n){ return String(n||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
 function cantidadMaxServicio(nombre){
   const n = normNombreServicio(nombre);
   const enCatalogo = CATALOGO_SERVICIOS.find(s => normNombreServicio(s.nombre) === n);
-  return (enCatalogo && enCatalogo.es_vacuna) ? CANTIDAD_MAX_VACUNA : 0;
+  return (enCatalogo && (enCatalogo.es_vacuna || enCatalogo.es_prueba)) ? CANTIDAD_MAX_VACUNA : 0;
 }
 
 function renderDesglosePrecioServicios(nombres){
@@ -3932,6 +3937,7 @@ function resetFormularioServicio(){
   document.getElementById('servicio-terminal-preferida').value = '';
   document.getElementById('servicio-es-vacuna').checked = false;
   document.getElementById('servicio-es-producto').checked = false;
+  document.getElementById('servicio-es-prueba').checked = false;
   document.getElementById('servicio-es-urgencia').checked = false;
   document.getElementById('servicio-monto-prestador').value = '';
   document.getElementById('servicio-monto-prestador-wrap').style.display = 'none';
@@ -4006,6 +4012,7 @@ function iniciarEdicionServicio(id){
   document.getElementById('servicio-terminal-preferida').value = s.terminal_preferida || '';
   document.getElementById('servicio-es-vacuna').checked = !!s.es_vacuna;
   document.getElementById('servicio-es-producto').checked = !!s.es_producto;
+  document.getElementById('servicio-es-prueba').checked = !!s.es_prueba;
   document.getElementById('servicio-es-urgencia').checked = !!s.es_urgencia_referida;
   document.getElementById('servicio-monto-prestador').value = s.monto_prestador_referido ?? '';
   document.getElementById('servicio-monto-prestador-wrap').style.display = s.es_urgencia_referida ? '' : 'none';
@@ -4032,9 +4039,10 @@ async function crearServicioCatalogo(){
   // citas/bloqueos/horarios) — no se manda aquí, o Postgres lo rechaza.
   const esVacuna = document.getElementById('servicio-es-vacuna').checked;
   const esProducto = document.getElementById('servicio-es-producto').checked;
+  const esPrueba = document.getElementById('servicio-es-prueba').checked;
   const esUrgencia = document.getElementById('servicio-es-urgencia').checked;
   const montoPrestador = esUrgencia ? (Number(document.getElementById('servicio-monto-prestador').value)||0) : null;
-  const { error } = await sb.from('catalogo_servicios').insert({ categoria, nombre, precio, terminal_preferida:terminalPreferida, es_vacuna:esVacuna, es_producto:esProducto, es_urgencia_referida:esUrgencia, monto_prestador_referido:montoPrestador, activo:true });
+  const { error } = await sb.from('catalogo_servicios').insert({ categoria, nombre, precio, terminal_preferida:terminalPreferida, es_vacuna:esVacuna, es_producto:esProducto, es_prueba:esPrueba, es_urgencia_referida:esUrgencia, monto_prestador_referido:montoPrestador, activo:true });
   if(error){ elError.textContent = error.message; return; }
   toast('✓ Servicio agregado: '+nombre);
   resetFormularioServicio();
@@ -4055,9 +4063,10 @@ async function guardarEdicionServicioCatalogo(){
 
   const esVacuna = document.getElementById('servicio-es-vacuna').checked;
   const esProducto = document.getElementById('servicio-es-producto').checked;
+  const esPrueba = document.getElementById('servicio-es-prueba').checked;
   const esUrgencia = document.getElementById('servicio-es-urgencia').checked;
   const montoPrestador = esUrgencia ? (Number(document.getElementById('servicio-monto-prestador').value)||0) : null;
-  const { error } = await sb.from('catalogo_servicios').update({ nombre, categoria, precio, terminal_preferida:terminalPreferida, es_vacuna:esVacuna, es_producto:esProducto, es_urgencia_referida:esUrgencia, monto_prestador_referido:montoPrestador, activo }).eq('id', id);
+  const { error } = await sb.from('catalogo_servicios').update({ nombre, categoria, precio, terminal_preferida:terminalPreferida, es_vacuna:esVacuna, es_producto:esProducto, es_prueba:esPrueba, es_urgencia_referida:esUrgencia, monto_prestador_referido:montoPrestador, activo }).eq('id', id);
   if(error){ elError.textContent = error.message; return; }
   toast('✓ Cambios guardados');
   resetFormularioServicio();
@@ -9670,6 +9679,15 @@ function htmlDashboard(){
       <div class="seg-bar" id="dash-cat-segbar"></div>
       <div class="cat-tiles cn" id="dash-cat-tiles"></div>
     </div>
+    <div class="fin-sec" id="dash-vacunas">
+      <div class="prod-head"><div class="prod-title" style="font-size:13px">💉 Productividad de vacunas</div><div class="prod-period" id="dash-vacunas-periodo">Últimos 30 días</div></div>
+      <div class="prod-sub" id="dash-vacunas-sub">Dosis aplicadas, no solo el dinero que dejaron</div>
+      <div class="kpi-grid cols3" id="dash-vacunas-kpi" style="margin-bottom:12px;"></div>
+      <div class="fin-2col">
+        <div><div class="chart-title"><span>Ranking de vacunas</span></div><div class="gx-bars" id="dash-vacunas-ranking"></div></div>
+        <div id="dash-vacunas-doc-col"><div class="chart-title"><span>Dosis por doctora</span></div><div class="gx-bars" id="dash-vacunas-por-doc"></div></div>
+      </div>
+    </div>
     <div class="fin-sec" id="dash-gasto">
       <div class="prod-head"><div class="prod-title" style="font-size:13px">💸 Gasto</div><div class="prod-period" id="dash-gasto-periodo">Últimos 30 días</div></div>
       <div class="prod-sub" id="dash-gasto-sub">Global y por doctora</div>
@@ -9931,9 +9949,69 @@ function dashRender(){
       $id('dash-gasto-tbl').innerHTML = `<table class="gx-tbl"><thead><tr><th>Categoría</th>${quienes.map(n=>`<th>${esc(String(n).split(' ')[1] || n)}</th>`).join('')}<th>Total</th></tr></thead><tbody>${cg.map(c => `<tr><td>${esc(catG(c).n)}</td>${quienes.map(n => { const v = gDoc(n,c); return `<td>${v ? money0(v) : '—'}</td>`; }).join('')}<td>${money0(porCat[c])}</td></tr>`).join('')}</tbody><tfoot><tr><td>Total</td>${quienes.map(n => `<td>${money0(sum(GS.filter(g=>g.d===n),g=>g.m))}</td>`).join('')}<td style="color:#B8481F">${money0(gasto)}</td></tr></tfoot></table>`;
     }
   }
+  renderVacunasProductividad(per, sc);
   dashCharts(ROWS, GS, porFecha, fin, cats);
 }
 
+// Dosis reales (no solo dinero) de cada vacuna, en el mismo periodo y
+// alcance (clínica completa o una sola doctora) que el resto del Dashboard.
+// La cantidad se calcula igual que en Inventario: el monto guardado entre
+// el precio unitario del catálogo (a precio de lista; si ya no existe en
+// el catálogo o es $0, se cuenta como 1 dosis para no perder el registro).
+function vacunasData(per, sc){
+  const porVacuna = {}, porDoc = {}; let totalDosis = 0, totalIngreso = 0; const dias = new Set();
+  (typeof citas !== 'undefined' ? citas : []).forEach(c=>{
+    if(c.deleted || c.cancelada || c.cortesia || !c.pagado) return;
+    if(!enPer(c.fecha, per)) return;
+    if(sc !== null && c.doctora !== sc) return;
+    const desglose = c.precioDesglose;
+    if(!desglose || typeof desglose !== 'object') return;
+    let huboVacuna = false;
+    Object.entries(desglose).forEach(([nombre, monto])=>{
+      monto = Number(monto);
+      if(!(monto > 0)) return;
+      const cat = CATALOGO_SERVICIOS.find(s=>s.nombre===nombre);
+      if(!cat || !cat.es_vacuna) return;
+      const precioUnit = Number(cat.precio)||0;
+      const dosis = precioUnit>0 ? Math.max(1, Math.round(monto/precioUnit)) : 1;
+      const pv = porVacuna[nombre] || (porVacuna[nombre] = {dosis:0, ingreso:0});
+      pv.dosis += dosis; pv.ingreso += monto;
+      porDoc[c.doctora] = (porDoc[c.doctora]||0) + dosis;
+      totalDosis += dosis; totalIngreso += monto;
+      huboVacuna = true;
+    });
+    if(huboVacuna) dias.add(c.fecha);
+  });
+  return {porVacuna, porDoc, totalDosis, totalIngreso, diasConDatos: dias.size};
+}
+function renderVacunasProductividad(per, sc){
+  if(!$id('dash-vacunas')) return;
+  const d = vacunasData(per, sc);
+  $id('dash-vacunas-periodo').textContent = per.texto;
+  $id('dash-vacunas-sub').textContent = sc===null ? 'Dosis aplicadas por toda la clínica, no solo el dinero que dejaron' : 'Tus dosis aplicadas, no solo el dinero que dejaron';
+  const entradas = Object.entries(d.porVacuna).sort((a,b)=>b[1].dosis-a[1].dosis);
+  const top = entradas[0];
+  const promedioDiario = d.diasConDatos ? (d.totalDosis/d.diasConDatos) : 0;
+  const kpiCard = (ico, lab, val, sub) => `<div class="kpi-card"><div class="ico">${ico}</div><div class="kpi-label">${lab}</div><div class="kpi-val">${val}</div>${sub?`<div class="kpi-label" style="margin-top:2px;font-weight:600;text-transform:none;">${sub}</div>`:''}</div>`;
+  $id('dash-vacunas-kpi').innerHTML =
+    kpiCard('💉','Dosis aplicadas', String(d.totalDosis), per.texto) +
+    kpiCard('🏆','Más aplicada', top ? esc(top[0]) : '—', top ? top[1].dosis+' dosis' : '') +
+    kpiCard('💰','Ingreso por vacunas', money0(d.totalIngreso), promedioDiario ? promedioDiario.toFixed(1)+' dosis/día' : '');
+  const maxDosis = Math.max(...entradas.map(e=>e[1].dosis), 1);
+  $id('dash-vacunas-ranking').innerHTML = entradas.length
+    ? entradas.map(([nombre,v])=>`<div class="gx-row"><span>${esc(nombre)}</span><div class="tr"><i style="width:${v.dosis/maxDosis*100}%;background:#2ABFBF;"></i></div><b>${v.dosis} dosis</b><small>${money0(v.ingreso)}</small></div>`).join('')
+    : '<div class="empty-note">Sin vacunas aplicadas en este periodo.</div>';
+  const docCol = $id('dash-vacunas-doc-col');
+  if(sc !== null){ docCol.style.display = 'none'; }
+  else{
+    docCol.style.display = '';
+    const docsEntradas = Object.entries(d.porDoc).sort((a,b)=>b[1]-a[1]);
+    const maxDoc = Math.max(...docsEntradas.map(e=>e[1]), 1);
+    $id('dash-vacunas-por-doc').innerHTML = docsEntradas.length
+      ? docsEntradas.map(([nombre,n])=>`<div class="gx-row"><span>${esc(nombre)}</span><div class="tr"><i style="width:${n/maxDoc*100}%;background:#7C5CBF;"></i></div><b>${n}</b></div>`).join('')
+      : '<div class="empty-note">Sin datos en este periodo.</div>';
+  }
+}
 function dashCharts(ROWS, GS, porFecha, fin, cats){
   const modo = D.tend, kfmt = v => (v < 0 ? '−' : '') + '$' + Math.abs(Number(v)/1000).toLocaleString('es-MX') + 'k';
   const clave = f => modo === 'dia' ? f : f.slice(0,7);
