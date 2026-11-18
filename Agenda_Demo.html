@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-166">
+<meta name="app-version" content="2026-10-05-167">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2061,7 +2061,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-166';
+const APP_VERSION = '2026-10-05-167';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -10284,18 +10284,23 @@ async function descargarFlashReportVacunas(){
     await new Promise(r=>setTimeout(r, 60)); // deja pintar el DOM antes de rasterizar
     const root = cont.querySelector('#frep-root');
     const nombreArchivo = `Flash-report-vacunas-${d.hasta}.pdf`;
-    // 794×1123px CSS = exactamente 210×297mm (A4) a 96dpi — por eso el
-    // formato va en 'a4'/mm en vez de px: es la combinación que la librería
-    // trae mejor probada, y evita que el ancho capturado (×scale) no
-    // cuadre con el ancho de hoja y "parta" el PDF a la derecha.
-    await window.html2pdf().set({
-      margin: 0,
-      filename: nombreArchivo,
-      image: { type:'jpeg', quality:0.95 },
-      html2canvas: { scale:2, useCORS:true, windowWidth:794 },
-      jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
-      pagebreak: { mode:['css'] },
-    }).from(root).save();
+
+    // La paginación automática de html2pdf (dividir un solo canvas largo en
+    // varias hojas) estaba partiendo el reporte en mosaicos — en vez de
+    // confiar en eso, se captura CADA hoja (.frep-page) por separado, ya
+    // completa y del tamaño correcto, y se va pegando una por una en el PDF.
+    // Así no hay cálculo de "dónde cortar" que se pueda equivocar.
+    const JSPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    if(!JSPDF || !window.html2canvas) throw new Error('No cargó la librería de PDF (revisa tu conexión e intenta de nuevo).');
+    const paginas = root.querySelectorAll('.frep-page');
+    const pdf = new JSPDF({ unit:'mm', format:'a4', orientation:'portrait' });
+    for(let i=0; i<paginas.length; i++){
+      const canvas = await window.html2canvas(paginas[i], { scale:2, useCORS:true, windowWidth:794 });
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      if(i>0) pdf.addPage('a4', 'portrait');
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297); // A4 completo — cada .frep-page ya mide 794×1123px = 210×297mm
+    }
+    pdf.save(nombreArchivo);
     cont.innerHTML = '';
     toast('✓ Flash report descargado');
   }catch(err){
