@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-163">
+<meta name="app-version" content="2026-10-05-164">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2053,6 +2053,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
 <script>
 // ═══════════════════════════════════════════
 // CONEXIÓN A SUPABASE (backend real)
@@ -2060,7 +2061,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-163';
+const APP_VERSION = '2026-10-05-164';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -3354,7 +3355,9 @@ function renderInventario(){
     <div style="background:#fff;border:1px solid ${porCaducar?'#F3B9AC':'var(--gray-200)'};border-radius:14px;padding:11px 14px;"><div style="font-size:9px;color:var(--gray-400);font-weight:800;">POR CADUCAR</div><div style="font-size:19px;font-weight:900;color:${porCaducar?'#E0433A':'var(--gray-800)'};">${porCaducar}</div></div>
     <div style="background:#fff;border:1px solid var(--gray-200);border-radius:14px;padding:11px 14px;"><div style="font-size:9px;color:var(--gray-400);font-weight:800;">DOSIS AGENDADAS</div><div style="font-size:19px;font-weight:900;color:#0E8F8F;">${dosisAgendadas}</div></div>
   `;
-  document.getElementById('inventario-leyenda').innerHTML = `<span><span style="width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px;background:var(--gold);"></span>Stock</span><span><span style="width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px;background:#7C5CBF;"></span>Demanda agendada</span>` + (puedeEditar ? `<button onclick="abrirAgregarLoteModal('')" style="margin-left:auto;background:var(--gold);color:#fff;border:none;padding:6px 14px;border-radius:7px;font-size:11px;font-weight:800;cursor:pointer;">+ Agregar vacuna al inventario</button>` : '');
+  document.getElementById('inventario-leyenda').innerHTML = `<span><span style="width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px;background:var(--gold);"></span>Stock</span><span><span style="width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px;background:#7C5CBF;"></span>Demanda agendada</span>`
+    + `<button onclick="descargarFlashReportVacunas()" id="btn-flash-report-vacunas" style="margin-left:auto;background:#fff;color:var(--gray-800);border:1.5px solid #0E8F8F;padding:6px 14px;border-radius:7px;font-size:11px;font-weight:800;cursor:pointer;">📄 Flash report de vacunas</button>`
+    + (puedeEditar ? `<button onclick="abrirAgregarLoteModal('')" style="margin-left:8px;background:var(--gold);color:#fff;border:none;padding:6px 14px;border-radius:7px;font-size:11px;font-weight:800;cursor:pointer;">+ Agregar vacuna al inventario</button>` : '');
   document.getElementById('inventario-lista').innerHTML = filas;
 }
 
@@ -9984,6 +9987,315 @@ function vacunasData(per, sc){
   });
   return {porVacuna, porDoc, totalDosis, totalIngreso, diasConDatos: dias.size};
 }
+
+/* ============================================================
+   FLASH REPORT DE VACUNAS (Inventario) — PDF descargable con el
+   resumen del mes: dosis aplicadas, ingreso, vacunas sin movimiento,
+   por caducar y sugerido de pedido. Mismo criterio de "dosis" y
+   "demanda" que ya usa Inventario/Dashboard — no se reinventa nada.
+   ============================================================ */
+function datosFlashReportVacunas(){
+  const hoy = hoyISO();
+  const per = { desde: hoy.slice(0,7)+'-01', hasta: hoy };
+  const vd = vacunasData(per, null);
+
+  // cuántas citas (no líneas) tuvieron al menos una vacuna en el periodo
+  let citasConVacuna = 0;
+  activeCitas().forEach(c=>{
+    if(c.cancelada || c.cortesia || !c.pagado) return;
+    if(!enPer(c.fecha, per)) return;
+    const desglose = c.precioDesglose;
+    if(!desglose || typeof desglose !== 'object') return;
+    const tieneVacuna = Object.entries(desglose).some(([nombre,monto])=>{
+      const cat = CATALOGO_SERVICIOS.find(s=>s.nombre===nombre);
+      return cat && cat.es_vacuna && Number(monto)>0;
+    });
+    if(tieneVacuna) citasConVacuna++;
+  });
+
+  const stockPorVacuna = {};
+  INVENTARIO_LOTES.filter(l=>l.activo).forEach(l=>{ stockPorVacuna[l.servicioNombre] = (stockPorVacuna[l.servicioNombre]||0) + l.cantidad; });
+  const todasVacunas = [...new Set([
+    ...CATALOGO_SERVICIOS.filter(s=>s.es_vacuna && s.activo!==false).map(s=>s.nombre),
+    ...INVENTARIO_LOTES.map(l=>l.servicioNombre),
+  ])];
+  const totalStock = Object.values(stockPorVacuna).reduce((s,v)=>s+v,0);
+
+  const ranking = Object.entries(vd.porVacuna).map(([nombre,v])=>({nombre, dosis:v.dosis, ingreso:v.ingreso})).sort((a,b)=>b.dosis-a.dosis);
+  const rankingIngreso = [...ranking].sort((a,b)=>b.ingreso-a.ingreso);
+
+  const sinMovimiento = todasVacunas
+    .filter(n => (stockPorVacuna[n]||0) > 0 && !(vd.porVacuna[n] && vd.porVacuna[n].dosis > 0))
+    .map(n => ({ nombre:n, stock: stockPorVacuna[n]||0, lotes: lotesDe(n).length }))
+    .sort((a,b)=>b.stock-a.stock);
+  const piezasSinMovimiento = sinMovimiento.reduce((s,v)=>s+v.stock,0);
+
+  const porCaducar = INVENTARIO_LOTES
+    .filter(l => l.activo && l.cantidad>0 && diasParaCaducar(l.fechaCaducidad) <= 90)
+    .map(l => ({ nombre:l.servicioNombre, lote:l.numeroLote, cantidad:l.cantidad, fecha:l.fechaCaducidad, dias:diasParaCaducar(l.fechaCaducidad) }))
+    .sort((a,b)=>a.dias-b.dias);
+  const piezasPorCaducar = porCaducar.reduce((s,v)=>s+v.cantidad,0);
+
+  const sugerido = todasVacunas.map(n=>{
+    const demanda = demandaVacuna(n, 14);
+    const stock = stockPorVacuna[n]||0;
+    return { nombre:n, demanda, stock, faltan: demanda-stock };
+  }).filter(s=>s.faltan>0).sort((a,b)=>b.faltan-a.faltan);
+  const piezasSugeridas = sugerido.reduce((s,v)=>s+v.faltan,0);
+
+  return {
+    desde: per.desde, hasta: per.hasta, generado: new Date(),
+    totalDosis: vd.totalDosis, totalIngreso: vd.totalIngreso, totalStock,
+    citasConVacuna, vacunasDistintasAplicadas: ranking.length, vacunasEnCatalogo: todasVacunas.length,
+    ranking, rankingIngreso,
+    sinMovimiento, piezasSinMovimiento,
+    porCaducar, piezasPorCaducar,
+    sugerido, piezasSugeridas,
+  };
+}
+
+function htmlFlashReportVacunas(d){
+  const mesTexto = MESES[Number(d.hasta.slice(5,7))-1] + ' ' + d.hasta.slice(0,4);
+  const diaDesde = d.desde.slice(8,10), diaHasta = d.hasta.slice(8,10);
+  const gen = `${String(d.generado.getDate()).padStart(2,'0')}/${String(d.generado.getMonth()+1).padStart(2,'0')}/${d.generado.getFullYear()} · ${String(d.generado.getHours()).padStart(2,'0')}:${String(d.generado.getMinutes()).padStart(2,'0')}`;
+  const money = n => '$'+Math.round(n).toLocaleString('es-MX');
+  const vacunaMasAplicada = d.ranking[0];
+  const pctLider = (vacunaMasAplicada && d.totalDosis>0) ? Math.round(vacunaMasAplicada.dosis/d.totalDosis*100) : 0;
+
+  const barraTop = d.ranking.slice(0,10).map((v,i)=>{
+    const w = d.ranking[0].dosis>0 ? Math.max(2, Math.round(v.dosis/d.ranking[0].dosis*100)) : 2;
+    return `<div class="frep-bar-item"><div class="frep-bar-rank">${i+1}</div><div class="frep-bar-name">${esc(v.nombre)}</div><div class="frep-bar-track"><div class="frep-bar-fill" style="width:${w}%;"></div></div><div class="frep-bar-val">${v.dosis} dosis</div></div>`;
+  }).join('') || `<div class="frep-empty-mini">Sin dosis aplicadas en el periodo.</div>`;
+
+  const tablaIngreso = d.rankingIngreso.slice(0,10).map(v=>`<tr><td>${esc(v.nombre)}</td><td class="num">${v.dosis}</td><td class="num">${money(v.ingreso)}</td></tr>`).join('')
+    || `<tr><td colspan="3" style="text-align:center;color:var(--gray-400);font-style:italic;">Sin ingresos por vacuna en el periodo.</td></tr>`;
+
+  const previewSinMov = d.sinMovimiento.slice(0,3).map(v=>`<div class="frep-anexprev-line"><span>${esc(v.nombre)}</span><b>${v.stock} pzas</b></div>`).join('');
+  const previewSugerido = d.sugerido.slice(0,3).map(v=>`<div class="frep-anexprev-line"><span>${esc(v.nombre)}</span><b>+${v.faltan} dosis</b></div>`).join('');
+
+  const filasAnexoA = d.sinMovimiento.map(v=>`<tr><td>${esc(v.nombre)}</td><td class="num">${v.lotes}</td><td class="num">${v.stock}</td><td>—</td><td class="frep-accion">Promover en recepción</td></tr>`).join('')
+    || `<tr><td colspan="5" style="text-align:center;color:var(--gray-400);font-style:italic;">Ninguna — todas las vacunas con existencia se aplicaron en el periodo.</td></tr>`;
+
+  const filasAnexoC = d.sugerido.map(v=>`<tr><td>${esc(v.nombre)}</td><td class="num">${v.stock}</td><td class="num">${v.demanda}</td><td class="num" style="color:var(--red);font-weight:800;">${v.faltan}</td></tr>`).join('')
+    || `<tr><td colspan="4" style="text-align:center;color:var(--gray-400);font-style:italic;">Ninguna — el stock actual cubre lo ya agendado para los próximos 14 días.</td></tr>`;
+
+  const filasAnexoB = d.porCaducar.map(l=>{
+    const sem = colorSemaforo(l.dias);
+    return `<tr><td><span style="width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;background:${sem.color};"></span>${esc(l.nombre)}</td><td>${esc(l.lote)}</td><td class="num">${l.cantidad}</td><td>${fmtDDMMYYYY(l.fecha)}</td><td class="num" style="color:${sem.color};font-weight:800;">${l.dias>=0?l.dias:'VENCIDO'}</td></tr>`;
+  }).join('');
+
+  const estilos = `<style>
+    #frep-root{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:#1F2937;background:#dfe6ee;}
+    #frep-root *{box-sizing:border-box;}
+    #frep-root .frep-page{width:794px;min-height:1123px;background:#fff;position:relative;padding:34px 40px;page-break-after:always;break-after:page;}
+    #frep-root .frep-page:last-child{page-break-after:auto;break-after:auto;}
+    #frep-root .frep-hdr{display:flex;justify-content:space-between;border-bottom:3px solid #0E8F8F;padding-bottom:14px;margin-bottom:22px;}
+    #frep-root .frep-eyebrow{font-size:10px;font-weight:800;letter-spacing:1.2px;color:#8CA0B3;text-transform:uppercase;}
+    #frep-root .frep-title{font-size:23px;font-weight:900;color:#0B2340;margin-top:3px;}
+    #frep-root .frep-title b{color:#0E8F8F;}
+    #frep-root .frep-anexo-title{font-size:18px;font-weight:900;color:#0B2340;margin-top:2px;}
+    #frep-root .frep-right{text-align:right;}
+    #frep-root .frep-periodo{font-size:14px;font-weight:900;color:#0B2340;}
+    #frep-root .frep-fecha{font-size:10px;color:#8CA0B3;margin-top:2px;}
+    #frep-root h2.frep-sec{font-size:13px;font-weight:900;color:#0B2340;margin:0 0 10px;}
+    #frep-root .frep-cols2{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:22px;}
+    #frep-root .frep-card{border:1px solid #E2E8EF;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;}
+    #frep-root .frep-card p{font-size:12px;line-height:1.55;margin:0 0 8px;}
+    #frep-root .frep-card ul{margin:8px 0 0;padding-left:16px;font-size:11.5px;color:#5B6B7C;line-height:1.65;}
+    #frep-root .frep-card b{color:#0B2340;}
+    #frep-root table.frep-ind{width:100%;border-collapse:collapse;font-size:11px;}
+    #frep-root table.frep-ind th{background:#0B2340;color:#fff;text-align:left;padding:8px 10px;font-size:9.5px;}
+    #frep-root table.frep-ind th:last-child,#frep-root table.frep-ind td:last-child{text-align:right;}
+    #frep-root table.frep-ind td{padding:9.5px 10px;border-bottom:1px solid #F3F6FA;}
+    #frep-root table.frep-ind td.v{font-weight:900;color:#0B2340;}
+    #frep-root table.frep-ind tr:nth-child(odd) td{background:#FAFBFD;}
+    #frep-root table.frep-ind tr:last-child td{border-bottom:none;}
+    #frep-root .frep-pend-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:0 0 22px;}
+    #frep-root .frep-pend-card{border-radius:10px;padding:12px 14px;}
+    #frep-root .frep-pend-num{font-size:24px;font-weight:900;}
+    #frep-root .frep-pend-label{font-size:10.5px;font-weight:800;margin-top:2px;}
+    #frep-root .frep-pend-sub{font-size:9.5px;color:#5B6B7C;margin-top:4px;}
+    #frep-root .frep-amber{background:#FCF3E3;color:#D98A1E;} #frep-root .frep-red{background:#FDEEEA;color:#E0433A;} #frep-root .frep-green{background:#E7F9EE;color:#1E9E63;}
+    #frep-root .frep-toprow{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:stretch;}
+    #frep-root .frep-toprow-col{display:flex;flex-direction:column;}
+    #frep-root .frep-toprow-col .frep-total-line{margin-top:10px;padding-top:10px;border-top:2px solid #0B2340;font-size:11px;font-weight:800;color:#0B2340;display:flex;justify-content:space-between;}
+    #frep-root .frep-bar-item{display:flex;align-items:center;gap:8px;font-size:11px;padding:4.5px 0;}
+    #frep-root .frep-bar-rank{width:14px;font-weight:900;color:#8CA0B3;}
+    #frep-root .frep-bar-name{flex:1;}
+    #frep-root .frep-bar-track{width:80px;height:7px;background:#F3F6FA;border-radius:4px;overflow:hidden;}
+    #frep-root .frep-bar-fill{height:100%;background:linear-gradient(90deg,#C9A227,#0E8F8F);}
+    #frep-root .frep-bar-val{width:60px;text-align:right;font-weight:800;color:#0B2340;font-size:10.5px;}
+    #frep-root table.frep-anexo{width:100%;border-collapse:collapse;font-size:10.5px;}
+    #frep-root table.frep-anexo th{background:#0B2340;color:#fff;text-align:left;padding:8px 9px;font-size:9px;}
+    #frep-root table.frep-anexo td{padding:8.5px 9px;border-bottom:1px solid #F3F6FA;color:#1F2937;}
+    #frep-root table.frep-anexo tr:nth-child(even) td{background:#FAFBFD;}
+    #frep-root table.frep-anexo tr:last-child td{border-bottom:none;}
+    #frep-root table.frep-anexo td.num,#frep-root table.frep-anexo th.num{text-align:right;}
+    #frep-root .frep-accion{font-size:10px;color:#0E8F8F;font-weight:700;}
+    #frep-root .frep-foot-total{background:#0B2340;color:#fff;border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:800;margin-top:14px;}
+    #frep-root .frep-empty-state{text-align:center;color:#8CA0B3;font-size:12px;padding:40px 0;font-style:italic;}
+    #frep-root .frep-empty-mini{color:#8CA0B3;font-size:11px;font-style:italic;padding:10px 0;}
+    #frep-root .frep-kpi-mini{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+    #frep-root .frep-kpi-box{background:#FAFBFD;border:1px solid #E2E8EF;border-radius:9px;padding:10px 12px;}
+    #frep-root .frep-kpi-box .l{font-size:8.5px;font-weight:800;color:#8CA0B3;letter-spacing:.4px;}
+    #frep-root .frep-kpi-box .v{font-size:16px;font-weight:900;color:#0B2340;margin-top:2px;}
+    #frep-root .frep-pfoot{position:absolute;bottom:18px;left:40px;right:40px;display:flex;justify-content:space-between;font-size:8.5px;color:#8CA0B3;border-top:1px solid #E2E8EF;padding-top:8px;}
+    #frep-root .frep-anexprev-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:10px;}
+    #frep-root .frep-anexprev{border-radius:10px;padding:13px 15px;border:1px solid #E2E8EF;border-top:3px solid #8CA0B3;}
+    #frep-root .frep-anexprev.frep-amber{border-top-color:#D98A1E;} #frep-root .frep-anexprev.frep-green{border-top-color:#1E9E63;} #frep-root .frep-anexprev.frep-red{border-top-color:#E0433A;}
+    #frep-root .frep-anexprev-hd{font-size:10.5px;font-weight:900;color:#0B2340;margin-bottom:9px;}
+    #frep-root .frep-anexprev-line{display:flex;justify-content:space-between;gap:6px;font-size:10px;color:#1F2937;padding:4px 0;border-bottom:1px solid #F3F6FA;}
+    #frep-root .frep-anexprev-line b{color:#0B2340;white-space:nowrap;}
+    #frep-root .frep-anexprev-more{font-size:9px;color:#0E8F8F;font-weight:700;margin-top:7px;}
+    #frep-root .frep-anexprev-empty{font-size:10.5px;color:#5B6B7C;text-align:center;padding:14px 0;line-height:1.5;}
+  </style>`;
+
+  return estilos + `<div id="frep-root">
+  <div class="frep-page">
+    <div class="frep-hdr">
+      <div><div class="frep-eyebrow">Agenda Canopy Pediatrics · Mediconsulting S.C.</div><div class="frep-title">Flash report de <b>vacunas</b></div></div>
+      <div class="frep-right"><div class="frep-periodo">${esc(mesTexto)}</div><div class="frep-fecha">del ${diaDesde} al ${diaHasta} · generado ${gen}</div></div>
+    </div>
+    <div class="frep-cols2">
+      <div class="frep-card"><h2 class="frep-sec">Resumen ejecutivo</h2>
+        <p>Del ${diaDesde} al ${diaHasta} de ${esc(mesTexto.split(' ')[0].toLowerCase())} se aplicaron <b>${d.totalDosis} dosis</b> de vacuna, generando <b>${money(d.totalIngreso)}</b> en ingresos.${vacunaMasAplicada?` <b>${esc(vacunaMasAplicada.nombre)}</b> concentra el ${pctLider}% de las dosis aplicadas.`:''}</p>
+        <ul>
+          <li><b>${d.sinMovimiento.length} vacuna${d.sinMovimiento.length===1?'':'s'}</b> con existencia no ${d.sinMovimiento.length===1?'tuvo':'tuvieron'} ninguna dosis aplicada en el periodo (${d.piezasSinMovimiento} piezas) — Anexo A.</li>
+          <li><b>${d.porCaducar.length} lote${d.porCaducar.length===1?'':'s'}</b> caduca${d.porCaducar.length===1?'':'n'} en 90 días o menos — Anexo B.</li>
+          <li><b>${d.sugerido.length} vacuna${d.sugerido.length===1?'':'s'}</b> está${d.sugerido.length===1?'':'n'} por debajo de la demanda de los próximos 14 días (${d.piezasSugeridas} dosis sugeridas) — Anexo C.</li>
+        </ul>
+      </div>
+      <div class="frep-card"><h2 class="frep-sec">Indicadores</h2>
+        <table class="frep-ind"><tr><th>Indicador</th><th>Valor</th><th>Detalle</th></tr>
+        <tr><td>Dosis aplicadas</td><td class="v">${d.totalDosis}</td><td>${d.vacunasDistintasAplicadas} vacunas distintas</td></tr>
+        <tr><td>Ingreso por vacunación</td><td class="v">${money(d.totalIngreso)}</td><td>${d.citasConVacuna} citas con vacuna</td></tr>
+        <tr><td>Existencia actual</td><td class="v">${d.totalStock} pzas</td><td>${d.vacunasEnCatalogo} vacunas en catálogo</td></tr>
+        <tr><td>Vacunas sin movimiento</td><td class="v">${d.sinMovimiento.length}</td><td>${d.piezasSinMovimiento} pzas en stock</td></tr>
+        <tr><td>Por caducar ≤90 días</td><td class="v">${d.porCaducar.length}</td><td>${d.piezasPorCaducar} pzas</td></tr>
+        </table>
+      </div>
+    </div>
+    <h2 class="frep-sec">Pendientes <span style="font-weight:500;color:#8CA0B3;font-size:10px;">el detalle completo va en los anexos</span></h2>
+    <div class="frep-pend-row">
+      <div class="frep-pend-card frep-amber"><div class="frep-pend-num">${d.sinMovimiento.length}</div><div class="frep-pend-label">Vacunas sin movimiento</div><div class="frep-pend-sub">${d.piezasSinMovimiento} pzas · Anexo A</div></div>
+      <div class="frep-pend-card ${d.porCaducar.length?'frep-red':'frep-green'}"><div class="frep-pend-num">${d.porCaducar.length}</div><div class="frep-pend-label">Lotes por caducar ≤90d</div><div class="frep-pend-sub">${d.piezasPorCaducar} pzas · Anexo B</div></div>
+      <div class="frep-pend-card ${d.sugerido.length?'frep-red':'frep-green'}"><div class="frep-pend-num">${d.sugerido.length}</div><div class="frep-pend-label">Vacunas por pedir</div><div class="frep-pend-sub">${d.piezasSugeridas} pzas sugeridas · Anexo C</div></div>
+    </div>
+    <div class="frep-toprow">
+      <div class="frep-toprow-col"><h2 class="frep-sec">Top vacunas aplicadas <span style="font-weight:500;color:#8CA0B3;font-size:10px;">dosis del periodo</span></h2>
+        <div>${barraTop}</div>
+        <div class="frep-total-line"><span>Total · ${d.vacunasDistintasAplicadas} vacunas aplicadas</span><span>${d.totalDosis} dosis</span></div>
+      </div>
+      <div class="frep-toprow-col"><h2 class="frep-sec">Ingreso por vacuna <span style="font-weight:500;color:#8CA0B3;font-size:10px;">periodo</span></h2>
+        <table class="frep-anexo"><tr><th>Vacuna</th><th class="num">Dosis</th><th class="num">Ingreso</th></tr>${tablaIngreso}</table>
+        <div class="frep-total-line"><span>Total · ${d.vacunasDistintasAplicadas} vacunas</span><span>${money(d.totalIngreso)}</span></div>
+      </div>
+    </div>
+    <h2 class="frep-sec" style="margin-top:24px;">Vista previa de anexos</h2>
+    <div class="frep-anexprev-row">
+      <div class="frep-anexprev frep-amber"><div class="frep-anexprev-hd">Anexo A · Sin movimiento</div>
+        ${previewSinMov || '<div class="frep-anexprev-empty">✓ Ninguna</div>'}
+        ${d.sinMovimiento.length>3 ? `<div class="frep-anexprev-more">+${d.sinMovimiento.length-3} vacunas más → pág. 2</div>` : ''}
+      </div>
+      <div class="frep-anexprev frep-green"><div class="frep-anexprev-hd">Anexo B · Por caducar ≤90d</div>
+        ${d.porCaducar.length ? `<div class="frep-anexprev-line"><span>${d.porCaducar.length} lote${d.porCaducar.length===1?'':'s'}</span><b>${d.piezasPorCaducar} pzas</b></div><div class="frep-anexprev-more">→ pág. 3</div>` : `<div class="frep-anexprev-empty">✓ Ningún lote activo<br>caduca en 90 días o menos.</div>`}
+      </div>
+      <div class="frep-anexprev frep-red"><div class="frep-anexprev-hd">Anexo C · Sugerido de pedido</div>
+        ${previewSugerido || '<div class="frep-anexprev-empty">✓ Ninguna</div>'}
+        ${d.sugerido.length>3 ? `<div class="frep-anexprev-more">+${d.sugerido.length-3} vacunas más → pág. 4</div>` : (d.sugerido.length ? `<div class="frep-anexprev-more">→ pág. 4</div>` : '')}
+      </div>
+    </div>
+    <div class="frep-pfoot"><span>Agenda Canopy Pediatrics · Mediconsulting S.C. · uso interno</span><span>Hoja 1 de 4</span></div>
+  </div>
+
+  <div class="frep-page">
+    <div class="frep-hdr" style="border-bottom:3px solid #D98A1E;">
+      <div><div class="frep-eyebrow">Flash report de vacunas · Canopy Pediatrics</div><div class="frep-anexo-title">Anexo A · Vacunas sin movimiento</div></div>
+      <div class="frep-right"><div class="frep-periodo">${esc(mesTexto)}</div><div class="frep-fecha">del ${diaDesde} al ${diaHasta}</div></div>
+    </div>
+    <div class="frep-kpi-mini">
+      <div class="frep-kpi-box"><div class="l">VACUNAS</div><div class="v">${d.sinMovimiento.length}</div></div>
+      <div class="frep-kpi-box"><div class="l">PIEZAS EN STOCK</div><div class="v">${d.piezasSinMovimiento}</div></div>
+      <div class="frep-kpi-box"><div class="l">% DEL INVENTARIO</div><div class="v">${d.totalStock?Math.round(d.piezasSinMovimiento/d.totalStock*100):0}%</div></div>
+      <div class="frep-kpi-box"><div class="l">VACUNAS EN CATÁLOGO</div><div class="v">${d.vacunasEnCatalogo}</div></div>
+    </div>
+    <p style="font-size:11px;color:#5B6B7C;margin:0 0 14px;">Vacunas con existencia que no tuvieron ninguna dosis aplicada en el periodo (del ${diaDesde} al ${diaHasta} de ${esc(mesTexto)}), ordenadas por piezas en stock.</p>
+    <table class="frep-anexo"><tr><th>Vacuna</th><th class="num">Lotes</th><th class="num">Pzas en stock</th><th>Lote más próximo a caducar</th><th>Sugerencia</th></tr>${filasAnexoA}</table>
+    <div class="frep-foot-total"><span>Total sin movimiento · ${d.sinMovimiento.length} vacunas</span><span>${d.piezasSinMovimiento} pzas</span></div>
+    <div class="frep-pfoot"><span>Agenda Canopy Pediatrics · Mediconsulting S.C. · uso interno</span><span>Hoja 2 de 4</span></div>
+  </div>
+
+  <div class="frep-page">
+    <div class="frep-hdr" style="border-bottom:3px solid #E0433A;">
+      <div><div class="frep-eyebrow">Flash report de vacunas · Canopy Pediatrics</div><div class="frep-anexo-title">Anexo B · Por caducar en 90 días o menos</div></div>
+      <div class="frep-right"><div class="frep-periodo">${esc(mesTexto)}</div><div class="frep-fecha">del ${diaDesde} al ${diaHasta}</div></div>
+    </div>
+    <div class="frep-kpi-mini">
+      <div class="frep-kpi-box"><div class="l">LOTES</div><div class="v">${d.porCaducar.length}</div></div>
+      <div class="frep-kpi-box"><div class="l">PIEZAS</div><div class="v">${d.piezasPorCaducar}</div></div>
+      <div class="frep-kpi-box"><div class="l">YA VENCIDOS</div><div class="v" style="color:#E0433A;">${d.porCaducar.filter(l=>l.dias<0).length}</div></div>
+      <div class="frep-kpi-box"><div class="l">PRÓXIMO EN CADUCAR</div><div class="v" style="font-size:12px;">${d.porCaducar[0] ? fmtDDMMYYYY(d.porCaducar[0].fecha) : '—'}</div></div>
+    </div>
+    ${d.porCaducar.length ? `
+    <table class="frep-anexo"><tr><th>Vacuna</th><th>Lote</th><th class="num">Pzas</th><th>Caduca</th><th class="num">Días</th></tr>${filasAnexoB}</table>
+    <div class="frep-foot-total"><span>Total por caducar · ${d.porCaducar.length} lotes</span><span>${d.piezasPorCaducar} pzas</span></div>
+    ` : `<div class="frep-empty-state">✓ Ningún lote activo caduca en los próximos 90 días.<br>No hay acciones pendientes en este anexo.</div>`}
+    <div class="frep-pfoot"><span>Agenda Canopy Pediatrics · Mediconsulting S.C. · uso interno</span><span>Hoja 3 de 4</span></div>
+  </div>
+
+  <div class="frep-page">
+    <div class="frep-hdr" style="border-bottom:3px solid #0E8F8F;">
+      <div><div class="frep-eyebrow">Flash report de vacunas · Canopy Pediatrics</div><div class="frep-anexo-title">Anexo C · Sugerido de pedido</div></div>
+      <div class="frep-right"><div class="frep-periodo">${esc(mesTexto)}</div><div class="frep-fecha">del ${diaDesde} al ${diaHasta}</div></div>
+    </div>
+    <div class="frep-kpi-mini">
+      <div class="frep-kpi-box"><div class="l">VACUNAS</div><div class="v">${d.sugerido.length}</div></div>
+      <div class="frep-kpi-box"><div class="l">DOSIS SUGERIDAS</div><div class="v">+${d.piezasSugeridas}</div></div>
+      <div class="frep-kpi-box"><div class="l">AGOTADAS HOY</div><div class="v" style="color:#E0433A;">${d.sugerido.filter(s=>s.stock===0).length}</div></div>
+      <div class="frep-kpi-box"><div class="l">VENTANA</div><div class="v" style="font-size:12px;">14 días</div></div>
+    </div>
+    <p style="font-size:11px;color:#5B6B7C;margin:0 0 14px;">Vacunas cuyas citas ya agendadas en los próximos 14 días superan la existencia actual — mismo criterio que la alerta del módulo de Inventario.</p>
+    <table class="frep-anexo"><tr><th>Vacuna</th><th class="num">Stock actual</th><th class="num">Citadas (14 días)</th><th class="num">Faltan</th></tr>${filasAnexoC}</table>
+    ${d.sugerido.length ? `<div class="frep-foot-total"><span>Total sugerido · ${d.sugerido.length} vacunas</span><span>+${d.piezasSugeridas} dosis</span></div>` : ''}
+    <div class="frep-pfoot"><span>Agenda Canopy Pediatrics · Mediconsulting S.C. · uso interno</span><span>Hoja 4 de 4</span></div>
+  </div>
+</div>`;
+}
+
+async function descargarFlashReportVacunas(){
+  const btn = document.getElementById('btn-flash-report-vacunas');
+  const textoOriginal = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Generando...'; }
+  try{
+    const d = datosFlashReportVacunas();
+    let cont = document.getElementById('frep-generador');
+    if(!cont){
+      cont = document.createElement('div');
+      cont.id = 'frep-generador';
+      cont.style.cssText = 'position:fixed;left:-9999px;top:0;';
+      document.body.appendChild(cont);
+    }
+    cont.innerHTML = htmlFlashReportVacunas(d);
+    await new Promise(r=>setTimeout(r, 60)); // deja pintar el DOM antes de rasterizar
+    const nombreArchivo = `Flash-report-vacunas-${d.hasta}.pdf`;
+    await window.html2pdf().set({
+      margin: 0,
+      filename: nombreArchivo,
+      image: { type:'jpeg', quality:0.95 },
+      html2canvas: { scale:2, useCORS:true, windowWidth:794 },
+      jsPDF: { unit:'px', format:[794,1123], orientation:'portrait' },
+      pagebreak: { mode:['css','legacy'] },
+    }).from(cont.querySelector('#frep-root')).save();
+    cont.innerHTML = '';
+    toast('✓ Flash report descargado');
+  }catch(err){
+    console.error('Error generando flash report:', err);
+    toast('⚠ No se pudo generar el flash report: '+(err && err.message ? err.message : err));
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = textoOriginal || '📄 Flash report de vacunas'; }
+  }
+}
+
 function renderVacunasProductividad(per, sc){
   if(!$id('dash-vacunas')) return;
   const d = vacunasData(per, sc);
@@ -10101,6 +10413,11 @@ setInterval(async () => {
   cargandoDatos = true;
   try{ if(await cargarGastos()){ if(g) actualizarGastos(); if(d) dashRender(); } }finally{ cargandoDatos = false; }
 }, 60000);
+
+// El botón de Inventario lo llama con onclick="descargarFlashReportVacunas()"
+// desde el HTML global — por eso, igual que GD, hay que exponerlo en window
+// (si no, quedaría atrapado dentro de este IIFE y el botón no lo encontraría).
+window.descargarFlashReportVacunas = descargarFlashReportVacunas;
 
 window.GD = {
   aplicarPermisos, abrirGastos, abrirDashboard,
