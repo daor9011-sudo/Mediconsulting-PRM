@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-165">
+<meta name="app-version" content="2026-10-05-166">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2061,7 +2061,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-165';
+const APP_VERSION = '2026-10-05-166';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -10277,20 +10277,23 @@ async function descargarFlashReportVacunas(){
       // mal (recorta el contenido a la altura de la ventana) — por eso va
       // position:absolute, simplemente empujado muy abajo del documento, nunca
       // fuera del flujo normal. No se ve porque nadie hace scroll hasta ahí.
-      cont.style.cssText = 'position:absolute;left:0;top:100000px;width:794px;z-index:-1;';
+      cont.style.cssText = 'position:absolute;left:0;top:100000px;width:794px;max-width:794px;overflow:hidden;z-index:-1;';
       document.body.appendChild(cont);
     }
     cont.innerHTML = htmlFlashReportVacunas(d);
     await new Promise(r=>setTimeout(r, 60)); // deja pintar el DOM antes de rasterizar
     const root = cont.querySelector('#frep-root');
-    const alturaTotal = root.scrollHeight;
     const nombreArchivo = `Flash-report-vacunas-${d.hasta}.pdf`;
+    // 794×1123px CSS = exactamente 210×297mm (A4) a 96dpi — por eso el
+    // formato va en 'a4'/mm en vez de px: es la combinación que la librería
+    // trae mejor probada, y evita que el ancho capturado (×scale) no
+    // cuadre con el ancho de hoja y "parta" el PDF a la derecha.
     await window.html2pdf().set({
       margin: 0,
       filename: nombreArchivo,
       image: { type:'jpeg', quality:0.95 },
-      html2canvas: { scale:2, useCORS:true, windowWidth:794, windowHeight:alturaTotal, height:alturaTotal, scrollX:0, scrollY:0 },
-      jsPDF: { unit:'px', format:[794,1123], orientation:'portrait' },
+      html2canvas: { scale:2, useCORS:true, windowWidth:794 },
+      jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
       pagebreak: { mode:['css'] },
     }).from(root).save();
     cont.innerHTML = '';
