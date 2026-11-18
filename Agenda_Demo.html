@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-168">
+<meta name="app-version" content="2026-10-05-169">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2053,7 +2053,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
+<!-- html2canvas + jsPDF se cargan bajo demanda (ver cargarScriptUnaVez) solo cuando se genera el flash report -->
 <script>
 // ═══════════════════════════════════════════
 // CONEXIÓN A SUPABASE (backend real)
@@ -2061,7 +2061,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-168';
+const APP_VERSION = '2026-10-05-169';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -10068,16 +10068,16 @@ function htmlFlashReportVacunas(d){
   }).join('') || `<div class="frep-empty-mini">Sin dosis aplicadas en el periodo.</div>`;
 
   const tablaIngreso = d.rankingIngreso.slice(0,10).map(v=>`<tr><td>${esc(v.nombre)}</td><td class="num">${v.dosis}</td><td class="num">${money(v.ingreso)}</td></tr>`).join('')
-    || `<tr><td colspan="3" style="text-align:center;color:var(--gray-400);font-style:italic;">Sin ingresos por vacuna en el periodo.</td></tr>`;
+    || `<tr><td colspan="3" style="text-align:center;color:#8FA8BE;font-style:italic;">Sin ingresos por vacuna en el periodo.</td></tr>`;
 
   const previewSinMov = d.sinMovimiento.slice(0,3).map(v=>`<div class="frep-anexprev-line"><span>${esc(v.nombre)}</span><b>${v.stock} pzas</b></div>`).join('');
   const previewSugerido = d.sugerido.slice(0,3).map(v=>`<div class="frep-anexprev-line"><span>${esc(v.nombre)}</span><b>+${v.faltan} dosis</b></div>`).join('');
 
   const filasAnexoA = d.sinMovimiento.map(v=>`<tr><td>${esc(v.nombre)}</td><td class="num">${v.lotes}</td><td class="num">${v.stock}</td><td>—</td><td class="frep-accion">Promover en recepción</td></tr>`).join('')
-    || `<tr><td colspan="5" style="text-align:center;color:var(--gray-400);font-style:italic;">Ninguna — todas las vacunas con existencia se aplicaron en el periodo.</td></tr>`;
+    || `<tr><td colspan="5" style="text-align:center;color:#8FA8BE;font-style:italic;">Ninguna — todas las vacunas con existencia se aplicaron en el periodo.</td></tr>`;
 
-  const filasAnexoC = d.sugerido.map(v=>`<tr><td>${esc(v.nombre)}</td><td class="num">${v.stock}</td><td class="num">${v.demanda}</td><td class="num" style="color:var(--red);font-weight:800;">${v.faltan}</td></tr>`).join('')
-    || `<tr><td colspan="4" style="text-align:center;color:var(--gray-400);font-style:italic;">Ninguna — el stock actual cubre lo ya agendado para los próximos 14 días.</td></tr>`;
+  const filasAnexoC = d.sugerido.map(v=>`<tr><td>${esc(v.nombre)}</td><td class="num">${v.stock}</td><td class="num">${v.demanda}</td><td class="num" style="color:#E53E3E;font-weight:800;">${v.faltan}</td></tr>`).join('')
+    || `<tr><td colspan="4" style="text-align:center;color:#8FA8BE;font-style:italic;">Ninguna — el stock actual cubre lo ya agendado para los próximos 14 días.</td></tr>`;
 
   const filasAnexoB = d.porCaducar.map(l=>{
     const sem = colorSemaforo(l.dias);
@@ -10263,55 +10263,67 @@ function htmlFlashReportVacunas(d){
 </div>`;
 }
 
+// ── Flash report: PDF — mismo patrón probado que usa Skin Fabric (cargarScriptUnaVez + iframe oculto + html2canvas/jsPDF por separado) ──
+const _frepScriptsCargados = {};
+function frepCargarScriptUnaVez(src){
+  return _frepScriptsCargados[src] || (_frepScriptsCargados[src] = new Promise((ok, fail)=>{
+    const s = document.createElement('script');
+    s.src = src; s.onload = () => ok();
+    s.onerror = () => { delete _frepScriptsCargados[src]; fail(new Error('No se pudo cargar '+src)); };
+    document.head.appendChild(s);
+  }));
+}
+// El reporte se dibuja en un iframe oculto (srcdoc) para que los estilos de la
+// app no lo toquen y para que html2canvas capture cada hoja ya completa, del
+// tamaño exacto, sin el recorte/mosaico que daba al rasterizar dentro de un
+// div escondido del documento principal.
+async function frepMontarIframe(html){
+  const ifr = document.createElement('iframe');
+  ifr.setAttribute('aria-hidden', 'true');
+  ifr.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;visibility:hidden;';
+  document.body.appendChild(ifr);
+  await new Promise(res => { ifr.onload = res; ifr.srcdoc = html; });
+  const doc = ifr.contentDocument;
+  try{ await Promise.race([doc.fonts.ready, new Promise(r=>setTimeout(r, 2500))]); }catch(_){}
+  await new Promise(r=>setTimeout(r, 250));
+  return ifr;
+}
 async function descargarFlashReportVacunas(){
   const btn = document.getElementById('btn-flash-report-vacunas');
   const textoOriginal = btn ? btn.textContent : '';
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Generando...'; }
+  let ifr = null;
   try{
     const d = datosFlashReportVacunas();
-    let cont = document.getElementById('frep-generador');
-    if(!cont){
-      cont = document.createElement('div');
-      cont.id = 'frep-generador';
-      // OJO: position:fixed con left muy negativo hace que html2canvas capture
-      // mal (recorta el contenido a la altura de la ventana) — por eso va
-      // position:absolute, simplemente empujado muy abajo del documento, nunca
-      // fuera del flujo normal. No se ve porque nadie hace scroll hasta ahí.
-      cont.style.cssText = 'position:absolute;left:0;top:100000px;width:794px;max-width:794px;overflow:hidden;z-index:-1;';
-      document.body.appendChild(cont);
-    }
-    cont.innerHTML = htmlFlashReportVacunas(d);
-    await new Promise(r=>setTimeout(r, 60)); // deja pintar el DOM antes de rasterizar
-    const root = cont.querySelector('#frep-root');
     const nombreArchivo = `Flash-report-vacunas-${d.hasta}.pdf`;
+    const htmlCompleto = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;">${htmlFlashReportVacunas(d)}</body></html>`;
 
-    // La paginación automática de html2pdf (dividir un solo canvas largo en
-    // varias hojas) estaba partiendo el reporte en mosaicos — en vez de
-    // confiar en eso, se captura CADA hoja (.frep-page) por separado, ya
-    // completa y del tamaño correcto, y se va pegando una por una en el PDF.
-    // Esta build de la librería no deja variables sueltas (window.html2canvas /
-    // window.jsPDF no existen aquí), así que todo se hace con la API pública
-    // de html2pdf() — nunca tocando esas variables directamente.
-    if(typeof window.html2pdf !== 'function') throw new Error('No cargó la librería de PDF (revisa tu conexión e intenta de nuevo).');
-    const opcionesCaptura = { margin:0, image:{type:'jpeg', quality:0.95}, html2canvas:{scale:2, useCORS:true, windowWidth:794}, jsPDF:{unit:'mm', format:'a4', orientation:'portrait'} };
-    const paginas = root.querySelectorAll('.frep-page');
+    await Promise.all([
+      frepCargarScriptUnaVez('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+      frepCargarScriptUnaVez('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+    ]);
 
-    // La primera hoja arma el PDF de verdad (de una sola página, nada que cortar).
-    const pdf = await window.html2pdf().set(opcionesCaptura).from(paginas[0]).toPdf().get('pdf');
-    // Las siguientes se capturan como canvas y se van pegando como páginas nuevas del mismo PDF.
-    for(let i=1; i<paginas.length; i++){
-      const canvas = await window.html2pdf().set(opcionesCaptura).from(paginas[i]).toCanvas().get('canvas');
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      pdf.addPage('a4', 'portrait');
-      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297); // A4 completo — cada .frep-page ya mide 794×1123px = 210×297mm
+    ifr = await frepMontarIframe(htmlCompleto);
+    const doc = ifr.contentDocument;
+    const hojas = [...doc.querySelectorAll('.frep-page')];
+    if(!hojas.length) throw new Error('No se generó contenido para el PDF.');
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait', compress:true });
+    const PW = 210, PH = 297; // A4 en mm — cada .frep-page mide 794×1123px = 210×297mm a 96dpi
+    for(let i=0; i<hojas.length; i++){
+      const canvas = await window.html2canvas(hojas[i], { scale:2, backgroundColor:'#ffffff', width:794, windowWidth:794, useCORS:true, logging:false });
+      if(i>0) pdf.addPage('a4', 'portrait');
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, PW, PH, undefined, 'FAST');
     }
+    pdf.setProperties({ title:'Flash report de vacunas', subject:'Flash report de vacunas · Agenda Canopy Pediatrics' });
     pdf.save(nombreArchivo);
-    cont.innerHTML = '';
     toast('✓ Flash report descargado');
   }catch(err){
     console.error('Error generando flash report:', err);
     toast('⚠ No se pudo generar el flash report: '+(err && err.message ? err.message : err));
   }finally{
+    if(ifr) ifr.remove();
     if(btn){ btn.disabled = false; btn.textContent = textoOriginal || '📄 Flash report de vacunas'; }
   }
 }
