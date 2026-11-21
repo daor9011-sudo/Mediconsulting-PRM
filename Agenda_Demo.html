@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-169">
+<meta name="app-version" content="2026-10-05-170">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2061,7 +2061,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-169';
+const APP_VERSION = '2026-10-05-170';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -7782,7 +7782,7 @@ function htmlFilaPendiente(x, direccion){
     }).join('');
     detalle = `<div style="background:#F8FAFC;border-radius:8px;padding:6px 12px 10px;margin:6px 0 8px;">
       <div style="font-size:11px;font-weight:800;color:#9A6010;letter-spacing:.3px;margin:6px 0 4px;">PENDIENTE DE LIQUIDAR PARA ${esc(x.p).toUpperCase()} · consultas 50% · urgencias monto acordado</div>
-      <table class="tx-table" style="font-size:12px;"><thead><tr><th>Fecha</th><th>Paciente</th><th>Servicio</th><th>Le toca</th><th>Pendiente</th></tr></thead><tbody>${filas}</tbody></table>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="tx-table" style="font-size:12px;min-width:480px;"><thead><tr><th>Fecha</th><th>Paciente</th><th>Servicio</th><th>Le toca</th><th>Pendiente</th></tr></thead><tbody>${filas}</tbody></table></div>
       ${hayHospEnLista?'<div style="font-size:10.5px;color:#1B5C9E;margin-top:6px;">⚠ Lo de Hospitalización se muestra aunque el paciente todavía no tenga el pago procesado en la plataforma.</div>':''}</div>`;
   }
   return `<div style="border-bottom:1px solid var(--gray-100);padding:12px 0 4px;">
