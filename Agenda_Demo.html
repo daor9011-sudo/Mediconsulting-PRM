@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-170">
+<meta name="app-version" content="2026-10-05-171">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1642,7 +1642,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 <!-- Modal: el dueño del paciente registra un pago al médico que atendió -->
 <div class="modal-overlay" id="pago-colega-modal-overlay">
   <div class="modal" style="max-width:440px;">
-    <h3>🤝 Registrar pago a colega</h3>
+    <h3 id="pc-titulo">🤝 Registrar pago a colega</h3>
     <div style="background:var(--gray-50);border-radius:8px;padding:12px 14px;margin-bottom:14px;">
       <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--gray-600);flex-wrap:wrap;"><span id="pc-dueno-badge"></span> le paga a <span id="pc-prestador-badge"></span></div>
       <div style="font-size:11px;color:var(--gray-400);margin:6px 0 8px;">Se aplica primero a las consultas más antiguas · <span id="pc-nconsultas">0</span> consulta(s) en la cuenta</div>
@@ -1658,7 +1658,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
         <div class="opcion-pago-tipo" id="pc-tipo-parcial" onclick="cambiarTipoPagoColega('parcial')">◐ Pago parcial<br><span style="font-weight:500;font-size:10.5px;">Otro monto</span></div>
       </div>
     </div>
-    <div class="form-group"><label>Monto que pagas ahora</label><input type="number" id="pc-monto" min="0" step="0.01" placeholder="0.00" oninput="actualizarPreviewPagoColega()" style="font-size:16px;font-weight:700;"></div>
+    <div class="form-group"><label id="pc-label-monto">Monto que pagas ahora</label><input type="number" id="pc-monto" min="0" step="0.01" placeholder="0.00" oninput="actualizarPreviewPagoColega()" style="font-size:16px;font-weight:700;"></div>
     <div class="form-row">
       <div class="form-group"><label>Fecha del pago</label><input type="date" id="pc-fecha"></div>
       <div class="form-group"><label>Medio</label><select id="pc-medio"><option>Efectivo</option><option>Transferencia</option><option>Otro</option></select></div>
@@ -2061,7 +2061,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-170';
+const APP_VERSION = '2026-10-05-171';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -7701,8 +7701,9 @@ const fmtM = n => '$'+Number(n).toLocaleString('es-MX',{minimumFractionDigits:2}
 const jsAttr = v => JSON.stringify(v).replace(/"/g,'&quot;');
 const miNombreLiq = () => (typeof currentUser!=='undefined' && currentUser && currentUser.nombre) || sesionActual;
 const esAdminLiq = () => !!(typeof currentUser!=='undefined' && currentUser && currentUser.esAdmin);
-// Registran pagos: el dueño del paciente (doctora) y administración. Recepción sin admin: solo consulta.
-const puedeRegistrarPagoLiq = dueno => (sesionActual!=='recepcion' && sesionActual===dueno) || esAdminLiq();
+// Registran pagos: el dueño del paciente (quien debe) O el prestador (a quien le deben) — cualquiera de
+// los dos puede dejar la cuenta liquidada — y administración. Recepción sin admin: solo consulta.
+const puedeRegistrarPagoLiq = (dueno, prestador) => (sesionActual!=='recepcion' && (sesionActual===dueno || sesionActual===prestador)) || esAdminLiq();
 function toggleParLiquidacion(key){ if(paresAbiertos.has(key)) paresAbiertos.delete(key); else paresAbiertos.add(key); renderCierre(); }
 
 // Pendientes y pagos visibles para esta sesión, ya filtrados por el periodo
@@ -7769,7 +7770,7 @@ function htmlFilaPendiente(x, direccion){
   const color = direccion==='cobrar' ? '#2E7D4F' : '#9A6010';
   const cap = x.abonado>0.005 ? `<div style="font-size:11px;color:var(--gray-400);margin-top:2px;">Abonado ${fmtM(x.abonado)} de ${fmtM(x.total)}</div>` : '';
   const avisoResumen = x.items.some(i=>i.sinPago) ? `<div style="font-size:10.5px;color:#1B5C9E;margin-top:2px;">⚠ Incluye hospitalización sin pago registrado todavía</div>` : '';
-  const btn = (direccion!=='cobrar' && puedeRegistrarPagoLiq(x.d))
+  const btn = puedeRegistrarPagoLiq(x.d, x.p)
     ? `<button class="btn-sm" style="background:#EAF7EE;color:#2E7D4F;border:1px solid #A8D8B4;font-weight:700;" onclick="abrirPagoColegaModal(${jsAttr(x.d)},${jsAttr(x.p)})">＋ Registrar pago</button>` : '';
   let detalle = '';
   if(abierto){
@@ -7866,10 +7867,15 @@ function renderCierreEntreMedicos(){
 // ── Registrar / deshacer un pago (dueño del paciente o administración) ──
 let pagoColegaPar = null, tipoPagoColega = 'total';
 function abrirPagoColegaModal(dueno, prestador){
-  if(!puedeRegistrarPagoLiq(dueno)){ toast('🔒 Solo el dueño del paciente o administración registran los pagos'); return; }
+  if(!puedeRegistrarPagoLiq(dueno, prestador)){ toast('🔒 Solo el dueño del paciente, el prestador o administración registran los pagos'); return; }
   const cu = cuentasCorrientes()[dueno+'|'+prestador];
   if(!cu || cu.saldoTotal<=0.005){ toast('Esta cuenta no tiene saldo pendiente'); return; }
   pagoColegaPar = {dueno, prestador};
+  // El mismo modal sirve para quien debe (registra lo que pagó) y para quien le deben
+  // (registra lo que le pagaron) — el texto cambia según quién lo esté abriendo.
+  const loAbreElPrestador = sesionActual===prestador && sesionActual!==dueno;
+  document.getElementById('pc-titulo').textContent = loAbreElPrestador ? '🤝 Registrar pago recibido de colega' : '🤝 Registrar pago a colega';
+  document.getElementById('pc-label-monto').textContent = loAbreElPrestador ? 'Monto que te pagaron ahora' : 'Monto que pagas ahora';
   document.getElementById('pc-dueno-badge').innerHTML = bDoctora(dueno);
   document.getElementById('pc-prestador-badge').innerHTML = bDoctora(prestador);
   document.getElementById('pc-nconsultas').textContent = cu.citas.length;
@@ -7911,7 +7917,7 @@ function actualizarPreviewPagoColega(){
 async function guardarPagoColega(){
   if(!pagoColegaPar) return;
   const {dueno, prestador} = pagoColegaPar;
-  if(!puedeRegistrarPagoLiq(dueno)){ toast('🔒 No tienes permiso para registrar este pago'); return; }
+  if(!puedeRegistrarPagoLiq(dueno, prestador)){ toast('🔒 No tienes permiso para registrar este pago'); return; }
   const cu = cuentasCorrientes()[dueno+'|'+prestador];
   const monto = Math.round((Number(document.getElementById('pc-monto').value)||0)*100)/100;
   const fecha = document.getElementById('pc-fecha').value || fechaLocalISO();
@@ -7940,14 +7946,21 @@ function deshacerPagoColega(id){
   });
 }
 
-// ── Notificación al prestador cuando le registran un pago ──
+// ── Notificación a la otra parte cuando alguien registra un pago ──
+// Ahora cualquiera de los dos (quien debe o a quien le deben) puede registrarlo,
+// así que el aviso le llega a quien NO lo registró, sea cual sea su lado.
 function textoPagoRecibido(p){
-  return `🤝 <strong>${esc(p.dueno)}</strong> te registró un pago de <strong>${fmtM(p.monto)}</strong>${p.medio?' ('+esc(p.medio)+')':''}`;
+  if(p.registrado_por===p.prestador) return `🤝 <strong>${esc(p.prestador)}</strong> registró que le pagaste <strong>${fmtM(p.monto)}</strong>${p.medio?' ('+esc(p.medio)+')':''}`;
+  if(p.registrado_por===p.dueno) return `🤝 <strong>${esc(p.dueno)}</strong> te registró un pago de <strong>${fmtM(p.monto)}</strong>${p.medio?' ('+esc(p.medio)+')':''}`;
+  // Lo registró alguien más (ej. administración) a nombre de la cuenta — no se le atribuye a ninguno de los dos.
+  return `🤝 <strong>${esc(p.registrado_por||'Administración')}</strong> registró un pago de <strong>${fmtM(p.monto)}</strong> entre <strong>${esc(p.dueno)}</strong> y <strong>${esc(p.prestador)}</strong>${p.medio?' ('+esc(p.medio)+')':''}`;
 }
 function notificarPagoRecibido(p){
-  if(!p || p.prestador!==sesionActual || sesionActual==='recepcion' || p.registrado_por===miNombreLiq()) return;
+  if(!p || sesionActual==='recepcion' || p.registrado_por===miNombreLiq()) return;
+  const esParaMi = (p.prestador===sesionActual) || (p.dueno===sesionActual);
+  if(!esParaMi) return;
   agregarActividad(textoPagoRecibido(p));
-  toast('🤝 '+p.dueno+' te registró un pago de '+fmtM(p.monto));
+  toast(textoPagoRecibido(p).replace(/<[^>]*>/g,''));
 }
 // Al abrir la app: avisa de pagos que te registraron mientras no estabas (desde la última vez, máx. 3 días si es la primera)
 function avisarPagosPendientesDeVer(){
@@ -7955,7 +7968,7 @@ function avisarPagosPendientesDeVer(){
   const clave = 'liqVistoEn_'+sesionActual;
   let desde = new Date(Date.now()-3*86400000);
   try{ const v = localStorage.getItem(clave); if(v) desde = new Date(v); }catch(e){}
-  pagosEntreMedicos.filter(p=>p.prestador===sesionActual && p.registrado_por!==miNombreLiq() && new Date(p.registrado_en)>desde)
+  pagosEntreMedicos.filter(p=>(p.prestador===sesionActual || p.dueno===sesionActual) && p.registrado_por!==miNombreLiq() && new Date(p.registrado_en)>desde)
     .sort((a,b)=>new Date(a.registrado_en)-new Date(b.registrado_en))
     .forEach(p=>agregarActividad(textoPagoRecibido(p)+` · ${fmtDDMMYYYY(String(p.fecha).slice(0,10))}`));
   try{ localStorage.setItem(clave, new Date().toISOString()); }catch(e){}
