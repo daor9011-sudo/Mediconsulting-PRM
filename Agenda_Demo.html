@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-179">
+<meta name="app-version" content="2026-10-05-180">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1002,22 +1002,16 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .nom-tab-btn{background:#fff;border:1px solid var(--g2);padding:8px 14px;border-radius:999px;font:700 12.5px inherit;color:var(--g6);cursor:pointer}
 .nom-tab-btn.act{background:var(--navy);border-color:var(--navy);color:#fff}
 @media(max-width:800px){.nom-3,.nom-2{grid-template-columns:1fr}.nom-add{grid-template-columns:1fr 1fr}}
-/* Nómina quincenal: SIEMPRE en tarjetas apiladas (nunca tabla ancha) — cero scroll lateral, en cualquier pantalla */
-.nom-wrap:has(.nom-t-mes){overflow-x:visible;border:0;background:none;}
-.nom-t-mes{min-width:0;width:100%;}
-.nom-t-mes thead{display:none;}
-.nom-t-mes, .nom-t-mes tbody, .nom-t-mes tr{display:block;width:100%;}
-.nom-t-mes tr{border:1px solid var(--g2);border-radius:12px;margin-bottom:10px;padding:4px 14px;background:#fff;}
-.nom-t-mes td{display:flex;align-items:baseline;justify-content:space-between;gap:14px;border:0;border-bottom:1px dashed var(--g2);padding:8px 0;text-align:right;white-space:normal;}
-.nom-t-mes td:last-child{border-bottom:0;}
-.nom-t-mes td.nm{display:block;text-align:left;border-bottom:2px solid var(--navy);padding-bottom:10px;margin-bottom:2px;}
-.nom-t-mes td.nv{display:block;text-align:left;}
-.nom-t-mes td[data-th]::before{content:attr(data-th);font-weight:700;color:var(--g6);font-size:11px;text-transform:uppercase;letter-spacing:.3px;flex:none;}
-.nom-t-mes tr.tot.dark{background:var(--navy);border-color:var(--navy);padding:4px 14px;}
-.nom-t-mes tr.tot.dark td{border-bottom:1px dashed rgba(255,255,255,.2);color:#fff;}
-.nom-t-mes tr.tot.dark td[data-th]::before{color:rgba(255,255,255,.65);}
-.nom-t-mes tr.tot.dark td:first-child{display:block;text-align:left;font-weight:800;border-bottom:1px solid rgba(255,255,255,.3);padding-bottom:10px;margin-bottom:2px;}
-.nom-t-mes{max-width:560px;margin:0 auto;}
+/* Nómina quincenal: tabla real (el cuadro). Con espacio suficiente se ajusta al ancho sin scroll;
+   en pantallas angostas conserva el scroll horizontal normal (como cualquier otra tabla de nómina). */
+@media(min-width:700px){
+  .nom-t-mes{table-layout:fixed;width:100%;}
+  .nom-t-mes th,.nom-t-mes td{padding:7px 5px;font-size:11px;white-space:normal;word-break:break-word;overflow-wrap:break-word;}
+  .nom-t-mes td.nm{white-space:normal;}
+  .nom-t-mes td.nv{min-width:0;}
+  .nom-t-mes .nom-pill{white-space:nowrap;}
+  .nom-t-mes .nom-btn.ic{padding:1px 5px;font-size:10px;}
+}
 </style>
 </head>
 <body>
@@ -2163,7 +2157,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-179';
+const APP_VERSION = '2026-10-05-180';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -10825,7 +10819,7 @@ function nomRenderMes(){
     return `<tr><td>${esc(e?.nombre || '—')}</td><td>${t[0]} ${t[1]}${n.tipo === 'falta' || n.tipo === 'incapacidad' ? (n.justificada ? ' <span class="nom-pill ok">justificada</span>' : ' <span class="nom-pill bad">se descuenta</span>') : ''}</td><td>${n.fecha ? nomFechaTxt(n.fecha) : '—'}</td><td class="r">${n.dias != null && n.dias !== '' ? Number(n.dias) + ' d' : '—'}</td><td class="r">${n.monto != null && n.monto !== '' ? money(n.monto) : '—'}</td><td>${esc(n.nota || '')}</td>
       <td class="r"><button type="button" class="nom-btn sm" data-nov-edit="${esc(n.id)}">Editar</button> <button type="button" class="nom-btn sm bad" data-nov-del="${esc(n.id)}">Quitar</button></td></tr>`; }).join('');
   document.getElementById('nom-p-mes').innerHTML = `${sf}${neto}${sub}
-    <div class="nom-wrap"><table class="nom-t nom-t-mes"><thead><tr class="g"><th colspan="2"></th><th colspan="3" class="gp">Percepciones</th><th colspan="2" class="gr">Retenciones</th><th colspan="2" class="gd">Descuentos</th><th class="gn">Neto</th></tr>
+    <div class="nom-wrap"><table class="nom-t nom-t-mes"><colgroup><col style="width:11%"><col style="width:21%"><col style="width:9%"><col style="width:9%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:7%"><col style="width:7%"><col style="width:11%"></colgroup><thead><tr class="g"><th colspan="2"></th><th colspan="3" class="gp">Percepciones</th><th colspan="2" class="gr">Retenciones</th><th colspan="2" class="gd">Descuentos</th><th class="gn">Neto</th></tr>
       <tr><th>Persona</th><th>Novedades</th><th class="r">Sueldo quinc.</th><th class="r">Bono / primas</th><th class="r">Total</th><th class="r sep">ISR</th><th class="r">IMSS obrero</th><th class="r sep">Faltas</th><th class="r">Otros</th><th class="r sep">A pagar</th></tr></thead>
       <tbody>${filas}<tr class="tot dark"><td colspan="2">Totales · ${calcs.length} persona(s) · ${esc(nomLabelPer(NOM_PERIODO))}</td><td class="r" data-th="Sueldo quinc.">${N(T('sueldo'))}</td><td class="r" data-th="Bono / primas">${N(T('bono') + T('prima') + T('primaDom'))}</td><td class="r" data-th="Total">${N(T('perc'))}</td><td class="r" data-th="ISR">${N(T('isr'))}</td><td class="r" data-th="IMSS obrero">${N(T('imss'))}</td><td class="r" data-th="Faltas">${N(T('descFalta'))}</td><td class="r" data-th="Otros">${N(T('otros'))}</td><td class="r nt" data-th="A pagar">${N(T('neto'))}</td></tr></tbody></table></div>
     <div style="margin:-6px 2px 4px;font-size:11px;color:var(--g6)">Importes en pesos (MXN). Rojo = se descuenta; verde = justificada, sin descuento.</div>
