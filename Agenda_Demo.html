@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-171">
+<meta name="app-version" content="2026-10-05-172">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -923,6 +923,42 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 #version-footer{color:#6B7789;background:none;text-shadow:none;}
 #version-footer.sobre-azul{color:#fff;}
 </style>
+<style id="nom-css">
+/* ══════════ Nóminas (solo admin) ══════════ */
+.nom-wrap{overflow-x:auto;border:1px solid var(--g2);border-radius:12px;background:#fff;margin:10px 0 14px}
+.nom-t{width:100%;border-collapse:collapse}.nom-t th{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--g4);text-align:left;padding:9px 10px;border-bottom:2px solid var(--navy);white-space:nowrap;font-weight:800}
+.nom-t td{padding:9px 10px;border-bottom:1px solid var(--g2);font-size:12.5px;vertical-align:middle}.nom-t .r{text-align:right}.nom-t .b{font-weight:800}.nom-t td.nm{white-space:nowrap}
+.nom-t th.r{text-align:right}.nom-t td{font-variant-numeric:tabular-nums}.nom-t tbody tr:nth-child(even):not(.tot):not(.sel) td{background:#FAFBFE}
+.nom-t tr.g th{border-bottom:0;text-align:center;font-size:10px;color:#fff;letter-spacing:.8px;padding:5px}.nom-t tr.g .gp{background:var(--navy2)}.nom-t tr.g .gr{background:#8a6414}.nom-t tr.g .gd{background:#8b2f2f}.nom-t tr.g .gn{background:#0B6E6E}
+.nom-t .sep{border-left:2px solid var(--g2)}.nom-t td.nt{font-weight:800;color:#0B6E6E;font-size:13.5px}.nom-t tr.tot.dark td{background:var(--navy);color:#fff;border-top:0}.nom-t tr.tot.dark td.nt{color:#7be0e0}
+.nom-t .nm b{display:block}.nom-t td.nv{white-space:normal;min-width:150px}.nom-t .nom-btn.ic{padding:1px 8px;margin:0;border-style:dashed;color:var(--g6);font-size:11px}
+.nom-t .sub,.nom-card .sub,.nom-k span{font-size:11px;color:var(--g6)}.sub.warn,.nom-t td.warn{color:#9A6010}.mut{color:var(--g4)}
+.nom-t tr.tot td{border-top:2px solid var(--navy);border-bottom:0;font-weight:800;background:var(--g1)}.nom-t tr.sel td{background:#EAF9F9}
+.nom-t.mini td,.nom-t.mini th{padding:7px 8px}
+.nom-inp{border:1px solid var(--g2);border-radius:8px;padding:6px 8px;font:inherit;font-size:12.5px;background:#fff;color:var(--navy);max-width:100%}.nom-inp:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(42,191,191,.14)}.nom-inp.need{border-color:#F0CD8A;background:#FFF7E6}.nom-inp.sel{padding:5px 4px;margin-left:4px}
+.nom-money{display:inline-flex;align-items:center;gap:3px}.nom-money .nom-inp{width:110px;text-align:right}
+.nom-btn{border:1.5px solid var(--g2);background:#fff;border-radius:9px;padding:8px 14px;font:700 12px inherit;color:var(--navy);cursor:pointer;white-space:nowrap}.nom-btn:hover{border-color:var(--teal)}.nom-btn.sm{padding:4px 9px;font-size:11px;margin-top:4px}.nom-btn.p{background:linear-gradient(135deg,var(--teal),#22a8a8);border-color:var(--teal);color:#fff}.nom-btn.bad{color:#B02A2A}.nom-btn:disabled{opacity:.6;cursor:wait}
+.nom-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:6px 0 12px}.nom-k{border:1px solid var(--g2);border-radius:12px;padding:11px 14px;background:#fff}.nom-k small{display:block;font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--g6);font-weight:800}.nom-k b{display:block;font:800 21px inherit;margin:2px 0}.nom-k.dk{background:var(--navy);border-color:var(--navy);color:#fff}.nom-k.dk small,.nom-k.dk span{color:rgba(255,255,255,.7)}
+.nom-al{border-radius:9px;padding:8px 12px;font-size:12px;margin-bottom:6px;border:1px solid}.nom-al.warn{background:#FFF7E6;border-color:#F0D18A;color:#7A4D00}.nom-al.bad{background:#FDEEEE;border-color:#F3C2C2;color:#B02A2A}
+.nom-pill{display:inline-flex;font-size:10.5px;font-weight:700;border:1px solid;border-radius:999px;padding:2px 8px;margin:1px 2px 1px 0;white-space:nowrap}.nom-pill.ok{background:#E9F6EF;border-color:#B5E2C3;color:#1E7A3F}.nom-pill.warn{background:#FFF7E6;border-color:#F0D18A;color:#9A6010}.nom-pill.bad{background:#FDEEEE;border-color:#F3C2C2;color:#B02A2A}.nom-pill.info{background:#EAF1FC;border-color:#BFD2F2;color:#2A5DB0}.nom-pill.tbd{background:#F1F3F8;border-color:var(--g2);color:var(--g6)}
+.nom-h{font:800 14px inherit;margin:16px 0 4px}
+.nom-add{display:grid;grid-template-columns:2fr 1.4fr 1fr 1fr auto;gap:8px;margin:8px 0 14px}.nom-bar{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:12px;color:var(--g6);font-weight:700}.nom-bar .nom-btn{margin:0}
+.nom-fund{font-size:11px;color:var(--g6);margin-top:14px;border-top:1px dashed var(--g2);padding-top:10px;line-height:1.55}
+.nom-3{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:12px;margin-top:6px}.nom-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+.nom-card{border:1px solid var(--g2);border-radius:12px;padding:13px 15px;background:#fff}.nom-card h4{font:800 13.5px inherit;margin-bottom:6px}.nom-card p{font-size:12px;line-height:1.6;color:var(--g6)}
+.nom-ln{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--g2);font-size:12.5px}.nom-ln span{color:var(--g6)}.nom-ln.t{border-top:2px solid var(--navy);border-bottom:0;font-size:14px;font-weight:800;padding-top:8px}
+.nom-total{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;background:linear-gradient(180deg,#D9F4F4,#fff);border:1px solid #8FDADA;border-radius:12px;padding:14px 18px;margin:12px 0}.nom-total small{font-size:11px;color:var(--g6)}.nom-total b{display:block;font:800 30px inherit;color:#0B6E6E}
+.nom-sel{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:8px 0 12px}.nom-sel label{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--g4);font-weight:800;display:flex;flex-direction:column;gap:3px}
+.nom-seg{display:flex;background:#fff;border:1px solid var(--g2);border-radius:999px;padding:3px;flex-wrap:wrap}.nom-seg button{border:0;background:transparent;padding:7px 14px;border-radius:999px;font:700 12px inherit;color:var(--g6);cursor:pointer}.nom-seg button.on{background:var(--navy);color:#fff}
+.nom-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.nom-prog{height:8px;background:var(--g2);border-radius:5px;overflow:hidden}.nom-prog i{display:block;height:100%;background:var(--teal)}
+.nom-ov{position:fixed;inset:0;background:rgba(11,22,40,.5);display:none;align-items:center;justify-content:center;z-index:600;padding:16px}.nom-ov.show{display:flex}
+.nom-md{background:#fff;border-radius:14px;padding:20px 22px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:10px}.nom-md h3{font:800 16px inherit}.nom-md label{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--g4);font-weight:800;display:flex;flex-direction:column;gap:3px}
+.nom-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.nom-tab-btn{background:#fff;border:1px solid var(--g2);padding:8px 14px;border-radius:999px;font:700 12.5px inherit;color:var(--g6);cursor:pointer}
+.nom-tab-btn.act{background:var(--navy);border-color:var(--navy);color:#fff}
+@media(max-width:800px){.nom-3,.nom-2{grid-template-columns:1fr}.nom-add{grid-template-columns:1fr 1fr}}
+</style>
 </head>
 <body>
 <div id="version-footer" onclick="sincronizarAhora()" title="Toca para actualizar ahora" style="position:fixed;bottom:4px;right:10px;font-size:10px;font-weight:600;z-index:500;cursor:pointer;">v</div>
@@ -1079,6 +1115,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     <button id="tab-dashboard" style="display:none;" onclick="cambiarSeccion('dashboard')">📈 Dashboard</button>
     <button id="tab-inventario" onclick="cambiarSeccion('inventario')">📦 Inventario</button>
     <button id="tab-prm" onclick="cambiarSeccion('prm')">🎯 PRM</button>
+    <button id="tab-nomina" style="display:none;" onclick="cambiarSeccion('nomina')">💼 Nómina</button>
     <button id="tab-faqs" onclick="cambiarSeccion('faqs')">❓ Ayuda</button>
   </div>
 
@@ -1312,6 +1349,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 
   <div id="section-gastos" style="display:none;"></div>
 <div id="section-dashboard" style="display:none;"></div>
+<div id="section-nomina" style="display:none;"></div>
 <div id="section-faqs" style="display:none">
     <div class="filter-bar" style="align-items:flex-end;">
       <div class="form-group" style="margin:0;flex:1;">
@@ -2061,7 +2099,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-171';
+const APP_VERSION = '2026-10-05-172';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -7232,6 +7270,7 @@ function cambiarSeccion(sec){
   document.getElementById('tab-cierre').classList.toggle('active', sec==='cierre');
   document.getElementById('tab-historico').classList.toggle('active', sec==='historico');
   document.getElementById('tab-prm').classList.toggle('active', sec==='prm');
+  document.getElementById('tab-nomina').classList.toggle('active', sec==='nomina');
   document.getElementById('tab-faqs').classList.toggle('active', sec==='faqs');
   document.getElementById('tab-inventario').classList.toggle('active', sec==='inventario');
   document.getElementById('section-agenda').style.display = sec==='agenda' ? '' : 'none';
@@ -7240,6 +7279,7 @@ function cambiarSeccion(sec){
   document.getElementById('section-historico').style.display = sec==='historico' ? '' : 'none';
   document.getElementById('section-prm').style.display = sec==='prm' ? '' : 'none';
   document.getElementById('section-inventario').style.display = sec==='inventario' ? '' : 'none';
+  document.getElementById('section-nomina').style.display = sec==='nomina' ? '' : 'none';
   document.getElementById('section-faqs').style.display = sec==='faqs' ? '' : 'none';
   document.getElementById('tab-gastos').classList.toggle('active', sec==='gastos');
   document.getElementById('tab-dashboard').classList.toggle('active', sec==='dashboard');
@@ -7253,6 +7293,7 @@ function cambiarSeccion(sec){
   if(sec==='prm') renderPRM();
   if(sec==='faqs') renderFAQs();
   if(sec==='inventario') abrirInventario();
+  if(sec==='nomina') abrirNomina();
 }
 
 function cambiarModoCierre(m){
@@ -9237,6 +9278,7 @@ async function iniciarAppDespuesDeLogin(){
   document.getElementById('btn-personal-header').style.display = currentUser.esAdmin ? '' : 'none';
   document.getElementById('btn-auditoria-header').style.display = (currentUser.esAdmin || currentUser.puedeServicios) ? '' : 'none';
   document.getElementById('btn-servicios-header').style.display = (currentUser.esAdmin || currentUser.puedeServicios) ? '' : 'none';
+  document.getElementById('tab-nomina').style.display = currentUser.esAdmin ? '' : 'none';
   if(window.GD) GD.aplicarPermisos();   // Gastos y Dashboard: administración y doctoras (cada doctora, solo lo suyo)
 
   initSelects();
@@ -10491,6 +10533,795 @@ window.GD = {
   _S:S, _D:D, _filasIngreso:filasIngreso, _cargarGastos:cargarGastos, _estado:() => ({GASTOS})
 };
 })();
+
+// ════════════════════════════════════════════════════════════════════════
+// Módulo: Nómina (SOLO ADMIN — la tabla nomina_* también lo exige con RLS)
+// Basado en el módulo de Nóminas de Skin Fabric. Cifras 2026: salario mínimo
+// $315.04 · UMA $117.31 · tarifa ISR mensual (Anexo 8 RMF 2026) · cuotas IMSS
+// obreras · LFT arts. 48, 50, 76, 80, 87, 89, 162.
+// ════════════════════════════════════════════════════════════════════════
+const nomEsAdmin = () => !!(typeof currentUser !== 'undefined' && currentUser && currentUser.esAdmin);
+const money = (n,d=2) => '$' + Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:d, maximumFractionDigits:d});
+const money0 = n => money(n,0);
+const $id = id => document.getElementById(id);
+const _nomScriptsCargados = {};
+function frepCargarScriptUnaVez(src){
+  return _nomScriptsCargados[src] || (_nomScriptsCargados[src] = new Promise((ok, fail)=>{
+    const s = document.createElement('script');
+    s.src = src; s.onload = () => ok();
+    s.onerror = () => { delete _nomScriptsCargados[src]; fail(new Error('No se pudo cargar '+src)); };
+    document.head.appendChild(s);
+  }));
+}
+async function frepMontarIframe(html){
+  const ifr = document.createElement('iframe');
+  ifr.setAttribute('aria-hidden', 'true');
+  ifr.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;visibility:hidden;';
+  document.body.appendChild(ifr);
+  await new Promise(res => { ifr.onload = res; ifr.srcdoc = html; });
+  const doc = ifr.contentDocument;
+  try{ await Promise.race([doc.fonts.ready, new Promise(r=>setTimeout(r, 2500))]); }catch(_){}
+  await new Promise(r=>setTimeout(r, 250));
+  return ifr;
+}
+function confirmarAsync(opciones){
+  return new Promise(resolve=>{
+    const btnCancelar = document.getElementById('confirm-modal-btn-cancelar');
+    let resuelto = false;
+    const onCancel = () => { if(resuelto) return; resuelto = true; btnCancelar.removeEventListener('click', onCancel); resolve(false); };
+    btnCancelar.addEventListener('click', onCancel);
+    mostrarConfirm(opciones, () => { if(resuelto) return; resuelto = true; btnCancelar.removeEventListener('click', onCancel); resolve(true); });
+  });
+}
+async function nomHtmlAPdf(html, filename, title){
+  let ifr = null;
+  try{
+    await Promise.all([
+      frepCargarScriptUnaVez('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+      frepCargarScriptUnaVez('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+    ]);
+    ifr = await frepMontarIframe(html);
+    const doc = ifr.contentDocument;
+    const hojas = [...doc.querySelectorAll('.page')];
+    if(!hojas.length) throw new Error('No se generó contenido para el PDF.');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait', compress:true });
+    const PW = 210, PH = 297; // A4 en mm — cada .page mide 794×1123px = 210×297mm a 96dpi
+    for(let i=0;i<hojas.length;i++){
+      const canvas = await window.html2canvas(hojas[i], { scale:2, backgroundColor:'#ffffff', width:794, windowWidth:794, useCORS:true, logging:false });
+      if(i>0) pdf.addPage('a4','portrait');
+      pdf.addImage(canvas.toDataURL('image/jpeg',0.95), 'JPEG', 0, 0, PW, PH, undefined, 'FAST');
+    }
+    pdf.setProperties({ title: title||'Documento', subject: title||'' });
+    pdf.save(filename);
+    toast('✓ PDF descargado');
+  }catch(err){
+    console.error('[CANOPY] Nómina PDF:', err);
+    toast('⚠ No se pudo generar el PDF: '+(err && err.message ? err.message : err));
+  }finally{
+    if(ifr) ifr.remove();
+  }
+}
+
+const NOM_SMG = 315.04, NOM_UMA = 117.31, NOM_TOPE_PA = 2 * 315.04, NOM_SUBS_LIM = 11492.66;
+const NOM_ISR = [[0.01,844.59,0,.0192],[844.60,7168.51,16.22,.0640],[7168.52,12598.02,420.95,.1088],[12598.03,14644.64,1011.68,.16],[14644.65,17533.64,1339.14,.1792],[17533.65,35362.83,1856.84,.2136],[35362.84,55736.68,5665.16,.2352],[55736.69,106410.50,10457.09,.30],[106410.51,141880.66,25659.23,.32],[141880.67,425641.99,37009.69,.34],[425642,1e12,133488.54,.35]];
+const NOM_TIPOS = { vacaciones:['🏖','Vacaciones','dias'], falta:['✗','Falta','dias'], incapacidad:['🩺','Incapacidad','dias'], bono:['＋','Bono','monto'], descuento:['−','Descuento (préstamo, otros)','monto'], otro:['📝','Nota','nota'] };
+const NOM_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+let NOM_EMP = [], NOM_NOV = [], NOM_VAC_NOV = [], NOM_PERIODO = '', NOM_TAB = 'plantilla', NOM_CARGADO = false, NOM_MONTADO = false, NOM_FIN = { emp:'', baja:'', causa:'despido', vacTom:null };
+
+function nomVacDias(a){ if(a < 1) return 0; if(a <= 5) return [0,12,14,16,18,20][a]; for(const [lim, d] of [[10,22],[15,24],[20,26],[25,28],[30,30],[35,32]]) if(a <= lim) return d; return 32; }
+function nomIsr(base){ for(const [lo, hi, cf, p] of NOM_ISR) if(base >= lo && base <= hi) return Math.round((cf + (base - lo) * p) * 100) / 100; return 0; }
+function nomF(s){ if(!s) return null; const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d, 12); }
+function nomFechaTxt(d){ if(!d) return '—'; if(typeof d === 'string') d = nomF(d); return d.getDate() + ' ' + NOM_MESES[d.getMonth()].slice(0, 3) + ' ' + d.getFullYear(); }
+function nomAniosCompl(ing, ref){ let a = ref.getFullYear() - ing.getFullYear(); if(ref.getMonth() < ing.getMonth() || (ref.getMonth() === ing.getMonth() && ref.getDate() < ing.getDate())) a--; return Math.max(a, 0); }
+function nomDias(a, b){ return Math.round((b - a) / 86400000); }
+function nomImss(sdi, dias = 30){
+  const base = sdi * dias;
+  const o = { 'Enf. y mat. excedente 3 UMA (0.40%)': Math.max(sdi - 3 * NOM_UMA, 0) * dias * 0.004, 'Enf. y mat. prestaciones en dinero (0.25%)': base * 0.0025, 'Gastos médicos pensionados (0.375%)': base * 0.00375, 'Invalidez y vida (0.625%)': base * 0.00625, 'Cesantía y vejez (1.125%)': base * 0.01125 };
+  Object.keys(o).forEach(k => o[k] = Math.round(o[k] * 100) / 100);
+  return o;
+}
+function nomFicha(e, ref){
+  const ing = nomF(e.fecha_ingreso);
+  const diario = Number(e.salario_mensual) / 30;
+  const ac = ing ? nomAniosCompl(ing, ref) : 1;                 // sin fecha de ingreso se supone 1 año (mínimo legal) y se avisa
+  const vac = nomVacDias(Math.max(ac, 1));
+  const factor = 1 + (15 + vac * 0.25) / 365;
+  const anios = ing ? nomDias(ing, ref) / 365 : 0;
+  return { e, ing, diario, ac, anios, vac: ing ? nomVacDias(ac) : 0, factor, sdi: diario * factor, sinFecha: !ing, bajoMinimo: diario < NOM_SMG, cercaMinimo: diario >= NOM_SMG && diario < NOM_SMG * 1.02 };
+}
+function nomVacDev(f, ref){ return f.sinFecha ? 0 : (f.ac >= 1 ? f.vac : Math.round(12 * nomDias(f.ing, ref) / 365 * 100) / 100); }
+function nomPer(per){ const [Y, M, Q] = per.split('-'); return { Y: Number(Y), M: Number(M), Q: Q === 'Q2' ? 2 : 1 }; }
+function nomPeriodoRef(per){ const p = nomPer(per); return p.Q === 1 ? new Date(p.Y, p.M - 1, 15, 12) : new Date(p.Y, p.M, 0, 12); }
+function nomRango(per){ const p = nomPer(per); return [new Date(p.Y, p.M - 1, p.Q === 1 ? 1 : 16, 12), nomPeriodoRef(per)]; }
+function nomLabelPer(per){ const p = nomPer(per), [a, b] = nomRango(per); return NOM_MESES[p.M - 1][0].toUpperCase() + NOM_MESES[p.M - 1].slice(1) + ' ' + p.Y + ' · ' + p.Q + '.ª quincena (' + a.getDate() + '–' + b.getDate() + ')'; }
+function nomPerMover(per, d){ let { Y, M, Q } = nomPer(per); Q += d; if(Q > 2){ Q = 1; M++; } if(Q < 1){ Q = 2; M--; } const f = new Date(Y, M - 1, 1); return f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-Q' + Q; }
+const NOM_DQ = 30.4;                                          // días del mes en la tarifa mensual del art. 96 LISR
+function nomIsrQ(base){ return Math.round(nomIsr(base * NOM_DQ / 15) * 15 / NOM_DQ * 100) / 100; }   // tarifa quincenal = tarifa mensual prorrateada a 15 días
+function nomEsDesc(n){ return (n.tipo === 'falta' || n.tipo === 'incapacidad') && !n.justificada; }
+function nomCalcMes(e, novs, per){
+  const f = nomFicha(e, nomPeriodoRef(per)), [qi, qf] = nomRango(per);
+  const of = t => novs.filter(n => n.tipo === t);
+  const dias = (t, fn) => of(t).filter(fn || (() => true)).reduce((a, n) => a + Number(n.dias || 0), 0);
+  const monto = t => of(t).reduce((a, n) => a + Number(n.monto || 0), 0);
+  const dVac = dias('vacaciones'), dFalta = dias('falta'), dInc = dias('incapacidad'), bono = monto('bono'), otros = monto('descuento');
+  const dDesc = dias('falta', n => !n.justificada) + dias('incapacidad', n => !n.justificada);   // solo lo no justificado se descuenta
+  const dJust = dFalta + dInc - dDesc;
+  const diasTrab = f.ing && f.ing > qi ? Math.min(15, Math.max(nomDias(f.ing, qf) + 1, 0)) : 15;
+  const c2 = v => Math.round(v * 100) / 100;                  // todo en centavos para que el Excel, el PDF y la pantalla cuadren
+  const prima = c2(dVac * f.diario * 0.25), primaGrav = Math.max(prima - 15 * NOM_UMA, 0);
+  const descFalta = c2(dDesc * f.diario), sueldo = c2(Number(e.salario_mensual) / 2 * diasTrab / 15);
+  const bruto = e.salario_es_bruto !== false;
+  const base = Math.max(sueldo - descFalta + bono + primaGrav, 0);
+  const isr = bruto ? nomIsrQ(base) : 0;
+  const imssDet = bruto ? nomImss(f.sdi, diasTrab) : {};
+  const imss = Object.values(imssDet).reduce((a, v) => a + v, 0);
+  const perc = c2(sueldo + bono + prima);
+  const ded = c2(isr + imss + descFalta + otros);
+  return { f, e, novs, dVac, dFalta, dInc, dDesc, dJust, diasTrab, bono, otros, prima, descFalta, sueldo, perc, isr, imss, imssDet, ded, neto: c2(perc - ded), bruto, subsidio: bruto && base <= NOM_SUBS_LIM * 15 / NOM_DQ };
+}
+function nomMesDefault(){ const h = new Date(); return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-Q' + (h.getDate() <= 15 ? 1 : 2); }
+
+async function cargarNominas(){
+  if(!nomEsAdmin()) return;
+  if(!NOM_PERIODO) NOM_PERIODO = nomMesDefault();
+  document.getElementById('nom-mes').value = NOM_PERIODO.slice(0, 7); document.getElementById('nom-q').value = 'Q' + nomPer(NOM_PERIODO).Q;
+  const [r1, r2, r3] = await Promise.all([
+    sb.from('nomina_empleados').select('*').order('activo', { ascending:false }).order('orden').order('nombre'),
+    sb.from('nomina_novedades').select('*').eq('periodo', NOM_PERIODO).order('creado_en'),
+    sb.from('nomina_novedades').select('*').eq('tipo', 'vacaciones')
+  ]);
+  if(r1.error || r2.error || r3.error){ console.error('[CANOPY] Nóminas:', r1.error || r2.error || r3.error); toast('No se pudo cargar Nóminas.'); return; }
+  NOM_EMP = r1.data || []; NOM_NOV = r2.data || []; NOM_VAC_NOV = r3.data || []; NOM_CARGADO = true;
+  nomRender();
+}
+function nomActivos(){ return NOM_EMP.filter(e => e.activo); }
+function nomRender(){
+  document.querySelectorAll('#nom-tabs .nom-tab-btn').forEach(b => b.classList.toggle('act', b.dataset.nt === NOM_TAB));
+  document.querySelectorAll('.nom-panel').forEach(p => p.hidden = p.id !== 'nom-p-' + NOM_TAB);
+  document.getElementById('nom-bar').style.display = (NOM_TAB === 'mes' || NOM_TAB === 'rep') ? 'flex' : 'none';
+  ({ plantilla: nomRenderPlantilla, mes: nomRenderMes, vac: nomRenderVac, agui: nomRenderAgui, fin: nomRenderFin, rep: nomRenderRep })[NOM_TAB]();
+}
+const nomInp = (id, f, v, type = 'text', extra = '', cls = '') => `<input class="nom-inp${cls}" type="${type}" data-id="${esc(id)}" data-f="${f}" value="${esc(v ?? '')}" ${extra}/>`;
+
+// ── Plantilla ──
+function nomRenderPlantilla(){
+  const ref = new Date(); ref.setHours(12);
+  const act = nomActivos(), baj = NOM_EMP.filter(e => !e.activo);
+  const fichas = act.map(e => nomFicha(e, ref));
+  const totM = act.reduce((a, e) => a + Number(e.salario_mensual), 0);
+  const sinFecha = fichas.filter(f => f.sinFecha).length, bajo = fichas.filter(f => f.bajoMinimo || f.cercaMinimo);
+  const avisos = [];
+  if(sinFecha) avisos.push(`<div class="nom-al warn">⚠ <b>${sinFecha}</b> persona(s) sin fecha de inicio de contrato: captúrala para calcular antigüedad, vacaciones y finiquito.</div>`);
+  fichas.filter(f => f.bajoMinimo).forEach(f => avisos.push(`<div class="nom-al bad">⛔ <b>${esc(f.e.nombre)}</b>: ${money(f.diario)} diarios está <b>por debajo</b> del salario mínimo 2026 (${money(NOM_SMG)}).</div>`));
+  fichas.filter(f => f.cercaMinimo).forEach(f => avisos.push(`<div class="nom-al warn">⚠ <b>${esc(f.e.nombre)}</b>: ${money(f.diario)} diarios (÷30) apenas supera el mínimo ${money(NOM_SMG)}; a 30.4 días quedaría por debajo. Valídalo con el contador.</div>`));
+  const filas = fichas.map(f => {
+    const e = f.e;
+    return `<tr>
+      <td class="nm"><b>${esc(e.nombre)}</b><div class="sub">${nomInp(e.id, 'puesto', e.puesto, 'text', 'placeholder="Puesto" style="width:170px"')}</div></td>
+      <td>${nomInp(e.id, 'fecha_ingreso', e.fecha_ingreso, 'date', '', f.sinFecha ? ' need' : '')}${f.sinFecha ? '<div class="sub warn">Por capturar</div>' : `<div class="sub">${f.ac} año(s) ${Math.floor((f.anios % 1) * 12)} m</div>`}</td>
+      <td class="r"><span class="nom-money"><span>$</span>${nomInp(e.id, 'salario_mensual', e.salario_mensual, 'number', 'min="0" step="0.01"')}</span>
+        <select class="nom-inp sel" data-id="${esc(e.id)}" data-f="salario_es_bruto"><option value="1"${e.salario_es_bruto !== false ? ' selected' : ''}>Bruto</option><option value="0"${e.salario_es_bruto === false ? ' selected' : ''}>Neto</option></select></td>
+      <td class="r">${money(f.diario)}</td>
+      <td class="r">${money(f.sdi)}<div class="sub">×${f.factor.toFixed(4)}${f.sinFecha ? ' · mínimo' : ''}</div></td>
+      <td class="r">${f.sinFecha ? '—' : (f.ac < 1 ? '<span class="mut">12 d al 1.er año</span>' : f.vac + ' d')}</td>
+      <td><button type="button" class="nom-btn sm" data-baja="${esc(e.id)}">Dar de baja</button></td></tr>`;
+  }).join('');
+  const bajas = baj.length ? `<h3 class="nom-h">Bajas (${baj.length})</h3><div class="nom-wrap"><table class="nom-t"><tbody>${baj.map(e => `<tr><td class="nm"><b>${esc(e.nombre)}</b><div class="sub">${esc(e.puesto || '')}</div></td><td>Ingreso ${nomFechaTxt(e.fecha_ingreso)}</td><td>Baja ${nomFechaTxt(e.fecha_baja)}</td><td><button type="button" class="nom-btn sm" data-reactivar="${esc(e.id)}">Reactivar</button></td></tr>`).join('')}</tbody></table></div>` : '';
+  document.getElementById('nom-p-plantilla').innerHTML = `
+    <div class="nom-kpis"><div class="nom-k dk"><small>Nómina bruta mensual</small><b>${money(totM)}</b><span>${act.length} persona(s) · quincena ${money(totM / 2)}</span></div>
+      <div class="nom-k"><small>Aguinaldo a provisionar (15 d)</small><b>${money(fichas.reduce((a, f) => a + f.diario * 15, 0))}</b><span>pago a más tardar el 20 de diciembre</span></div>
+      <div class="nom-k"><small>Alertas</small><b>${avisos.length}</b><span>fecha de ingreso · salario mínimo</span></div></div>
+    ${avisos.join('')}
+    <div class="nom-wrap"><table class="nom-t"><thead><tr><th>Persona</th><th>Inicio de contrato</th><th class="r">Sueldo mensual</th><th class="r">Diario</th><th class="r">SDI (integrado)</th><th class="r">Vacaciones</th><th></th></tr></thead><tbody>${filas || '<tr><td colspan="7" class="empty-note">Sin personal activo.</td></tr>'}</tbody></table></div>
+    <h3 class="nom-h">+ Alta de personal</h3>
+    <div class="nom-add"><input class="nom-inp" id="nom-n-nombre" placeholder="Nombre completo"/><input class="nom-inp" id="nom-n-puesto" placeholder="Puesto"/><input class="nom-inp" id="nom-n-sueldo" type="number" min="0" step="0.01" placeholder="Sueldo mensual"/><input class="nom-inp" id="nom-n-ing" type="date" title="Inicio de contrato"/><button type="button" class="nom-btn p" id="nom-n-add">Agregar</button></div>
+    ${bajas}
+    <div class="nom-fund"><b>Fundamento:</b> arts. 76–81, 87 y 89 LFT · salario mínimo 2026 ${money(NOM_SMG)} · UMA 2026 ${money(NOM_UMA)}. SDI = sueldo diario × (1 + (15 + días de vacaciones × 25%) ÷ 365).</div>`;
+}
+async function nomGuardarEmp(id, campo, valor){
+  const upd = { [campo]: valor };
+  const { error } = await sb.from('nomina_empleados').update(upd).eq('id', id);
+  if(error){ console.error('[CANOPY] Nóminas:', error); toast('No se pudo guardar.'); return false; }
+  const e = NOM_EMP.find(x => x.id == id); if(e) e[campo] = valor;
+  toast('✓ Guardado'); return true;
+}
+
+// ── Nómina quincenal ──
+function nomNovsDe(id){ return NOM_NOV.filter(n => n.empleado_id === id); }
+function nomChips(c){
+  const ch = [];
+  const suma = (t, j) => c.novs.filter(n => n.tipo === t && !!n.justificada === j).reduce((a, n) => a + Number(n.dias || 0), 0);
+  if(c.dVac) ch.push(`<span class="nom-pill info">🏖 ${c.dVac} d</span>`);
+  if(suma('falta', false)) ch.push(`<span class="nom-pill bad" title="Se descuenta">✗ ${suma('falta', false)} falta</span>`);
+  if(suma('incapacidad', false)) ch.push(`<span class="nom-pill bad" title="Se descuenta">🩺 ${suma('incapacidad', false)} d incap.</span>`);
+  const dj = suma('falta', true) + suma('incapacidad', true);
+  if(dj) ch.push(`<span class="nom-pill ok" title="Justificada: no se descuenta">✓ ${dj} d justificada</span>`);
+  if(c.bono) ch.push(`<span class="nom-pill ok">＋ ${money0(c.bono)}</span>`);
+  if(c.otros) ch.push(`<span class="nom-pill tbd">− ${money0(c.otros)}</span>`);
+  c.novs.filter(n => n.tipo === 'otro').forEach(() => ch.push('<span class="nom-pill tbd">📝 nota</span>'));
+  return ch.join(' ') || '<span class="mut">Sin novedades</span>';
+}
+function nomRenderMes(){
+  const calcs = nomActivos().map(e => nomCalcMes(e, nomNovsDe(e.id), NOM_PERIODO));
+  const T = k => calcs.reduce((a, c) => a + c[k], 0);
+  const N = v => v ? Number(v).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '<span class="mut">—</span>';
+  const filas = calcs.map(c => `<tr><td class="nm"><b>${esc(c.e.nombre)}</b><div class="sub">${esc(c.e.puesto || '')}</div></td>
+    <td class="nv">${nomChips(c)} <button type="button" class="nom-btn sm ic" data-nov-add="${esc(c.e.id)}" title="Agregar novedad" aria-label="Agregar novedad">＋</button></td>
+    <td class="r">${N(c.sueldo)}${c.diasTrab < 15 ? `<div class="sub">${c.diasTrab} d (ingreso)</div>` : ''}</td><td class="r">${N(c.bono + c.prima)}</td><td class="r b">${N(c.perc)}</td>
+    <td class="r sep">${c.bruto ? N(c.isr) : '<span class="mut">—</span>'}</td><td class="r">${c.bruto ? N(c.imss) : '<span class="mut">—</span>'}</td>
+    <td class="r sep">${N(c.descFalta)}</td><td class="r">${N(c.otros)}</td><td class="r sep nt">${N(c.neto)}</td></tr>`).join('');
+  const sub = calcs.filter(c => c.subsidio).map(c => `<div class="nom-al warn">ℹ <b>${esc(c.e.nombre)}</b> gana ≤ ${money(NOM_SUBS_LIM)}: puede aplicar subsidio al empleo (no lo calculo; lo define el contador).</div>`).join('');
+  const neto = calcs.filter(c => !c.bruto).map(c => `<div class="nom-al warn">ℹ <b>${esc(c.e.nombre)}</b> está capturada con sueldo <b>neto</b>: no calculo ISR/IMSS (falta el bruto).</div>`).join('');
+  const sf = calcs.filter(c => c.f.sinFecha).map(c => `<div class="nom-al warn">⚠ <b>${esc(c.e.nombre)}</b> sin fecha de ingreso: el SDI usa el mínimo de ley (12 días de vacaciones).</div>`).join('');
+  const nov = NOM_NOV.map(n => { const e = NOM_EMP.find(x => x.id === n.empleado_id); const t = NOM_TIPOS[n.tipo];
+    return `<tr><td>${esc(e?.nombre || '—')}</td><td>${t[0]} ${t[1]}${n.tipo === 'falta' || n.tipo === 'incapacidad' ? (n.justificada ? ' <span class="nom-pill ok">justificada</span>' : ' <span class="nom-pill bad">se descuenta</span>') : ''}</td><td>${n.fecha ? nomFechaTxt(n.fecha) : '—'}</td><td class="r">${n.dias != null && n.dias !== '' ? Number(n.dias) + ' d' : '—'}</td><td class="r">${n.monto != null && n.monto !== '' ? money(n.monto) : '—'}</td><td>${esc(n.nota || '')}</td>
+      <td class="r"><button type="button" class="nom-btn sm" data-nov-edit="${esc(n.id)}">Editar</button> <button type="button" class="nom-btn sm bad" data-nov-del="${esc(n.id)}">Quitar</button></td></tr>`; }).join('');
+  document.getElementById('nom-p-mes').innerHTML = `${sf}${neto}${sub}
+    <div class="nom-wrap"><table class="nom-t"><thead><tr class="g"><th colspan="2"></th><th colspan="3" class="gp">Percepciones</th><th colspan="2" class="gr">Retenciones</th><th colspan="2" class="gd">Descuentos</th><th class="gn">Neto</th></tr>
+      <tr><th>Persona</th><th>Novedades</th><th class="r">Sueldo quinc.</th><th class="r">Bono / prima</th><th class="r">Total</th><th class="r sep">ISR</th><th class="r">IMSS obrero</th><th class="r sep">Faltas</th><th class="r">Otros</th><th class="r sep">A pagar</th></tr></thead>
+      <tbody>${filas}<tr class="tot dark"><td colspan="2">Totales · ${calcs.length} persona(s) · ${esc(nomLabelPer(NOM_PERIODO))}</td><td class="r">${N(T('sueldo'))}</td><td class="r">${N(T('bono') + T('prima'))}</td><td class="r">${N(T('perc'))}</td><td class="r">${N(T('isr'))}</td><td class="r">${N(T('imss'))}</td><td class="r">${N(T('descFalta'))}</td><td class="r">${N(T('otros'))}</td><td class="r nt">${N(T('neto'))}</td></tr></tbody></table></div>
+    <div style="margin:-6px 2px 4px;font-size:11px;color:var(--g6)">Importes en pesos (MXN). Rojo = se descuenta; verde = justificada, sin descuento.</div>
+    <h3 class="nom-h">Novedades registradas (${NOM_NOV.length})</h3>
+    <div class="nom-wrap"><table class="nom-t"><thead><tr><th>Persona</th><th>Tipo</th><th>Fecha</th><th class="r">Días</th><th class="r">Monto</th><th>Nota</th><th></th></tr></thead><tbody>${nov || '<tr><td colspan="7" class="empty-note">Sin novedades en esta quincena. Usa “＋” en la persona.</td></tr>'}</tbody></table></div>
+    <div class="nom-fund"><b>Cómo se calcula (nómina quincenal, 15 días):</b> sueldo = mensual ÷ 2; ISR con la tarifa del art. 96 LISR (Anexo 8 RMF 2026) prorrateada a 15 días, sobre sueldo − faltas + bonos + prima vacacional gravada; IMSS cuota obrera sobre el SDI × 15 días (0.40% excedente 3 UMA, 0.25%, 0.375%, 0.625%, 1.125%); prima vacacional 25% de los días tomados (exenta hasta 15 UMA = ${money(15 * NOM_UMA)}). Faltas e incapacidades: si están <b>justificadas</b> no se descuentan; si no, se descuenta el día (sueldo ÷ 30). Es un cálculo de apoyo: el contador valida antes de pagar o timbrar.</div>`;
+}
+
+// ── Novedades (alta / edición) ──
+let NOM_NOV_EDIT = null;
+function nomAbrirNov(empId, novId){
+  const n = novId ? NOM_NOV.find(x => x.id == novId) : null;
+  const e = NOM_EMP.find(x => x.id == (n ? n.empleado_id : empId));
+  NOM_NOV_EDIT = { id: n?.id || null, empleado_id: e.id };
+  document.getElementById('nom-m-tit').textContent = (n ? 'Editar novedad' : 'Nueva novedad') + ' · ' + e.nombre;
+  document.getElementById('nom-m-tipo').innerHTML = Object.entries(NOM_TIPOS).map(([k, v]) => `<option value="${k}"${n?.tipo === k ? ' selected' : ''}>${v[0]} ${v[1]}</option>`).join('');
+  document.getElementById('nom-m-fecha').value = n?.fecha || '';
+  document.getElementById('nom-m-dias').value = n?.dias ?? '';
+  document.getElementById('nom-m-monto').value = n?.monto ?? '';
+  document.getElementById('nom-m-nota').value = n?.nota || '';
+  nomNovCampos();
+  document.getElementById('nom-m-just').checked = n ? !!n.justificada : document.getElementById('nom-m-tipo').value === 'incapacidad';
+  document.getElementById('nom-modal').classList.add('show');
+}
+function nomNovCampos(){
+  const t = NOM_TIPOS[document.getElementById('nom-m-tipo').value][2];
+  document.getElementById('nom-m-dias-w').style.display = t === 'dias' ? '' : 'none';
+  document.getElementById('nom-m-monto-w').style.display = t === 'monto' ? '' : 'none';
+  const tp = document.getElementById('nom-m-tipo').value;
+  document.getElementById('nom-m-just-w').style.display = (tp === 'falta' || tp === 'incapacidad') ? 'flex' : 'none';
+}
+async function nomGuardarNov(){
+  const tipo = document.getElementById('nom-m-tipo').value, t = NOM_TIPOS[tipo][2];
+  const dias = document.getElementById('nom-m-dias').value, monto = document.getElementById('nom-m-monto').value;
+  if(t === 'dias' && !(Number(dias) > 0)){ toast('Escribe los días.'); return; }
+  if(t === 'monto' && !(Number(monto) > 0)){ toast('Escribe el monto.'); return; }
+  const fecha = document.getElementById('nom-m-fecha').value || null;
+  const [qi, qf] = nomRango(NOM_PERIODO), fd = fecha ? nomF(fecha) : null;
+  if(fd && (fd < qi || fd > qf) && !(await confirmarAsync({ titulo:'La fecha es de otra quincena', mensaje:`La fecha no cae en ${nomLabelPer(NOM_PERIODO)}. La novedad se guardará en esta quincena de todos modos.`, textoConfirmar:'Guardar', icono:'📅' }))) return;
+  const fila = { empleado_id: NOM_NOV_EDIT.empleado_id, periodo: NOM_PERIODO, tipo, fecha, dias: t === 'dias' ? Number(dias) : null, monto: t === 'monto' ? Number(monto) : null, nota: document.getElementById('nom-m-nota').value.trim() || null, justificada: (tipo === 'falta' || tipo === 'incapacidad') && document.getElementById('nom-m-just').checked };
+  const q = NOM_NOV_EDIT.id ? sb.from('nomina_novedades').update(fila).eq('id', NOM_NOV_EDIT.id) : sb.from('nomina_novedades').insert(fila);
+  const { error } = await q;
+  if(error){ console.error('[CANOPY] Nóminas:', error); toast('No se pudo guardar la novedad.'); return; }
+  document.getElementById('nom-modal').classList.remove('show');
+  toast('✓ Novedad guardada'); await cargarNominas();
+}
+
+// ── Vacaciones y prestaciones ──
+function nomUltAniv(ing, ref){ const ac = nomAniosCompl(ing, ref); return new Date(ing.getFullYear() + ac, ing.getMonth(), ing.getDate(), 12); }
+function nomVacTomados(e, ref){
+  const ing = nomF(e.fecha_ingreso); if(!ing) return 0;
+  const desde = nomUltAniv(ing, ref);
+  return NOM_VAC_NOV.filter(n => n.empleado_id === e.id && (nomF(n.fecha) || nomF(n.periodo.slice(0, 7) + '-01')) >= desde).reduce((a, n) => a + Number(n.dias || 0), 0);
+}
+function nomRenderVac(){
+  const hoy = new Date(); hoy.setHours(12);
+  const filas = nomActivos().map(e => {
+    const f = nomFicha(e, hoy);
+    if(f.sinFecha) return `<tr><td class="nm"><b>${esc(e.nombre)}</b></td><td colspan="7" class="warn">Captura la fecha de inicio de contrato en Plantilla.</td></tr>`;
+    const tom = nomVacTomados(e, hoy), dev = nomVacDev(f, hoy), pend = Math.round((dev - tom) * 100) / 100;
+    const prox = new Date(f.ing.getFullYear() + f.ac + 1, f.ing.getMonth(), f.ing.getDate(), 12);
+    const desde = new Date(Math.max(new Date(hoy.getFullYear(), 0, 1, 12), f.ing));
+    const agui = f.diario * 15 * ((nomDias(desde, hoy) + 1) / 365);
+    return `<tr><td class="nm"><b>${esc(e.nombre)}</b></td><td>${f.ac} año(s)</td><td class="r b">${f.ac >= 1 ? f.vac : dev}${f.ac >= 1 ? '' : '<div class="sub">proporcional</div>'}</td>
+      <td style="min-width:130px"><div class="nom-prog"><i style="width:${Math.min(100, dev ? tom / dev * 100 : 0)}%"></i></div><div class="sub">${tom} tomados</div></td>
+      <td class="r b">${pend}${pend < 0 ? '<div class="sub">tomados por adelantado</div>' : ''}</td><td class="r">${money(Math.max(pend, 0) * f.diario)}</td><td class="r">${money(Math.max(pend, 0) * f.diario * 0.25)}</td>
+      <td class="r">${money(agui)}</td><td>${nomFechaTxt(prox)}<div class="sub">a ${f.ac + 1} años: ${nomVacDias(f.ac + 1)} d</div></td></tr>`;
+  }).join('');
+  document.getElementById('nom-p-vac').innerHTML = `
+    <div class="nom-wrap"><table class="nom-t"><thead><tr><th>Persona</th><th>Antigüedad</th><th class="r">Días ley / devengados</th><th>Disfrutados</th><th class="r">Pendientes</th><th class="r">Valor pendiente</th><th class="r">Prima vac. 25%</th><th class="r">Aguinaldo a hoy</th><th>Próximo aniversario</th></tr></thead><tbody>${filas}</tbody></table></div>
+    <div class="nom-3"><div class="nom-card"><h4>Reforma “Vacaciones dignas” (2023)</h4><p>Desde el 1.er año son <b>12 días</b> y suben <b>2 por año hasta 20</b> (año 5); del 6 al 10 son 22 y luego +2 cada 5 años. Prima vacacional <b>mínimo 25%</b>. Aguinaldo <b>mínimo 15 días</b>, a más tardar el <b>20 de diciembre</b>. Las vacaciones se registran como novedad en “Nómina quincenal”; los disfrutados cuentan desde el último aniversario.</p></div>
+    <div class="nom-card"><h4>Tabla art. 76 LFT</h4>${[['1 año',12],['2 años',14],['3 años',16],['4 años',18],['5 años',20],['6 a 10',22],['11 a 15',24],['16 a 20',26]].map(([a, b]) => `<div class="nom-ln"><span>${a}</span><b>${b} días</b></div>`).join('')}</div>
+    <div class="nom-card"><h4>Topes exentos de ISR 2026</h4><div class="nom-ln"><span>Aguinaldo (30 UMA)</span><b>${money(30 * NOM_UMA)}</b></div><div class="nom-ln"><span>Prima vacacional (15 UMA)</span><b>${money(15 * NOM_UMA)}</b></div><p class="sub">UMA 2026 = ${money(NOM_UMA)}. Lo que exceda se grava.</p></div></div>`;
+}
+
+// ── Aguinaldo ──
+let NOM_AG = { anio: new Date().getFullYear(), dias: 15 };
+function nomAguinaldo(e, anio, diasAg){
+  const c2 = v => Math.round(v * 100) / 100;
+  const ini = new Date(anio, 0, 1, 12), fin = new Date(anio, 11, 31, 12), f = nomFicha(e, fin);
+  const desde = f.ing && f.ing > ini ? f.ing : ini;
+  const diasTrab = f.ing && f.ing > fin ? 0 : Math.min(nomDias(desde, fin) + 1, 365);
+  const bruto = c2(f.diario * diasAg * diasTrab / 365);
+  const exento = Math.min(bruto, c2(30 * NOM_UMA)), gravado = c2(bruto - exento);
+  const mensual = Number(e.salario_mensual) || 0, calcIsr = e.salario_es_bruto !== false;
+  let isr = 0, tasa = 0;
+  if(calcIsr && gravado > 0){
+    const gm = gravado / 365 * NOM_DQ;                                  // gravado llevado a mes
+    const isrExtra = nomIsr(mensual + gm) - nomIsr(mensual);            // ISR del mes con y sin el aguinaldo gravado
+    tasa = gm > 0 ? isrExtra / gm : 0; isr = c2(gravado * tasa);
+  }
+  return { e, f, diasTrab, diario: f.diario, bruto, exento, gravado, isr, tasa, calcIsr, neto: c2(bruto - isr), sinFecha: f.sinFecha };
+}
+function nomAguDatos(){
+  const filas = nomActivos().map(e => nomAguinaldo(e, NOM_AG.anio, NOM_AG.dias)).filter(r => r.diasTrab > 0);
+  const T = k => filas.reduce((a, r) => a + r[k], 0);
+  return { filas, T, limite: new Date(NOM_AG.anio, 11, 20, 12) };
+}
+function nomRenderAgui(){
+  const D = nomAguDatos(), m = money, T = D.T, sin = D.filas.filter(r => r.sinFecha).length;
+  const tr = D.filas.map(r => `<tr><td class="nm"><b>${esc(r.e.nombre)}</b><div class="sub">${esc(r.e.puesto || '')}</div></td>
+    <td>${r.sinFecha ? '<span class="warn">sin fecha: año completo</span>' : esc(nomFechaTxt(r.e.fecha_ingreso))}</td><td class="r">${r.diasTrab}<div class="sub">de 365</div></td><td class="r">${m(r.diario)}</td>
+    <td class="r b">${m(r.bruto)}</td><td class="r">${m(r.exento)}</td><td class="r">${r.gravado ? m(r.gravado) : '—'}</td>
+    <td class="r">${r.calcIsr ? (r.isr ? m(r.isr) + '<div class="sub">tasa ' + (r.tasa * 100).toFixed(2) + '%</div>' : '$0.00') : '<span class="sub">sueldo neto: sin ISR</span>'}</td><td class="r b">${m(r.neto)}</td></tr>`).join('') || '<tr><td colspan="9" class="empty-note">No hay personal con contrato en ese año.</td></tr>';
+  document.getElementById('nom-p-agui').innerHTML = `
+    ${sin ? `<div class="nom-al warn">⚠ ${sin} persona(s) sin fecha de inicio de contrato: se calculó el año completo. Captura la fecha en Plantilla.</div>` : ''}
+    ${NOM_AG.dias < 15 ? '<div class="nom-al bad">La ley exige mínimo 15 días de aguinaldo.</div>' : ''}
+    <div class="nom-sel"><label>Año<input type="number" id="nom-ag-anio" class="nom-inp" min="2020" max="2100" step="1" value="${NOM_AG.anio}"/></label>
+      <label>Días de aguinaldo<input type="number" id="nom-ag-dias" class="nom-inp" min="15" step="1" value="${NOM_AG.dias}" title="Mínimo legal: 15 días"/></label>
+      <div class="sub">Fecha límite de pago: <b>${esc(nomFechaTxt(D.limite))}</b></div></div>
+    <div class="nom-kpis"><div class="nom-k dk"><small>Aguinaldo bruto total</small><b>${m(T('bruto'))}</b><span>${D.filas.length} persona(s)</span></div><div class="nom-k"><small>Exento de ISR</small><b>${m(T('exento'))}</b><span>hasta 30 UMA por persona</span></div><div class="nom-k"><small>ISR estimado</small><b>${m(T('isr'))}</b><span>sobre ${m(T('gravado'))} gravado</span></div><div class="nom-k"><small>Neto a pagar</small><b>${m(T('neto'))}</b><span>antes de otros descuentos</span></div></div>
+    <div class="nom-wrap"><table class="nom-t"><thead><tr><th>Persona</th><th>Inicio de contrato</th><th class="r">Días del año</th><th class="r">Salario diario</th><th class="r">Aguinaldo bruto</th><th class="r">Exento (30 UMA)</th><th class="r">Gravado</th><th class="r">ISR estimado</th><th class="r">Neto a pagar</th></tr></thead><tbody>${tr}</tbody>
+      <tfoot><tr class="trs"><td colspan="4">Totales</td><td class="r">${m(T('bruto'))}</td><td class="r">${m(T('exento'))}</td><td class="r">${m(T('gravado'))}</td><td class="r">${m(T('isr'))}</td><td class="r">${m(T('neto'))}</td></tr></tfoot></table></div>
+    <div class="nom-acts"><button type="button" class="nom-btn p" id="nom-ag-pdf">📄 Descargar PDF</button> <button type="button" class="nom-btn" id="nom-ag-xls">⬇ Excel</button> <button type="button" class="nom-btn" id="nom-ag-wa">💬 Copiar mensaje de WhatsApp</button></div>
+    <div class="nom-fund"><b>Cómo se calcula:</b> salario diario × ${NOM_AG.dias} días × días trabajados en ${NOM_AG.anio} ÷ 365 (LFT art. 87). Quien ingresó en el año cobra la parte proporcional; las faltas no restan días. Exento hasta 30 UMA (${m(30 * NOM_UMA)}); el excedente se grava: se lleva a mes (÷ 365 × 30.4), se suma al sueldo mensual, se calcula el ISR con la tarifa mensual y la diferencia da la tasa que se aplica al gravado (art. 174 RISR). No incluye subsidio al empleo. Personal dado de baja cobra su aguinaldo proporcional en el finiquito. Cálculo de apoyo: el contador valida antes de pagar.</div>`;
+}
+function nomAguPdfHtml(){
+  const D = nomAguDatos(), m = money, T = D.T;
+  const filas = D.filas.map(r => `<tr><td>${esc(r.e.nombre)}<div class="mut">${esc(r.e.puesto || '')}</div></td><td class="r">${r.diasTrab}</td><td class="r">${m(r.diario)}</td><td class="r b">${m(r.bruto)}</td><td class="r">${m(r.exento)}</td><td class="r">${m(r.gravado)}</td><td class="r">${r.calcIsr ? m(r.isr) : '—'}</td><td class="r b">${m(r.neto)}</td></tr>`).join('');
+  const cols = '<colgroup><col style="width:25%"><col style="width:8%"><col style="width:11%"><col style="width:13%"><col style="width:12%"><col style="width:10%"><col style="width:10%"><col style="width:11%"></colgroup>';
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Aguinaldo</title><style>${NOM_PDF_CSS}</style></head><body>
+  <div class="page"><div class="hd"><div><div class="br">Agenda CANOPY Pediatrics · Nóminas</div><h1 class="d">Aguinaldo <b>${NOM_AG.anio}</b></h1></div><div class="dt"><strong class="d">${esc(nomFechaTxt(D.limite))}</strong>Fecha límite de pago</div></div>
+  <div class="nw"><div class="nk"><div class="dk"><small>Aguinaldo bruto</small><b>${m(T('bruto'))}</b></div><div><small>Exento de ISR</small><b>${m(T('exento'))}</b></div><div><small>ISR estimado</small><b>${m(T('isr'))}</b></div><div><small>Neto a pagar</small><b>${m(T('neto'))}</b></div></div>
+  <h2>Detalle por persona (${NOM_AG.dias} días de aguinaldo)</h2>
+  <table class="nt">${cols}<thead><tr><th>Persona</th><th class="r">Días</th><th class="r">Sal. diario</th><th class="r">Aguinaldo bruto</th><th class="r">Exento</th><th class="r">Gravado</th><th class="r">ISR est.</th><th class="r">Neto</th></tr></thead><tbody>${filas}<tr class="trs"><td>Totales</td><td></td><td></td><td class="r">${m(T('bruto'))}</td><td class="r">${m(T('exento'))}</td><td class="r">${m(T('gravado'))}</td><td class="r">${m(T('isr'))}</td><td class="r">${m(T('neto'))}</td></tr></tbody></table>
+  <div class="nnote"><b>Base de cálculo:</b> LFT art. 87 (mínimo 15 días, proporcional al tiempo trabajado, pago a más tardar el 20 de diciembre): salario diario × ${NOM_AG.dias} días × días trabajados ÷ 365. Exento hasta 30 UMA (${m(30 * NOM_UMA)}, UMA ${m(NOM_UMA)}), LISR art. 93 frac. XIV. El excedente se grava con el procedimiento del art. 174 del RISR; no incluye subsidio al empleo. Personal dado de baja cobra su parte proporcional en el finiquito. Cálculo de apoyo, sujeto a validación del contador.</div>
+  <div class="nsign"><div>Elaboró</div><div>Autorizó</div></div></div>
+  <div class="ft"><span>Agenda CANOPY Pediatrics · Aguinaldo ${NOM_AG.anio}</span><span>Generado el ${esc(nomFechaTxt(new Date()))}</span></div></div></body></html>`;
+}
+async function nomAguXls(){
+  const btn = document.getElementById('nom-ag-xls'); const t0 = btn.textContent; btn.disabled = true; btn.textContent = '⏳ Generando…';
+  try{
+    await frepCargarScriptUnaVez(NOM_XLS_LIB);
+    const D = nomAguDatos(), wb = new ExcelJS.Workbook(); wb.creator = 'Agenda CANOPY Pediatrics'; wb.created = new Date();
+    const F = 'Arial', fill = c => ({ type:'pattern', pattern:'solid', fgColor:{ argb:c } }), fino = { style:'thin', color:{ argb:'FFE3E8F0' } }, MX = '$#,##0.00', FEC = 'dd/mm/yyyy';
+    const ws = wb.addWorksheet('Aguinaldo ' + NOM_AG.anio, { views:[{ state:'frozen', ySplit:7 }] });
+    ws.columns = [{ width:32 }, { width:24 }, { width:14 }, { width:9 }, { width:14 }, { width:16 }, { width:15 }, { width:15 }, { width:15 }, { width:16 }];
+    ws.mergeCells('A1:J1'); const t = ws.getCell('A1'); t.value = 'Aguinaldo ' + NOM_AG.anio; t.font = { name:F, size:15, bold:true, color:{ argb:'FFFFFFFF' } }; t.fill = fill('FF0B1628'); t.alignment = { vertical:'middle', indent:1 }; ws.getRow(1).height = 28;
+    ws.mergeCells('A2:J2'); ws.getCell('A2').value = 'Agenda CANOPY Pediatrics · Nóminas · fecha límite de pago ' + nomFechaTxt(D.limite) + ' · cálculo de apoyo, sujeto a validación'; ws.getCell('A2').font = { name:F, size:10, color:{ argb:'FF64748B' } }; ws.getCell('A2').alignment = { indent:1 };
+    [['Días de aguinaldo', NOM_AG.dias, '0'], ['UMA ' + NOM_AG.anio, NOM_UMA, MX], ['Tope exento (30 UMA)', null, MX]].forEach(([k, v, nf], i) => { const r = 3 + i; ws.getCell(r, 1).value = k; ws.getCell(r, 1).font = { name:F, size:10, bold:true }; const c = ws.getCell(r, 2); c.value = v == null ? { formula:'30*B4', result:30 * NOM_UMA } : v; c.numFmt = nf; c.font = { name:F, size:10, color:{ argb:v == null ? 'FF0B1628' : 'FF0000FF' } }; c.alignment = { horizontal:'right' }; });
+    ['Persona', 'Puesto', 'Inicio contrato', 'Días del año', 'Salario diario', 'Aguinaldo bruto', 'Exento', 'Gravado', 'ISR estimado', 'Neto a pagar'].forEach((h, i) => { const c = ws.getCell(7, i + 1); c.value = h; c.font = { name:F, size:10, bold:true, color:{ argb:'FFFFFFFF' } }; c.fill = fill('FF1B3A6B'); c.alignment = { horizontal:i >= 2 ? 'center' : 'left', vertical:'middle', wrapText:true }; });
+    ws.getRow(7).height = 26;
+    D.filas.forEach((r, i) => { const n = 8 + i, z = i % 2 ? 'FFF6F8FC' : null;
+      const vals = [r.e.nombre, r.e.puesto || '', r.e.fecha_ingreso ? nomXlsFecha(r.e.fecha_ingreso) : null, r.diasTrab, r.diario,
+        { formula:`ROUND(E${n}*$B$3*D${n}/365,2)`, result:r.bruto }, { formula:`MIN(F${n},$B$5)`, result:r.exento }, { formula:`F${n}-G${n}`, result:r.gravado }, r.isr, { formula:`F${n}-I${n}`, result:r.neto }];
+      vals.forEach((v, j) => { const c = ws.getCell(n, j + 1); c.value = v; c.font = { name:F, size:10, bold:j === 0 || j === 9 }; c.border = { bottom:fino }; if(z) c.fill = fill(z); if(j === 2) c.numFmt = FEC; if(j >= 4){ c.numFmt = MX; c.alignment = { horizontal:'right' }; } if(j === 2 || j === 3) c.alignment = { horizontal:'center' }; });
+    });
+    const rt = 8 + D.filas.length, a = 8, b = Math.max(8, rt - 1);
+    ws.getCell(rt, 1).value = 'TOTALES';
+    [6, 7, 8, 9, 10].forEach(col => { const L = String.fromCharCode(64 + col); ws.getCell(rt, col).value = { formula:`SUM(${L}${a}:${L}${b})`, result:D.T(['', '', '', '', '', 'bruto', 'exento', 'gravado', 'isr', 'neto'][col - 1]) }; });
+    for(let j = 1; j <= 10; j++){ const c = ws.getCell(rt, j); c.font = { name:F, size:10, bold:true }; c.fill = fill('FFEAF2FA'); c.border = { top:{ style:'double', color:{ argb:'FF0B1628' } } }; if(j >= 5){ c.numFmt = MX; c.alignment = { horizontal:'right' }; } }
+    ws.getCell(rt + 2, 1).value = 'El ISR estimado se calculó con el procedimiento del art. 174 RISR (tarifa mensual) y no incluye subsidio al empleo; se captura como valor. Quien ingresó en el año cobra la parte proporcional.'; ws.getCell(rt + 2, 1).font = { name:F, size:9, italic:true, color:{ argb:'FF64748B' } };
+    ws.pageSetup = { orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0 };
+    const buf = await wb.xlsx.writeBuffer();
+    const el = document.createElement('a'); el.href = URL.createObjectURL(new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); el.download = 'Aguinaldo_' + NOM_AG.anio + '.xlsx';
+    document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(el.href), 5000);
+    toast('✓ Excel descargado');
+  }catch(err){ console.error('[CANOPY] Excel de aguinaldo:', err); toast('No se pudo generar el Excel.'); }
+  finally{ btn.disabled = false; btn.textContent = t0; }
+}
+async function nomAguPdf(){
+  const btn = document.getElementById('nom-ag-pdf'); const t0 = btn.textContent; btn.disabled = true; btn.textContent = '⏳ Generando…';
+  try{ await nomHtmlAPdf(nomAguPdfHtml(), 'Aguinaldo_' + NOM_AG.anio + '.pdf', 'Aguinaldo ' + NOM_AG.anio + ' · Agenda CANOPY Pediatrics'); }
+  finally{ btn.disabled = false; btn.textContent = t0; }
+}
+function nomAguWa(){
+  const D = nomAguDatos(), m = money0;
+  return `Aguinaldo ${NOM_AG.anio} (${NOM_AG.dias} días) · pago a más tardar el ${nomFechaTxt(D.limite)}\n\n` + D.filas.map(r => `• ${r.e.nombre}: ${m(r.bruto)} bruto · ISR est. ${m(r.isr)} · neto ${m(r.neto)}`).join('\n') +
+    `\n\nTotal bruto: ${m(D.T('bruto'))} · ISR estimado: ${m(D.T('isr'))} · Neto: ${m(D.T('neto'))}\nCálculo de apoyo: pendiente de validación del contador.`;
+}
+
+// ── Finiquitos y liquidaciones ──
+function nomFiniquito(e, baja, causa, vacTom){
+  const ing = nomF(e.fecha_ingreso), d = Number(e.salario_mensual) / 30;
+  const ac = nomAniosCompl(ing, baja), anios = nomDias(ing, baja) / 365;
+  const sdi = d * (1 + (15 + nomVacDias(Math.max(ac, 1)) * 0.25) / 365);
+  const ini = new Date(baja.getFullYear(), 0, 1, 12), desde = ing > ini ? ing : ini, diasAnio = nomDias(desde, baja) + 1;
+  const ult = nomUltAniv(ing, baja), diasCorr = nomDias(ult, baja);
+  const diasCumplido = ac >= 1 ? nomVacDias(ac) : 0, diasEnCurso = nomVacDias(ac + 1);
+  const pendCumplido = Math.max(diasCumplido - vacTom, 0), propEnCurso = diasEnCurso * diasCorr / 365;
+  const agui = 15 / 365 * diasAnio * d, vac = (pendCumplido + propEnCurso) * d, primaVac = vac * 0.25;
+  const finiquito = { 'Aguinaldo proporcional': agui, 'Vacaciones pendientes y proporcionales': vac, 'Prima vacacional (25%)': primaVac };
+  const paBase = Math.min(Math.max(d, NOM_SMG), NOM_TOPE_PA), pa = 12 * anios * paBase;
+  const liq = {};
+  if(causa === 'despido'){
+    liq['Indemnización constitucional: 3 meses (SDI × 90)'] = sdi * 90;
+    liq['20 días por año de servicio (SDI × 20 × años)'] = sdi * 20 * anios;
+    liq['Prima de antigüedad: 12 días por año (tope 2 SMG)'] = pa;
+  } else if(causa === 'renuncia' && ac >= 15) liq['Prima de antigüedad (renuncia con 15+ años)'] = pa;
+  else if(causa === 'mutuo') liq['Prima de antigüedad (si se pacta)'] = pa;
+  const totFin = Object.values(finiquito).reduce((a, v) => a + v, 0), totLiq = Object.values(liq).reduce((a, v) => a + v, 0);
+  const aniosEx = Math.max(1, Math.floor(anios) + ((anios % 1) > 0.5 ? 1 : 0));
+  const exAgui = Math.min(agui, 30 * NOM_UMA), exPv = Math.min(primaVac, 15 * NOM_UMA), exInd = Math.min(totLiq, 90 * NOM_UMA * aniosEx);
+  return { e, d, sdi, anios, ac, diasAnio, diasCorr, diasCumplido, diasEnCurso, pendCumplido, propEnCurso, finiquito, liq, totFin, totLiq, total: totFin + totLiq, paBase, exento: exAgui + exPv + exInd, causa, baja, vacTom, salariosCaidos12: d * 365 };
+}
+const NOM_CAUSAS = { renuncia:'Renuncia voluntaria', mutuo:'Mutuo acuerdo / término', despido:'Despido injustificado' };
+function nomRenderFin(){
+  const act = nomActivos().filter(e => e.fecha_ingreso);
+  const box = document.getElementById('nom-p-fin');
+  if(!act.length){ box.innerHTML = '<div class="empty-note">Captura la fecha de inicio de contrato en Plantilla para calcular finiquitos.</div>'; return; }
+  if(!NOM_FIN.emp || !act.some(e => e.id == NOM_FIN.emp)) NOM_FIN.emp = act[0].id;
+  if(!NOM_FIN.baja) NOM_FIN.baja = fechaLocalISO(new Date());
+  const e = act.find(x => x.id == NOM_FIN.emp), baja = nomF(NOM_FIN.baja);
+  if(nomF(e.fecha_ingreso) > baja){ box.innerHTML = '<div class="nom-al bad">La fecha de baja es anterior al inicio de contrato.</div>'; return; }
+  const auto = nomVacTomados(e, baja);
+  const vt = NOM_FIN.vacTom == null ? auto : NOM_FIN.vacTom;
+  const r = nomFiniquito(e, baja, NOM_FIN.causa, vt);
+  const lineas = o => Object.entries(o).map(([k, v]) => `<div class="nom-ln"><span>${esc(k)}</span><b>${money(v)}</b></div>`).join('') || '<div class="nom-ln"><span class="mut">No aplica para esta causa de baja</span><b>$0.00</b></div>';
+  const comp = ['renuncia', 'mutuo', 'despido'].map(c => { const x = nomFiniquito(e, baja, c, vt); return `<tr${c === NOM_FIN.causa ? ' class="sel"' : ''}><td class="b">${NOM_CAUSAS[c]}</td><td class="r">${money(x.totFin)}</td><td class="r">${money(x.totLiq)}</td><td class="r b">${money(x.total)}</td></tr>`; }).join('');
+  box.innerHTML = `
+    <div class="nom-sel"><label>Persona<select id="nom-f-emp" class="nom-inp">${act.map(x => `<option value="${esc(x.id)}"${x.id === e.id ? ' selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select></label>
+      <label>Fecha de baja<input type="date" id="nom-f-baja" class="nom-inp" value="${NOM_FIN.baja}"/></label>
+      <label>Vacaciones ya disfrutadas<input type="number" id="nom-f-vac" class="nom-inp" min="0" step="0.5" value="${vt}" title="Automático: días registrados desde el último aniversario"/></label>
+      <div class="nom-seg">${Object.entries(NOM_CAUSAS).map(([k, v]) => `<button type="button" data-causa="${k}" class="${k === NOM_FIN.causa ? 'on' : ''}">${v}</button>`).join('')}</div></div>
+    <div class="nom-2">
+      <div class="nom-card"><h4>1 · Finiquito <span class="nom-pill ok">siempre se paga</span></h4>${lineas(r.finiquito)}<div class="nom-ln t"><span>Subtotal</span><b>${money(r.totFin)}</b></div>
+        <p class="sub">Aguinaldo: 15 ÷ 365 × ${r.diasAnio} días × ${money(r.d)}<br>Vacaciones: ${r.pendCumplido.toFixed(2)} d pendientes del último aniversario (${r.diasCumplido} − ${vt} tomados) + ${r.propEnCurso.toFixed(2)} d proporcionales (${r.diasEnCurso} d × ${r.diasCorr}/365)</p></div>
+      <div class="nom-card"><h4>2 · Liquidación <span class="nom-pill bad">${NOM_FIN.causa === 'despido' ? 'despido injustificado' : 'según causa'}</span></h4>${lineas(r.liq)}<div class="nom-ln t"><span>Subtotal</span><b>${money(r.totLiq)}</b></div>
+        <p class="sub">SDI = ${money(r.d)} × ${(r.sdi / r.d).toFixed(4)} = <b>${money(r.sdi)}</b> · antigüedad ${r.anios.toFixed(2)} años · prima de antigüedad con salario topado a 2 SMG (${money(NOM_TOPE_PA)})</p></div></div>
+    <div class="nom-total"><div><small>Total a pagar (finiquito + liquidación)</small><b>${money(r.total)}</b></div><div class="sub" style="text-align:right">Exento ISR estimado: <b>${money(r.exento)}</b><br>Gravado estimado: <b>${money(r.total - r.exento)}</b><br>El ISR de pagos por separación lo determina el contador (art. 96 LISR).</div></div>
+    <div class="nom-2"><div class="nom-card"><h4>Comparativo por causa de baja</h4><table class="nom-t mini"><thead><tr><th>Causa</th><th class="r">Finiquito</th><th class="r">Liquidación</th><th class="r">Total</th></tr></thead><tbody>${comp}</tbody></table><p class="sub">Renuncia: la prima de antigüedad solo se paga con 15+ años.</p></div>
+      <div class="nom-card"><h4>⚖ Contingente (no incluido): salarios vencidos</h4><p class="sub">Si el despido llega a juicio se generan salarios caídos hasta que se resuelva (hasta 12 meses; después, intereses). Con el sueldo actual, 12 meses = <b>${money(r.salariosCaidos12)}</b>. Es referencia de riesgo, no un pago.</p>
+      <div class="nom-acts"><button type="button" class="nom-btn" id="nom-f-pdf">📄 PDF</button> <button type="button" class="nom-btn" id="nom-f-copiar">📋 Copiar resumen</button> <button type="button" class="nom-btn bad" id="nom-f-baja-reg">Registrar baja</button></div></div></div>
+    <div class="nom-fund"><b>Fundamento:</b> arts. 48, 49, 50, 76, 79, 80, 87, 89 y 162 LFT · art. 123-A XXII CPEUM · art. 93 fracs. XIII–XIV LISR (indemnización y prima de antigüedad exentas hasta 90 UMA por año; fracciones de más de 6 meses cuentan como año). Cálculo de apoyo: el contador valida antes de pagar.</div>`;
+  NOM_FIN._r = r;
+}
+function nomFiniquitoPdfHtml(r){
+  const m = v => money(v);
+  const rows = o => Object.entries(o).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="r">${m(v)}</td></tr>`).join('') || '<tr><td>No aplica para esta causa de baja</td><td class="r">$0.00</td></tr>';
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Finiquito</title><style>${NOM_PDF_CSS}</style></head><body>
+  <div class="page"><div class="hd"><div><div class="br">Agenda CANOPY Pediatrics · Nóminas</div><h1 class="d">Finiquito · <b>${esc(NOM_CAUSAS[r.causa])}</b></h1></div><div class="dt"><strong class="d">${esc(nomFechaTxt(r.baja))}</strong>Fecha de baja</div></div>
+  <div class="nw"><div class="nrow"><div><small>Persona</small><b>${esc(r.e.nombre)}</b></div><div><small>Puesto</small><b>${esc(r.e.puesto || '—')}</b></div><div><small>Inicio de contrato</small><b>${esc(nomFechaTxt(r.e.fecha_ingreso))}</b></div><div><small>Antigüedad</small><b>${r.anios.toFixed(2)} años</b></div></div>
+  <div class="nrow"><div><small>Sueldo mensual</small><b>${m(r.e.salario_mensual)}</b></div><div><small>Salario diario</small><b>${m(r.d)}</b></div><div><small>Salario diario integrado</small><b>${m(r.sdi)}</b></div><div><small>Vacaciones ya disfrutadas</small><b>${r.vacTom} d</b></div></div>
+  <h2>1 · Finiquito</h2><table class="nt"><tbody>${rows(r.finiquito)}<tr class="trs"><td>Subtotal finiquito</td><td class="r">${m(r.totFin)}</td></tr></tbody></table>
+  <h2>2 · Liquidación</h2><table class="nt"><tbody>${rows(r.liq)}<tr class="trs"><td>Subtotal liquidación</td><td class="r">${m(r.totLiq)}</td></tr></tbody></table>
+  <div class="ntotal"><span>Total a pagar</span><b class="d">${m(r.total)}</b></div>
+  <table class="nt" style="margin-top:10px"><tbody><tr><td>Exento de ISR (estimado)</td><td class="r">${m(r.exento)}</td></tr><tr><td>Gravado (estimado)</td><td class="r">${m(r.total - r.exento)}</td></tr></tbody></table>
+  <div class="nnote"><b>Base de cálculo:</b> LFT arts. 48, 50, 76, 79, 80, 87, 89 y 162; LISR art. 93 fracs. XIII–XIV. Aguinaldo: 15 ÷ 365 × ${r.diasAnio} días × ${m(r.d)}. Vacaciones: ${r.pendCumplido.toFixed(2)} d pendientes del último aniversario + ${r.propEnCurso.toFixed(2)} d proporcionales. Prima de antigüedad con salario topado a 2 SMG (${m(NOM_TOPE_PA)}). El ISR de los pagos por separación lo determina el contador (art. 96 LISR). Cálculo de apoyo, sujeto a validación.</div>
+  <div class="nsign"><div>Elaboró</div><div>Recibí conforme</div></div></div>
+  <div class="ft"><span>Agenda CANOPY Pediatrics · Finiquito · ${esc(r.e.nombre)}</span><span>Generado el ${esc(nomFechaTxt(new Date()))}</span></div></div></body></html>`;
+}
+
+// ── Reporte para contadores ──
+const NOM_PDF_CSS = `
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#0B1628}
+.page{width:794px;min-height:1123px;background:#fff;position:relative;padding-bottom:50px}
+.page+.page{page-break-before:always;break-before:page}
+.hd{display:flex;justify-content:space-between;align-items:flex-start;padding:26px 44px 18px;border-bottom:3px solid #0B1628}
+.hd .br{font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#64748b;margin-bottom:4px}
+.hd h1.d{font-size:21px;margin:0;font-weight:800}
+.hd .dt{text-align:right;font-size:10px;color:#64748b}
+.hd .dt strong.d{display:block;font-size:15px;color:#0B1628;margin-bottom:2px}
+.nw{padding:18px 44px 14px;flex:1}
+.nw h2{font-size:12.5px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.8px;color:#0B6E6E}
+.nrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
+.nrow>div{border:1px solid #e2e8f4;border-radius:10px;padding:8px 10px;min-width:0}
+.nrow small{display:block;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;color:#94a3b8;font-weight:800}
+.nrow b{font-size:12.5px;overflow-wrap:anywhere}
+.nk{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px}
+.nk>div{border:1px solid #e2e8f4;border-radius:12px;padding:10px 12px;min-width:0}
+.nk small{display:block;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;color:#94a3b8;font-weight:800}
+.nk b{display:block;font-size:19px;margin-top:3px}
+.nk .dk{background:linear-gradient(135deg,#0B1628,#1B3A6B);border:0;color:#fff}
+.nk .dk small{color:rgba(255,255,255,.7)}
+table.nt{width:100%;border-collapse:collapse;table-layout:fixed}
+table.nt th{font-size:8.5px;letter-spacing:.5px;text-transform:uppercase;color:#94a3b8;text-align:left;padding:6px 4px;border-bottom:2px solid #0B1628;font-weight:800;overflow-wrap:anywhere}
+table.nt td{font-size:10.5px;padding:6px 4px;border-bottom:1px solid #e2e8f4;overflow-wrap:anywhere;vertical-align:top}
+table.nt .r{text-align:right}table.nt .b{font-weight:800}table.nt .mut{color:#94a3b8;font-size:9.5px}
+table.nt tr.trs td{border-top:2px solid #0B1628;border-bottom:0;font-weight:800;background:#f4f6fb}
+.nnote{font-size:9.5px;color:#64748b;line-height:1.55;margin-top:12px}
+.ntotal{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#0B1628,#1B3A6B);color:#fff;border-radius:12px;padding:12px 18px;margin-top:12px}
+.ntotal b{font-size:26px}
+.nsign{display:grid;grid-template-columns:1fr 1fr;gap:50px;margin-top:46px;font-size:10px;color:#64748b}
+.nsign div{border-top:1px solid #0B1628;padding-top:6px;text-align:center}
+.ft{display:flex;justify-content:space-between;padding:11px 44px;font-size:9px;color:#94a3b8}
+`;
+function nomReporteDatos(per){
+  const calcs = nomActivos().map(e => nomCalcMes(e, nomNovsDe(e.id), per));
+  const T = k => calcs.reduce((a, c) => a + c[k], 0);
+  const ref = nomPeriodoRef(per);
+  const ini1 = new Date(ref.getFullYear(), 0, 1, 12);
+  const diasAn = c => nomDias(c.f.ing && c.f.ing > ini1 ? c.f.ing : ini1, ref) + 1;
+  const prov = {
+    aguinaldo: calcs.reduce((a, c) => a + c.f.diario * 15 * diasAn(c) / 365, 0),
+    primaVac: calcs.reduce((a, c) => a + c.f.diario * nomVacDias(Math.max(c.f.ac, 1)) * 0.25 * diasAn(c) / 365, 0),
+    vacPend: calcs.reduce((a, c) => c.f.sinFecha ? a : a + Math.max(nomVacDev(c.f, ref) - nomVacTomados(c.e, ref), 0) * c.f.diario, 0)
+  };
+  return { per, calcs, T, prov, nov: NOM_NOV };
+}
+function nomReporteHtml(per){
+  const D = nomReporteDatos(per), m = money, T = D.T;
+  const dedTot = T('isr') + T('imss') + T('descFalta') + T('otros');
+  const ahora = nomFechaTxt(new Date());
+  const resumenF = D.calcs.map(c => `<tr><td>${esc(c.e.nombre)}<div class="mut">${esc(c.e.puesto || '')}</div></td><td class="r">${m(c.sueldo)}</td><td class="r">${c.bono + c.prima ? m(c.bono + c.prima) : '—'}</td><td class="r b">${m(c.perc)}</td><td class="r">${c.bruto ? m(c.isr) : '—'}</td><td class="r">${c.bruto ? m(c.imss) : '—'}</td><td class="r">${c.descFalta + c.otros ? m(c.descFalta + c.otros) : '—'}</td><td class="r b">${m(c.neto)}</td></tr>`);
+  const cols = '<colgroup><col style="width:25%"><col style="width:11.5%"><col style="width:10.5%"><col style="width:11.5%"><col style="width:10.5%"><col style="width:10.5%"><col style="width:9.5%"><col style="width:11%"></colgroup>';
+  const novFilas = D.nov.map(n => { const e = NOM_EMP.find(x => x.id === n.empleado_id), t = NOM_TIPOS[n.tipo]; let det = '';
+    if(n.tipo === 'vacaciones'){ const c = D.calcs.find(x => x.e.id === n.empleado_id); det = `${Number(n.dias)} día(s) · prima vacacional ${c ? m(Number(n.dias) * c.f.diario * 0.25) : ''}`; }
+    else if(n.tipo === 'falta') { const c = D.calcs.find(x => x.e.id === n.empleado_id); det = n.justificada ? `${Number(n.dias)} día(s) · justificada, sin descuento` : `${Number(n.dias)} día(s) · injustificada, descuento ${c ? m(Number(n.dias) * c.f.diario) : ''}`; }
+    else if(n.tipo === 'incapacidad') { const c = D.calcs.find(x => x.e.id === n.empleado_id); det = n.justificada ? `${Number(n.dias)} día(s) · justificada, sin descuento · subsidio del IMSS desde el día 4` : `${Number(n.dias)} día(s) · no justificada, descuento ${c ? m(Number(n.dias) * c.f.diario) : ''}`; }
+    else if(n.tipo === 'bono') det = `${m(n.monto)} · integra al SDI variable`;
+    else if(n.tipo === 'descuento') det = m(n.monto);
+    return `<tr><td>${esc(e?.nombre || '—')}</td><td>${esc(t[1])}</td><td>${n.fecha ? esc(nomFechaTxt(n.fecha)) : '—'}</td><td>${esc([det, n.nota].filter(Boolean).join(' · '))}</td></tr>`; });
+  const hoy = nomPeriodoRef(per);
+  const vacFilas = D.calcs.filter(c => !c.f.sinFecha).map(c => { const tom = nomVacTomados(c.e, hoy); const dev = nomVacDev(c.f, hoy); return `<tr><td>${esc(c.e.nombre)}</td><td>${nomFechaTxt(c.e.fecha_ingreso)}</td><td class="r">${c.f.ac}</td><td class="r">${dev}${c.f.ac < 1 ? '*' : ''}</td><td class="r">${tom}</td><td class="r b">${Math.max(Math.round((dev - tom) * 100) / 100, 0)}</td></tr>`; });
+  const sinFecha = D.calcs.filter(c => c.f.sinFecha).map(c => c.e.nombre);
+  const hd = (t2) => `<div class="hd"><div><div class="br">Agenda CANOPY Pediatrics · Nóminas</div><h1 class="d">Novedades de nómina quincenal</h1></div><div class="dt"><strong class="d">${esc(t2)}</strong>Generado el ${esc(ahora)}</div></div>`;
+  const bloqueTabla = (titulo, cols, head, filas, pie) => ({ titulo, cols, head, filas, pie });
+  const novH = n => (n.length > 64 ? 40 : 28);
+  const piezas = [
+    { h: 86, html: `<div class="nk"><div class="dk"><small>Percepciones</small><b>${m(T('perc'))}</b></div><div><small>ISR + IMSS obrero</small><b>${m(T('isr') + T('imss'))}</b></div><div><small>Faltas y otros descuentos</small><b>${m(T('descFalta') + T('otros'))}</b></div><div><small>Neto a pagar</small><b>${m(T('neto'))}</b></div></div>` },
+    bloqueTabla('1 · Resumen por persona', cols, '<tr><th>Persona</th><th class="r">Sueldo quincenal</th><th class="r">Bono / prima vac.</th><th class="r">Percepciones</th><th class="r">ISR</th><th class="r">IMSS obrero</th><th class="r">Otros desc.</th><th class="r">Neto</th></tr>', D.calcs.map((c, i) => ({ h: 40, html: resumenF[i] })), `<tr class="trs"><td>Totales</td><td class="r">${m(T('sueldo'))}</td><td class="r">${m(T('bono') + T('prima'))}</td><td class="r">${m(T('perc'))}</td><td class="r">${m(T('isr'))}</td><td class="r">${m(T('imss'))}</td><td class="r">${m(T('descFalta') + T('otros'))}</td><td class="r">${m(T('neto'))}</td></tr>`),
+    bloqueTabla('2 · Novedades e incidencias de la quincena', '<colgroup><col style="width:27%"><col style="width:19%"><col style="width:13%"><col style="width:41%"></colgroup>', '<tr><th>Persona</th><th>Tipo</th><th>Fecha</th><th>Detalle</th></tr>', novFilas.map(f => ({ h: novH(f), html: f })), ''),
+    { h: 36 + 3 * 28, html: `<h2>3 · Provisiones (para pólizas contables)</h2><table class="nt"><tbody><tr><td>Aguinaldo (15 días) acumulado a ${esc(NOM_MESES[nomPeriodoRef(per).getMonth()])}</td><td class="r">${m(D.prov.aguinaldo)}</td></tr><tr><td>Prima vacacional del año (25%)</td><td class="r">${m(D.prov.primaVac)}</td></tr><tr><td>Vacaciones devengadas y no disfrutadas</td><td class="r">${m(D.prov.vacPend)}</td></tr></tbody></table>` },
+    { h: 36 + 2 * 28, html: `<h2>4 · Descuentos de la quincena</h2><table class="nt"><tbody><tr><td>Faltas e incapacidades no justificadas</td><td class="r">${m(T('descFalta'))}</td></tr><tr><td>Préstamos y otros descuentos</td><td class="r">${m(T('otros'))}</td></tr></tbody></table>` },
+    bloqueTabla('5 · Vacaciones del personal (al cierre de la quincena)', '<colgroup><col style="width:32%"><col style="width:17%"><col style="width:13%"><col style="width:13%"><col style="width:12%"><col style="width:13%"></colgroup>', '<tr><th>Persona</th><th>Inicio de contrato</th><th class="r">Años</th><th class="r">Días ley / devengados</th><th class="r">Tomados</th><th class="r">Pendientes</th></tr>', vacFilas.map(f => ({ h: 28, html: f })), ''),
+  ];
+  if(sinFecha.length) piezas.push({ h: 36, html: `<div class="nnote">Sin fecha de inicio de contrato: ${esc(sinFecha.join(', '))}.</div>` });
+  piezas.push({ h: 36 + 44, html: `<h2>6 · Altas y bajas</h2><div class="nnote" style="margin-top:0">${(() => { const b = NOM_EMP.filter(e => e.fecha_baja && nomF(e.fecha_baja) >= nomRango(per)[0] && nomF(e.fecha_baja) <= nomRango(per)[1]).map(e => esc(e.nombre) + ' (baja ' + esc(nomFechaTxt(e.fecha_baja)) + ')'); const a = NOM_EMP.filter(e => e.fecha_ingreso && nomF(e.fecha_ingreso) >= nomRango(per)[0] && nomF(e.fecha_ingreso) <= nomRango(per)[1]).map(e => esc(e.nombre) + ' (alta ' + esc(nomFechaTxt(e.fecha_ingreso)) + ')'); const x = [...a, ...b]; return x.length ? x.join('<br>') : 'Sin altas ni bajas en la quincena.'; })()}</div>` });
+  piezas.push({ h: 84, html: `<div class="nnote"><b>Base de cálculo:</b> LFT; LISR (tarifa art. 96, Anexo 8 RMF 2026, prorrateada a quincena de 15 días); Ley del Seguro Social (cuotas obreras 2026: 0.40% excedente 3 UMA, 0.25%, 0.375%, 0.625%, 1.125%). Salario mínimo ${m(NOM_SMG)} · UMA ${m(NOM_UMA)}. Cálculo de apoyo: el contador valida ISR, subsidio al empleo y cuotas antes de timbrar. * Con menos de 1 año de antigüedad se muestran los días devengados proporcionalmente (12 días al cumplir el primer año).</div>` });
+  const CAP = 850, pags = [[]]; let libre = CAP;
+  const nuevaHoja = () => { pags.push([]); libre = CAP; };
+  piezas.forEach(pz => {
+    if(!pz.filas){ if(pz.h > libre && pags[pags.length - 1].length) nuevaHoja(); pags[pags.length - 1].push(pz.html); libre -= pz.h; return; }
+    const filas = pz.filas.length ? pz.filas : [{ h: 30, html: `<tr><td colspan="8" class="mut">Sin registros en el periodo.</td></tr>` }];
+    let i = 0, cont = false;
+    while(i < filas.length){
+      const H0 = 36 + 30;
+      if(libre < H0 + filas[i].h + (filas.length - i > 1 ? filas[i + 1].h : 0) && pags[pags.length - 1].length) nuevaHoja();
+      libre -= H0; const tomadas = [];
+      while(i < filas.length && libre - filas[i].h >= (i === filas.length - 1 && pz.pie ? 34 : 0)){ tomadas.push(filas[i].html); libre -= filas[i].h; i++; }
+      if(!tomadas.length){ tomadas.push(filas[i].html); libre -= filas[i].h; i++; }
+      const fin = i >= filas.length;
+      pags[pags.length - 1].push(`<h2>${pz.titulo}${cont ? ' (continuación)' : ''}</h2><table class="nt">${pz.cols}<thead>${pz.head}</thead><tbody>${tomadas.join('')}${fin && pz.pie ? pz.pie : ''}</tbody></table>`);
+      if(fin && pz.pie) libre -= 34;
+      cont = true; if(!fin) nuevaHoja();
+    }
+  });
+  const total = pags.length;
+  const html = pags.map((p, i) => `<div class="page">${hd(nomLabelPer(per))}<div class="nw">${p.join('')}</div><div class="ft"><span>Agenda CANOPY Pediatrics · Reporte de nómina · ${esc(nomLabelPer(per))}</span><span>Página ${i + 1} de ${total}</span></div></div>`).join('');
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte de nómina</title><style>${NOM_PDF_CSS}</style></head><body>${html}</body></html>`;
+}
+function nomRenderRep(){
+  const D = nomReporteDatos(NOM_PERIODO), m = money, T = D.T;
+  const sin = D.calcs.filter(c => c.f.sinFecha).length;
+  const cuenta = t => NOM_NOV.filter(n => n.tipo === t).reduce((a, n) => a + Number(n.dias || 0), 0);
+  document.getElementById('nom-p-rep').innerHTML = `
+    ${sin ? `<div class="nom-al warn">⚠ ${sin} persona(s) sin fecha de inicio de contrato: el reporte indicará que faltan.</div>` : ''}
+    <div class="nom-kpis"><div class="nom-k dk"><small>Percepciones</small><b>${m(T('perc'))}</b><span>${esc(nomLabelPer(NOM_PERIODO))}</span></div><div class="nom-k"><small>ISR + IMSS obrero</small><b>${m(T('isr') + T('imss'))}</b><span>retenciones estimadas</span></div><div class="nom-k"><small>Neto a pagar</small><b>${m(T('neto'))}</b><span>${D.calcs.length} persona(s)</span></div><div class="nom-k"><small>Novedades</small><b>${NOM_NOV.length}</b><span>${cuenta('vacaciones')} d vacaciones · ${cuenta('falta')} faltas · ${cuenta('incapacidad')} d incap.</span></div></div>
+    <div class="nom-acts"><button type="button" class="nom-btn p" id="nom-r-pdf">📑 Descargar PDF para contadores</button> <button type="button" class="nom-btn" id="nom-r-xls">⬇ Excel</button> <button type="button" class="nom-btn" id="nom-r-wa">💬 Copiar mensaje de WhatsApp</button></div>
+    <p class="sub" style="margin-top:12px">El reporte incluye: resumen por persona, provisiones (aguinaldo, prima vacacional, vacaciones), descuentos, novedades del periodo, vacaciones del personal y altas/bajas. Se arma con lo capturado en “Nómina quincenal”.</p>`;
+}
+async function nomReportePdf(){
+  const btn = document.getElementById('nom-r-pdf'); const t0 = btn.textContent; btn.disabled = true; btn.textContent = '⏳ Generando…';
+  try{ await nomHtmlAPdf(nomReporteHtml(NOM_PERIODO), 'Reporte_Nomina_' + NOM_PERIODO + '.pdf', 'Reporte de novedades de nómina · Agenda CANOPY Pediatrics'); }
+  finally{ btn.disabled = false; btn.textContent = t0; }
+}
+function nomReporteExcelPlano(){
+  if(typeof XLSX === 'undefined'){ toast('No se pudo exportar.'); return; }
+  const D = nomReporteDatos(NOM_PERIODO), r2 = v => Math.round(v * 100) / 100;
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(D.calcs.map(c => ({ Persona: c.e.nombre, Puesto: c.e.puesto || '', 'Inicio de contrato': c.e.fecha_ingreso || '', 'Sueldo quincenal': r2(c.sueldo), Bono: r2(c.bono), 'Prima vacacional': r2(c.prima), Percepciones: r2(c.perc), ISR: r2(c.isr), 'IMSS obrero': r2(c.imss), 'Descuento por faltas': r2(c.descFalta), 'Otros descuentos': r2(c.otros), 'Neto a pagar': r2(c.neto), 'Salario diario': r2(c.f.diario), SDI: r2(c.f.sdi) }))), 'Resumen');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(NOM_NOV.map(n => ({ Persona: NOM_EMP.find(e => e.id === n.empleado_id)?.nombre || '', Tipo: NOM_TIPOS[n.tipo][1], Fecha: n.fecha || '', Días: n.dias ?? '', Monto: n.monto ?? '', Justificada: (n.tipo === 'falta' || n.tipo === 'incapacidad') ? (n.justificada ? 'Sí' : 'No') : '', Nota: n.nota || '' }))), 'Novedades');
+  const hoy = nomPeriodoRef(NOM_PERIODO);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(D.calcs.filter(c => !c.f.sinFecha).map(c => { const tom = nomVacTomados(c.e, hoy); return { Persona: c.e.nombre, 'Inicio de contrato': c.e.fecha_ingreso, 'Años cumplidos': c.f.ac, 'Días de ley / devengados': nomVacDev(c.f, hoy), Tomados: tom, Pendientes: Math.max(Math.round((nomVacDev(c.f, hoy) - tom) * 100) / 100, 0) }; })), 'Vacaciones');
+  XLSX.writeFile(wb, 'Nomina_' + NOM_PERIODO + '.xlsx');
+}
+const NOM_XLS_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+function nomXlsFecha(s){ if(!s) return null; const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); }
+async function nomReporteExcel(){
+  const btn = document.getElementById('nom-r-xls'); const t0 = btn.textContent; btn.disabled = true; btn.textContent = '⏳ Generando…';
+  try{
+    try{ await frepCargarScriptUnaVez(NOM_XLS_LIB); }catch(_){ toast('Sin conexión a la librería de formato; descargo versión simple.'); nomReporteExcelPlano(); return; }
+    const D = nomReporteDatos(NOM_PERIODO), r2 = v => Math.round(v * 100) / 100, T = D.T;
+    const hoy = nomPeriodoRef(NOM_PERIODO), etq = nomLabelPer(NOM_PERIODO);
+    const wb = new ExcelJS.Workbook(); wb.creator = 'Agenda CANOPY Pediatrics'; wb.created = new Date();
+    const FONT = 'Arial', NAVY = 'FF0B1628', AZUL = 'FF1B3A6B', AZUL2 = 'FF22488A', AMB = 'FF8A6414', AMB2 = 'FFA67A1E', ROJO = 'FF8B2F2F', ROJO2 = 'FFA64444', TEAL = 'FF0B6E6E', ZEBRA = 'FFF6F8FC', LINEA = 'FFE1E5EE';
+    const fill = c => ({ type:'pattern', pattern:'solid', fgColor:{ argb:c } });
+    const fino = { style:'thin', color:{ argb:LINEA } };
+    const NUM = '#,##0.00;-#,##0.00;"–"', FEC = 'dd/mm/yyyy';
+    const base = ws => { ws.pageSetup = { orientation:'landscape', paperSize:1, fitToPage:true, fitToWidth:1, fitToHeight:0, margins:{ left:.4, right:.4, top:.6, bottom:.6, header:.3, footer:.3 } };
+      ws.headerFooter = { oddFooter:'&L&8Agenda CANOPY Pediatrics · ' + etq + '&R&8Página &P de &N' }; ws.properties.defaultRowHeight = 18; };
+    const titulo = (ws, n, txt, sub) => { ws.mergeCells(1, 1, 1, n); const t = ws.getCell(1, 1); t.value = txt; t.font = { name:FONT, size:15, bold:true, color:{ argb:'FFFFFFFF' } }; t.fill = fill(NAVY); t.alignment = { vertical:'middle', indent:1 }; ws.getRow(1).height = 32;
+      ws.mergeCells(2, 1, 2, n); const s2 = ws.getCell(2, 1); s2.value = sub; s2.font = { name:FONT, size:10, color:{ argb:'FF334155' } }; s2.fill = fill('FFEAF2FA'); s2.alignment = { vertical:'middle', indent:1 }; ws.getRow(2).height = 20; };
+    const enc = (cell, color, txt, al = 'center') => { cell.value = txt; cell.font = { name:FONT, size:10, bold:true, color:{ argb:'FFFFFFFF' } }; cell.fill = fill(color); cell.alignment = { vertical:'middle', horizontal:al, wrapText:true }; cell.border = { top:fino, left:fino, bottom:fino, right:fino }; };
+    const celda = (cell, v, o = {}) => { cell.value = v; cell.font = { name:FONT, size:10, bold:!!o.b, color:{ argb:o.color || 'FF0B1628' } }; if(o.fill) cell.fill = fill(o.fill); if(o.num) cell.numFmt = o.num; cell.alignment = { vertical:'middle', horizontal:o.al || (o.num ? 'right' : 'left'), wrapText:!!o.wrap }; cell.border = { top:fino, left:fino, bottom:fino, right:fino }; };
+
+    const ws = wb.addWorksheet('Resumen', { views:[{ state:'frozen', xSplit:2, ySplit:5 }] }); base(ws);
+    ws.columns = [{ width:30 }, { width:22 }, ...Array(8).fill({ width:15 })];
+    titulo(ws, 10, 'Agenda CANOPY Pediatrics · Nómina quincenal', etq + '   |   Generado el ' + nomFechaTxt(new Date()) + '   |   Cálculo de apoyo — validar con el contador');
+    ws.mergeCells(4, 1, 5, 2); enc(ws.getCell(4, 1), AZUL, 'PERSONA');
+    ws.mergeCells(4, 3, 4, 5); enc(ws.getCell(4, 3), AZUL, 'PERCEPCIONES'); ws.mergeCells(4, 6, 4, 7); enc(ws.getCell(4, 6), AMB, 'RETENCIONES'); ws.mergeCells(4, 8, 4, 9); enc(ws.getCell(4, 8), ROJO, 'DESCUENTOS');
+    ws.mergeCells(4, 10, 5, 10); enc(ws.getCell(4, 10), TEAL, 'NETO A PAGAR');
+    [['Sueldo quincenal', AZUL2], ['Bono / prima vac.', AZUL2], ['Total', AZUL2], ['ISR', AMB2], ['IMSS obrero', AMB2], ['Faltas', ROJO2], ['Otros', ROJO2]].forEach(([t, col], i) => enc(ws.getCell(5, 3 + i), col, t));
+    ws.getRow(4).height = 22; ws.getRow(5).height = 22;
+    D.calcs.forEach((c, i) => { const r = 6 + i, z = i % 2 ? ZEBRA : null;
+      celda(ws.getCell(r, 1), c.e.nombre, { fill:z, b:true }); celda(ws.getCell(r, 2), c.e.puesto || '', { fill:z, color:'FF64748B' });
+      celda(ws.getCell(r, 3), r2(c.sueldo), { fill:z, num:NUM }); celda(ws.getCell(r, 4), r2(c.bono + c.prima), { fill:z, num:NUM });
+      celda(ws.getCell(r, 5), { formula:`C${r}+D${r}`, result:r2(c.sueldo) + r2(c.bono + c.prima) }, { fill:z, num:NUM, b:true });
+      celda(ws.getCell(r, 6), r2(c.isr), { fill:z, num:NUM }); celda(ws.getCell(r, 7), r2(c.imss), { fill:z, num:NUM });
+      celda(ws.getCell(r, 8), r2(c.descFalta), { fill:z, num:NUM }); celda(ws.getCell(r, 9), r2(c.otros), { fill:z, num:NUM });
+      celda(ws.getCell(r, 10), { formula:`E${r}-F${r}-G${r}-H${r}-I${r}`, result:r2(c.neto) }, { fill:z, num:NUM, b:true, color:TEAL }); });
+    const n = D.calcs.length, rt = 6 + n, r0 = 6, r1 = rt - 1;
+    const sumas = { 3:T('sueldo'), 4:T('bono') + T('prima'), 5:T('perc'), 6:T('isr'), 7:T('imss'), 8:T('descFalta'), 9:T('otros'), 10:T('neto') };
+    ws.mergeCells(rt, 1, rt, 2); celda(ws.getCell(rt, 1), 'TOTALES', { b:true, fill:'FFEAF2FA' }); ws.getCell(rt, 2).fill = fill('FFEAF2FA');
+    for(let col = 3; col <= 10; col++){ const L = String.fromCharCode(64 + col); celda(ws.getCell(rt, col), { formula:`SUM(${L}${r0}:${L}${r1})`, result:r2(sumas[col]) }, { num:NUM, b:true, fill:'FFEAF2FA', color:col === 10 ? TEAL : 'FF0B1628' }); ws.getCell(rt, col).border = { top:{ style:'double', color:{ argb:AZUL } }, bottom:fino, left:fino, right:fino }; }
+    ws.getRow(rt).height = 22;
+    ws.mergeCells(rt + 2, 1, rt + 2, 10); const nota = ws.getCell(rt + 2, 1);
+    nota.value = 'ISR: tarifa art. 96 LISR (Anexo 8 RMF 2026) prorrateada a quincena de 15 días · IMSS: cuotas obreras 2026 sobre SDI × 15 días · Faltas e incapacidades justificadas no se descuentan. Cálculo de apoyo; el contador valida ISR, subsidio al empleo y cuotas antes de timbrar.';
+    nota.font = { name:FONT, size:9, italic:true, color:{ argb:'FF64748B' } }; nota.alignment = { wrapText:true, vertical:'top' }; ws.getRow(rt + 2).height = 38;
+    ws.pageSetup.printTitlesRow = '4:5';
+
+    const wn = wb.addWorksheet('Novedades', { views:[{ state:'frozen', ySplit:4 }] }); base(wn);
+    wn.columns = [{ width:30 }, { width:26 }, { width:13 }, { width:8 }, { width:14 }, { width:13 }, { width:44 }];
+    titulo(wn, 7, 'Novedades · ' + etq, 'Faltas e incapacidades justificadas no se descuentan');
+    ['Persona', 'Tipo', 'Fecha', 'Días', 'Monto', 'Justificada', 'Nota'].forEach((t, i) => enc(wn.getCell(4, i + 1), AZUL, t, i === 0 || i === 6 ? 'left' : 'center')); wn.getRow(4).height = 22;
+    const nov = D.nov.slice().sort((a, b) => String(a.fecha || '9').localeCompare(String(b.fecha || '9')));
+    nov.forEach((nv, i) => { const r = 5 + i, z = i % 2 ? ZEBRA : null, fj = nv.tipo === 'falta' || nv.tipo === 'incapacidad';
+      celda(wn.getCell(r, 1), NOM_EMP.find(e => e.id === nv.empleado_id)?.nombre || '', { fill:z });
+      celda(wn.getCell(r, 2), NOM_TIPOS[nv.tipo][1], { fill:z }); celda(wn.getCell(r, 3), nomXlsFecha(nv.fecha), { fill:z, num:FEC, al:'center' });
+      celda(wn.getCell(r, 4), nv.dias == null ? null : Number(nv.dias), { fill:z, al:'center' }); celda(wn.getCell(r, 5), nv.monto == null ? null : Number(nv.monto), { fill:z, num:NUM });
+      celda(wn.getCell(r, 6), fj ? (nv.justificada ? 'Sí' : 'No') : '', { fill:z, al:'center', color:fj && !nv.justificada ? 'FFB42A2A' : 'FF1F7A47', b:fj }); celda(wn.getCell(r, 7), nv.nota || '', { fill:z, wrap:true }); });
+    if(!nov.length){ wn.mergeCells(5, 1, 5, 7); celda(wn.getCell(5, 1), 'Sin novedades en esta quincena.', { color:'FF64748B' }); }
+    else wn.autoFilter = { from:{ row:4, column:1 }, to:{ row:4 + nov.length, column:7 } };
+
+    const wv = wb.addWorksheet('Vacaciones', { views:[{ state:'frozen', ySplit:4 }] }); base(wv);
+    wv.columns = [{ width:30 }, { width:16 }, { width:10 }, { width:20 }, { width:12 }, { width:13 }];
+    titulo(wv, 6, 'Vacaciones del personal · al ' + nomFechaTxt(hoy), 'Con menos de 1 año se muestran los días devengados proporcionalmente (12 días al cumplir el primer año)');
+    ['Persona', 'Inicio de contrato', 'Años', 'Días de ley / devengados', 'Tomados', 'Pendientes'].forEach((t, i) => enc(wv.getCell(4, i + 1), AZUL, t, i === 0 ? 'left' : 'center')); wv.getRow(4).height = 30;
+    D.calcs.filter(c => !c.f.sinFecha).forEach((c, i) => { const r = 5 + i, z = i % 2 ? ZEBRA : null, tom = nomVacTomados(c.e, hoy), dev = nomVacDev(c.f, hoy);
+      celda(wv.getCell(r, 1), c.e.nombre, { fill:z, b:true }); celda(wv.getCell(r, 2), nomXlsFecha(c.e.fecha_ingreso), { fill:z, num:FEC, al:'center' }); celda(wv.getCell(r, 3), c.f.ac, { fill:z, al:'center' });
+      celda(wv.getCell(r, 4), dev, { fill:z, num:'0.00', al:'center' }); celda(wv.getCell(r, 5), tom, { fill:z, num:'0.00', al:'center' });
+      celda(wv.getCell(r, 6), { formula:`MAX(D${r}-E${r},0)`, result:Math.max(r2(dev - tom), 0) }, { fill:z, num:'0.00', al:'center', b:true }); });
+
+    const wp = wb.addWorksheet('Provisiones'); base(wp);
+    wp.columns = [{ width:46 }, { width:26 }, { width:16 }];
+    titulo(wp, 3, 'Provisiones · al ' + nomFechaTxt(hoy), 'Para pólizas contables');
+    ['Concepto', 'Base de cálculo', 'Importe'].forEach((t, i) => enc(wp.getCell(4, i + 1), AZUL, t, i === 2 ? 'right' : 'left')); wp.getRow(4).height = 22;
+    [['Aguinaldo (15 días) acumulado', '15 d × días del año ÷ 365', D.prov.aguinaldo], ['Prima vacacional del año (25%)', '25% × días de vacaciones', D.prov.primaVac], ['Vacaciones devengadas no disfrutadas', 'días pendientes × salario diario', D.prov.vacPend]].forEach(([a, b, v], i) => { const r = 5 + i, z = i % 2 ? ZEBRA : null; celda(wp.getCell(r, 1), a, { fill:z }); celda(wp.getCell(r, 2), b, { fill:z, color:'FF64748B' }); celda(wp.getCell(r, 3), r2(v), { fill:z, num:NUM }); });
+    celda(wp.getCell(8, 1), 'TOTAL PROVISIONES', { b:true, fill:'FFEAF2FA' }); celda(wp.getCell(8, 2), '', { fill:'FFEAF2FA' });
+    celda(wp.getCell(8, 3), { formula:'SUM(C5:C7)', result:r2(D.prov.aguinaldo + D.prov.primaVac + D.prov.vacPend) }, { num:NUM, b:true, fill:'FFEAF2FA' }); wp.getCell(8, 3).border = { top:{ style:'double', color:{ argb:AZUL } }, bottom:fino, left:fino, right:fino };
+
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); a.download = 'Nomina_' + NOM_PERIODO + '.xlsx';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast('✓ Excel descargado');
+  }catch(err){ console.error('[CANOPY] Excel de nómina:', err); toast('No se pudo generar el Excel.'); }
+  finally{ btn.disabled = false; btn.textContent = t0; }
+}
+function nomMensajeWa(){
+  const D = nomReporteDatos(NOM_PERIODO), m = money0, T = D.T, c = t => NOM_NOV.filter(n => n.tipo === t).reduce((a, n) => a + Number(n.dias || 0), 0);
+  return `Saludos, comparto el reporte de novedades de nómina — ${nomLabelPer(NOM_PERIODO)}.\n\n` +
+    `• Percepciones: ${m(T('perc'))}\n• ISR + IMSS obrero estimados: ${m(T('isr') + T('imss'))}\n• Faltas y otros descuentos: ${m(T('descFalta') + T('otros'))}\n• Neto a pagar: ${m(T('neto'))}\n\n` +
+    `Novedades: ${c('vacaciones')} día(s) de vacaciones, ${c('falta')} día(s) de falta, ${c('incapacidad')} día(s) de incapacidad (solo se descuentan las no justificadas). Adjunto el PDF con el detalle, provisiones y vacaciones. Quedo atento a sus comentarios.`;
+}
+async function nomCopiar(txt){
+  try{ await navigator.clipboard.writeText(txt); toast('✓ Copiado'); }
+  catch(_){ const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); toast('✓ Copiado'); }catch(e){ toast('No se pudo copiar.'); } ta.remove(); }
+}
+
+// ── Montaje e inicio ──
+function montarNomina(){
+  if(NOM_MONTADO) return;
+  NOM_MONTADO = true;
+  document.getElementById('section-nomina').innerHTML = `
+    <div class="sf">
+      <h1 style="font-size:20px;font-weight:900;color:var(--gray-800);margin:0 0 4px;">💼 Nómina</h1>
+      <p style="font-size:12.5px;color:var(--gray-600);margin:0 0 16px;max-width:680px;">Plantilla, nómina quincenal, vacaciones y prestaciones, aguinaldo y finiquitos del personal — con fundamento en la LFT. Cálculo de apoyo: siempre valida con tu contador antes de pagar o timbrar. Visible solo para administración.</p>
+      <div class="nom-tabs" id="nom-tabs">
+        <button type="button" class="nom-tab-btn act" data-nt="plantilla">👥 Plantilla</button>
+        <button type="button" class="nom-tab-btn" data-nt="mes">🧾 Nómina quincenal</button>
+        <button type="button" class="nom-tab-btn" data-nt="vac">🏖 Vacaciones y prestaciones</button>
+        <button type="button" class="nom-tab-btn" data-nt="agui">🎄 Aguinaldo</button>
+        <button type="button" class="nom-tab-btn" data-nt="fin">📤 Finiquitos y liquidaciones</button>
+        <button type="button" class="nom-tab-btn" data-nt="rep">📑 Reporte para contadores</button>
+      </div>
+      <div class="nom-bar" id="nom-bar" style="display:none"><span>Periodo</span><button type="button" class="nom-btn sm" id="nom-mes-prev" aria-label="Quincena anterior">‹</button><input type="month" id="nom-mes" class="nom-inp" aria-label="Mes"/><select id="nom-q" class="nom-inp" aria-label="Quincena"><option value="Q1">1.ª quincena (1–15)</option><option value="Q2">2.ª quincena (16–fin de mes)</option></select><button type="button" class="nom-btn sm" id="nom-mes-next" aria-label="Siguiente quincena">›</button></div>
+      <div class="nom-panel" id="nom-p-plantilla"></div><div class="nom-panel" id="nom-p-mes" hidden></div><div class="nom-panel" id="nom-p-vac" hidden></div><div class="nom-panel" id="nom-p-agui" hidden></div><div class="nom-panel" id="nom-p-fin" hidden></div><div class="nom-panel" id="nom-p-rep" hidden></div>
+      <div class="nom-ov" id="nom-modal"><div class="nom-md"><h3 id="nom-m-tit">Novedad</h3>
+        <label>Tipo<select id="nom-m-tipo" class="nom-inp"></select></label>
+        <label>Fecha (opcional)<input type="date" id="nom-m-fecha" class="nom-inp"/></label>
+        <label id="nom-m-dias-w">Días<input type="number" id="nom-m-dias" class="nom-inp" min="0" step="0.5"/></label>
+        <label id="nom-m-monto-w">Monto<input type="number" id="nom-m-monto" class="nom-inp" min="0" step="0.01"/></label>
+        <label id="nom-m-just-w" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="nom-m-just"/> Justificada (no se descuenta)</label>
+        <label>Nota (opcional)<input type="text" id="nom-m-nota" class="nom-inp" maxlength="200"/></label>
+        <div class="nom-acts"><button type="button" class="nom-btn" id="nom-m-cancel">Cancelar</button> <button type="button" class="nom-btn p" id="nom-m-save">Guardar</button></div></div></div>
+    </div>`;
+  const root = document.getElementById('section-nomina');
+  document.getElementById('nom-tabs').addEventListener('click', e => { const b = e.target.closest('[data-nt]'); if(!b) return; NOM_TAB = b.dataset.nt; if(NOM_CARGADO) nomRender(); });
+  document.getElementById('nom-mes').addEventListener('change', e => { if(!e.target.value) return; NOM_PERIODO = e.target.value + '-Q' + nomPer(NOM_PERIODO).Q; cargarNominas(); });
+  document.getElementById('nom-q').addEventListener('change', e => { NOM_PERIODO = NOM_PERIODO.slice(0, 7) + '-' + e.target.value; cargarNominas(); });
+  document.getElementById('nom-mes-prev').addEventListener('click', () => { NOM_PERIODO = nomPerMover(NOM_PERIODO, -1); cargarNominas(); });
+  document.getElementById('nom-mes-next').addEventListener('click', () => { NOM_PERIODO = nomPerMover(NOM_PERIODO, 1); cargarNominas(); });
+  document.getElementById('nom-m-tipo').addEventListener('change', () => { nomNovCampos(); document.getElementById('nom-m-just').checked = document.getElementById('nom-m-tipo').value === 'incapacidad'; });
+  document.getElementById('nom-m-cancel').addEventListener('click', () => document.getElementById('nom-modal').classList.remove('show'));
+  document.getElementById('nom-m-save').addEventListener('click', nomGuardarNov);
+  root.addEventListener('change', async e => {
+    const el = e.target;
+    if(el.id === 'nom-ag-anio'){ const v = parseInt(el.value, 10); if(v >= 2020 && v <= 2100){ NOM_AG.anio = v; } nomRenderAgui(); return; }
+    if(el.id === 'nom-ag-dias'){ const v = Number(el.value); if(v > 0) NOM_AG.dias = v; nomRenderAgui(); return; }
+    if(el.id === 'nom-f-emp'){ NOM_FIN.emp = el.value; NOM_FIN.vacTom = null; nomRenderFin(); return; }
+    if(el.id === 'nom-f-baja'){ if(el.value){ NOM_FIN.baja = el.value; NOM_FIN.vacTom = null; nomRenderFin(); } return; }
+    if(el.id === 'nom-f-vac'){ NOM_FIN.vacTom = Math.max(Number(el.value) || 0, 0); nomRenderFin(); return; }
+    if(!el.classList.contains('nom-inp') || !el.dataset.id) return;
+    const campo = el.dataset.f; let v = el.value;
+    if(campo === 'salario_mensual'){ v = Number(v); if(!(v >= 0) || el.value === ''){ toast('Escribe un sueldo válido.'); nomRender(); return; } }
+    else if(campo === 'salario_es_bruto') v = v === '1';
+    else if(campo === 'fecha_ingreso') v = v || null;
+    else v = v.trim() || null;
+    if(await nomGuardarEmp(el.dataset.id, campo, v)) nomRender();
+  });
+  root.addEventListener('click', async e => {
+    const t = e.target.closest('button'); if(!t) return;
+    if(t.dataset.novAdd) return nomAbrirNov(t.dataset.novAdd, null);
+    if(t.dataset.novEdit) return nomAbrirNov(null, t.dataset.novEdit);
+    if(t.dataset.novDel){
+      if(!(await confirmarAsync({ titulo:'¿Quitar novedad?', mensaje:'Se eliminará esta novedad del mes.', textoConfirmar:'Quitar', icono:'🗑' }))) return;
+      const { error } = await sb.from('nomina_novedades').delete().eq('id', t.dataset.novDel);
+      if(error){ toast('No se pudo quitar.'); return; } toast('✓ Quitada'); return cargarNominas();
+    }
+    if(t.dataset.baja){
+      const emp = NOM_EMP.find(x => x.id == t.dataset.baja);
+      if(!(await confirmarAsync({ titulo:'¿Dar de baja?', mensaje:`${emp.nombre} dejará de aparecer en la nómina. Su historial se conserva. Para calcular su finiquito usa la pestaña “Finiquitos”.`, textoConfirmar:'Dar de baja', icono:'👋' }))) return;
+      const { error } = await sb.from('nomina_empleados').update({ activo:false, fecha_baja: fechaLocalISO(new Date()) }).eq('id', emp.id);
+      if(error){ toast('No se pudo guardar.'); return; } toast('✓ Baja registrada'); return cargarNominas();
+    }
+    if(t.dataset.reactivar){
+      const { error } = await sb.from('nomina_empleados').update({ activo:true, fecha_baja:null }).eq('id', t.dataset.reactivar);
+      if(error){ toast('No se pudo guardar.'); return; } toast('✓ Reactivada'); return cargarNominas();
+    }
+    if(t.id === 'nom-n-add'){
+      const nombre = document.getElementById('nom-n-nombre').value.trim(), sueldo = Number(document.getElementById('nom-n-sueldo').value);
+      if(!nombre){ toast('Escribe el nombre.'); return; } if(!(sueldo > 0)){ toast('Escribe el sueldo mensual.'); return; }
+      const { error } = await sb.from('nomina_empleados').insert({ nombre, puesto: document.getElementById('nom-n-puesto').value.trim() || null, salario_mensual: sueldo, fecha_ingreso: document.getElementById('nom-n-ing').value || null, orden: NOM_EMP.length + 1 });
+      if(error){ console.error('[CANOPY] Nóminas:', error); toast('No se pudo agregar.'); return; } toast('✓ Agregada'); return cargarNominas();
+    }
+    if(t.dataset.causa){ NOM_FIN.causa = t.dataset.causa; return nomRenderFin(); }
+    if(t.id === 'nom-f-pdf' && NOM_FIN._r){
+      const nombreArchivo = 'Finiquito_' + NOM_FIN._r.e.nombre.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '_') + '_' + NOM_FIN.baja + '.pdf';
+      return nomHtmlAPdf(nomFiniquitoPdfHtml(NOM_FIN._r), nombreArchivo, 'Finiquito · Agenda CANOPY Pediatrics');
+    }
+    if(t.id === 'nom-f-copiar' && NOM_FIN._r){
+      const r = NOM_FIN._r, m = money;
+      return nomCopiar(`${r.e.nombre} · ${NOM_CAUSAS[r.causa]} · baja ${nomFechaTxt(r.baja)}\n${Object.entries(r.finiquito).concat(Object.entries(r.liq)).map(([k, v]) => '• ' + k + ': ' + m(v)).join('\n')}\nTotal: ${m(r.total)} (exento ISR estimado ${m(r.exento)})`);
+    }
+    if(t.id === 'nom-f-baja-reg' && NOM_FIN._r){
+      const r = NOM_FIN._r;
+      if(!(await confirmarAsync({ titulo:'¿Registrar la baja?', mensaje:`${r.e.nombre} quedará dada de baja con fecha ${nomFechaTxt(r.baja)}. Descarga antes el PDF del finiquito si lo necesitas.`, textoConfirmar:'Registrar baja', icono:'👋' }))) return;
+      const { error } = await sb.from('nomina_empleados').update({ activo:false, fecha_baja: NOM_FIN.baja }).eq('id', r.e.id);
+      if(error){ toast('No se pudo guardar.'); return; } toast('✓ Baja registrada'); NOM_FIN.emp = ''; return cargarNominas();
+    }
+    if(t.id === 'nom-ag-pdf') return nomAguPdf();
+    if(t.id === 'nom-ag-xls') return nomAguXls();
+    if(t.id === 'nom-ag-wa') return nomCopiar(nomAguWa());
+    if(t.id === 'nom-r-pdf') return nomReportePdf();
+    if(t.id === 'nom-r-xls') return nomReporteExcel();
+    if(t.id === 'nom-r-wa') return nomCopiar(nomMensajeWa());
+  });
+}
+function abrirNomina(){
+  if(!nomEsAdmin()){ toast('⚠ Solo administración puede ver Nómina'); return; }
+  montarNomina();
+  cargarNominas();
+}
 
 </script>
 </body>
