@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-172">
+<meta name="app-version" content="2026-10-05-173">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -41,7 +41,7 @@ body{background:var(--gray-50);font-family:'Segoe UI',system-ui,sans-serif;color
 .header-disclaimer-link{color:var(--gold);text-decoration:underline;cursor:pointer;}
 .demo-pill{background:#FDF6EC;color:var(--warn);border:1px solid #EDD49A;font-size:10.5px;font-weight:600;padding:3px 10px;border-radius:99px;letter-spacing:0.4px;}
 
-.container{max-width:1100px;margin:0 auto;padding:20px 20px 60px;}
+.container{max-width:1100px;margin:0 auto;padding:20px 20px 60px;padding-left:112px;}
 
 /* Barra de navegación de día */
 .day-nav{display:flex;align-items:center;justify-content:space-between;background:#FFFFFF;border:1px solid var(--gray-200);border-radius:10px;padding:12px 16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(11,22,40,0.05);min-height:60px;box-sizing:border-box;flex-wrap:wrap;row-gap:10px;}
@@ -144,12 +144,27 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .vista-toggle button{background:transparent;border:none;padding:6px 14px;font-size:12px;font-weight:600;color:var(--gray-600);border-radius:6px;cursor:pointer;transition:all .15s;}
 .vista-toggle button.active{background:#fff;color:var(--gold);box-shadow:0 1px 3px rgba(11,22,40,0.1);}
 
-/* Tabs principales */
-.main-tabs{display:flex;gap:0;flex-wrap:nowrap;position:relative;background:var(--white);padding:0 0 10px;border-bottom:2px solid var(--gray-100);margin-bottom:16px;}
-.main-tabs button{background:none;border:none;padding:12px 18px;font-size:13.5px;font-weight:700;color:var(--gray-400);cursor:pointer;border-bottom:none;margin-bottom:0;position:relative;z-index:1;transition:color .15s;}
-.main-tabs button:hover{color:var(--gray-600);}
-.main-tabs button.active{color:#fff;font-weight:800;}
-.main-tabs button.active::before{content:'';position:absolute;inset:-2px -4px;z-index:-1;background:linear-gradient(100deg,var(--gold),var(--gray-800) 120%);border-radius:9px;transform:skewX(-8deg);box-shadow:0 6px 16px rgba(42,191,191,.4);}
+/* Tabs principales — riel de íconos a un costado (Opción A) */
+.main-tabs{
+  position:fixed;left:0;top:64px;bottom:0;width:84px;z-index:40;
+  display:flex;flex-direction:column;align-items:center;gap:4px;flex-wrap:nowrap;
+  padding:14px 6px 10px;margin:0;border-bottom:none;
+  background:linear-gradient(180deg,#0B1628,#10213D);
+  overflow-y:auto;overflow-x:hidden;
+}
+.main-tabs button{
+  width:100%;max-width:70px;flex-shrink:0;
+  background:none;border:none;border-radius:13px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  padding:9px 2px 8px;margin:0;
+  font-size:13.5px;font-weight:700;color:rgba(255,255,255,.6);
+  cursor:pointer;position:relative;z-index:1;transition:background .15s,color .15s;
+}
+.main-tabs button:hover{background:rgba(255,255,255,.08);color:#fff;}
+.main-tabs button.active{background:rgba(42,191,191,.18);color:#fff;font-weight:800;}
+.main-tabs button.active::before{content:none;}
+.main-tabs .tab-ico{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;flex:none;}
+.main-tabs .tab-lbl{font-size:9px;font-weight:700;letter-spacing:.2px;line-height:1.1;color:rgba(255,255,255,.9);}
 
 /* Cierre: layout estilo QUAD387/MARE */
 .total-bar{background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:8px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
@@ -329,8 +344,15 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 @media(max-width:640px){
-  .main-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .main-tabs button{padding:9px 12px;font-size:12.5px;white-space:nowrap;flex-shrink:0;}
+  /* En móvil el riel se convierte en barra inferior fija, íconos en fila */
+  .main-tabs{
+    position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;height:64px;
+    flex-direction:row;align-items:stretch;gap:0;
+    padding:4px 4px;
+    overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+    box-shadow:0 -2px 10px rgba(11,22,40,.25);
+  }
+  .main-tabs button{width:auto;max-width:none;min-width:58px;padding:6px 8px;font-size:12.5px;white-space:nowrap;flex-shrink:0;}
   .day-summary{grid-template-columns:repeat(2,1fr);}
   .cita-actions{width:100%;justify-content:flex-start;align-items:stretch;}
   .cita-actions br{display:block;} /* en móvil, "Procesar pago"/"No llegó" vuelven a 2 líneas */
@@ -354,6 +376,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
      fila de botones de acción de cada cita, que necesita caber en una
      sola línea sin desbordarse. */
   .container{padding-left:6px;padding-right:6px;}
+  body{padding-bottom:64px;}
 
   /* En pantallas angostas la cuadrícula de 3 columnas ya no tiene caso
      (no hay suficiente ancho para repartir) — se apila todo en filas,
@@ -1107,16 +1130,16 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 <div class="container">
 
   <div class="main-tabs">
-    <button id="tab-agenda" class="active" onclick="cambiarSeccion('agenda')">📅 Agenda</button>
-    <button id="tab-directorio" onclick="cambiarSeccion('directorio')">👥 Directorio</button>
-    <button id="tab-historico" onclick="cambiarSeccion('historico')">📁 Histórico</button>
-    <button id="tab-cierre" onclick="cambiarSeccion('cierre')">📊 Cierre</button>
-    <button id="tab-gastos" style="display:none;" onclick="cambiarSeccion('gastos')">💸 Gastos</button>
-    <button id="tab-dashboard" style="display:none;" onclick="cambiarSeccion('dashboard')">📈 Dashboard</button>
-    <button id="tab-inventario" onclick="cambiarSeccion('inventario')">📦 Inventario</button>
-    <button id="tab-prm" onclick="cambiarSeccion('prm')">🎯 PRM</button>
-    <button id="tab-nomina" style="display:none;" onclick="cambiarSeccion('nomina')">💼 Nómina</button>
-    <button id="tab-faqs" onclick="cambiarSeccion('faqs')">❓ Ayuda</button>
+    <button id="tab-agenda" class="active" onclick="cambiarSeccion('agenda')" title="Agenda"><span class="tab-ico" style="background:#2ABFBF26;">📅</span><span class="tab-lbl">Agenda</span></button>
+    <button id="tab-directorio" onclick="cambiarSeccion('directorio')" title="Directorio"><span class="tab-ico" style="background:#6C5CE726;">👥</span><span class="tab-lbl">Direct.</span></button>
+    <button id="tab-historico" onclick="cambiarSeccion('historico')" title="Histórico"><span class="tab-ico" style="background:#F0932B26;">📁</span><span class="tab-lbl">Histór.</span></button>
+    <button id="tab-cierre" onclick="cambiarSeccion('cierre')" title="Cierre"><span class="tab-ico" style="background:#20BF6B26;">📊</span><span class="tab-lbl">Cierre</span></button>
+    <button id="tab-gastos" style="display:none;" onclick="cambiarSeccion('gastos')" title="Gastos"><span class="tab-ico" style="background:#EB4D4B26;">💸</span><span class="tab-lbl">Gastos</span></button>
+    <button id="tab-dashboard" style="display:none;" onclick="cambiarSeccion('dashboard')" title="Dashboard"><span class="tab-ico" style="background:#4834D426;">📈</span><span class="tab-lbl">Dashb.</span></button>
+    <button id="tab-inventario" onclick="cambiarSeccion('inventario')" title="Inventario"><span class="tab-ico" style="background:#E67E2226;">📦</span><span class="tab-lbl">Invent.</span></button>
+    <button id="tab-prm" onclick="cambiarSeccion('prm')" title="PRM"><span class="tab-ico" style="background:#E8439326;">🎯</span><span class="tab-lbl">PRM</span></button>
+    <button id="tab-nomina" style="display:none;" onclick="cambiarSeccion('nomina')" title="Nómina"><span class="tab-ico" style="background:#22A6B326;">💼</span><span class="tab-lbl">Nómina</span></button>
+    <button id="tab-faqs" onclick="cambiarSeccion('faqs')" title="Ayuda"><span class="tab-ico" style="background:#7F8C8D26;">❓</span><span class="tab-lbl">Ayuda</span></button>
   </div>
 
   <div id="section-agenda">
@@ -2099,7 +2122,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-172';
+const APP_VERSION = '2026-10-05-173';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
