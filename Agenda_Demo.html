@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-173">
+<meta name="app-version" content="2026-10-05-174">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -945,6 +945,9 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 <style id="version-css">
 #version-footer{color:#6B7789;background:none;text-shadow:none;}
 #version-footer.sobre-azul{color:#fff;}
+@media(max-width:640px){
+  #version-footer{bottom:68px;right:8px;background:rgba(11,22,40,.55);padding:2px 7px;border-radius:7px;color:#fff!important;}
+}
 </style>
 <style id="nom-css">
 /* ══════════ Nóminas (solo admin) ══════════ */
@@ -2122,7 +2125,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-173';
+const APP_VERSION = '2026-10-05-174';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
