@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-177">
+<meta name="app-version" content="2026-10-05-178">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1002,6 +1002,23 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .nom-tab-btn{background:#fff;border:1px solid var(--g2);padding:8px 14px;border-radius:999px;font:700 12.5px inherit;color:var(--g6);cursor:pointer}
 .nom-tab-btn.act{background:var(--navy);border-color:var(--navy);color:#fff}
 @media(max-width:800px){.nom-3,.nom-2{grid-template-columns:1fr}.nom-add{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){
+  /* Nómina quincenal: la tabla se vuelve tarjetas apiladas, sin scroll lateral */
+  .nom-wrap:has(.nom-t-mes){overflow-x:visible;border:0;background:none;}
+  .nom-t-mes{min-width:0;width:100%;}
+  .nom-t-mes thead{display:none;}
+  .nom-t-mes, .nom-t-mes tbody, .nom-t-mes tr{display:block;width:100%;}
+  .nom-t-mes tr{border:1px solid var(--g2);border-radius:12px;margin-bottom:10px;padding:4px 12px;background:#fff;}
+  .nom-t-mes td{display:flex;align-items:baseline;justify-content:space-between;gap:10px;border:0;border-bottom:1px dashed var(--g2);padding:7px 0;text-align:right;white-space:normal;}
+  .nom-t-mes td:last-child{border-bottom:0;}
+  .nom-t-mes td.nm{display:block;text-align:left;border-bottom:2px solid var(--navy);padding-bottom:9px;margin-bottom:2px;}
+  .nom-t-mes td.nv{display:block;text-align:left;}
+  .nom-t-mes td[data-th]::before{content:attr(data-th);font-weight:700;color:var(--g6);font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;flex:none;}
+  .nom-t-mes tr.tot.dark{background:var(--navy);border-color:var(--navy);padding:4px 12px;}
+  .nom-t-mes tr.tot.dark td{border-bottom:1px dashed rgba(255,255,255,.2);color:#fff;}
+  .nom-t-mes tr.tot.dark td[data-th]::before{color:rgba(255,255,255,.65);}
+  .nom-t-mes tr.tot.dark td:first-child{display:block;text-align:left;font-weight:800;border-bottom:1px solid rgba(255,255,255,.3);padding-bottom:9px;margin-bottom:2px;}
+}
 </style>
 </head>
 <body>
@@ -2147,7 +2164,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-177';
+const APP_VERSION = '2026-10-05-178';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
@@ -10653,7 +10670,7 @@ async function nomHtmlAPdf(html, filename, title){
 
 const NOM_SMG = 315.04, NOM_UMA = 117.31, NOM_TOPE_PA = 2 * 315.04, NOM_SUBS_LIM = 11492.66;
 const NOM_ISR = [[0.01,844.59,0,.0192],[844.60,7168.51,16.22,.0640],[7168.52,12598.02,420.95,.1088],[12598.03,14644.64,1011.68,.16],[14644.65,17533.64,1339.14,.1792],[17533.65,35362.83,1856.84,.2136],[35362.84,55736.68,5665.16,.2352],[55736.69,106410.50,10457.09,.30],[106410.51,141880.66,25659.23,.32],[141880.67,425641.99,37009.69,.34],[425642,1e12,133488.54,.35]];
-const NOM_TIPOS = { vacaciones:['🏖','Vacaciones','dias'], falta:['✗','Falta','dias'], incapacidad:['🩺','Incapacidad','dias'], bono:['＋','Bono','monto'], descuento:['−','Descuento (préstamo, otros)','monto'], otro:['📝','Nota','nota'] };
+const NOM_TIPOS = { vacaciones:['🏖','Vacaciones','dias'], falta:['✗','Falta','dias'], incapacidad:['🩺','Incapacidad','dias'], prima_dom:['☀️','Prima dominical (domingos trabajados)','dias'], bono:['＋','Bono','monto'], descuento:['−','Descuento (préstamo, otros)','monto'], otro:['📝','Nota','nota'] };
 const NOM_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 let NOM_EMP = [], NOM_NOV = [], NOM_VAC_NOV = [], NOM_PERIODO = '', NOM_TAB = 'plantilla', NOM_CARGADO = false, NOM_MONTADO = false, NOM_FIN = { emp:'', baja:'', causa:'despido', vacTom:null };
 
@@ -10692,21 +10709,23 @@ function nomCalcMes(e, novs, per){
   const of = t => novs.filter(n => n.tipo === t);
   const dias = (t, fn) => of(t).filter(fn || (() => true)).reduce((a, n) => a + Number(n.dias || 0), 0);
   const monto = t => of(t).reduce((a, n) => a + Number(n.monto || 0), 0);
-  const dVac = dias('vacaciones'), dFalta = dias('falta'), dInc = dias('incapacidad'), bono = monto('bono'), otros = monto('descuento');
+  const dVac = dias('vacaciones'), dFalta = dias('falta'), dInc = dias('incapacidad'), dPrimaDom = dias('prima_dom'), bono = monto('bono'), otros = monto('descuento');
   const dDesc = dias('falta', n => !n.justificada) + dias('incapacidad', n => !n.justificada);   // solo lo no justificado se descuenta
   const dJust = dFalta + dInc - dDesc;
   const diasTrab = f.ing && f.ing > qi ? Math.min(15, Math.max(nomDias(f.ing, qf) + 1, 0)) : 15;
   const c2 = v => Math.round(v * 100) / 100;                  // todo en centavos para que el Excel, el PDF y la pantalla cuadren
   const prima = c2(dVac * f.diario * 0.25), primaGrav = Math.max(prima - 15 * NOM_UMA, 0);
+  // Prima dominical (art. 71 LFT): 25% del salario diario por cada domingo trabajado; exenta hasta 1 UMA por domingo (art. 93-XIV LISR)
+  const primaDom = c2(dPrimaDom * f.diario * 0.25), primaDomGrav = Math.max(primaDom - dPrimaDom * NOM_UMA, 0);
   const descFalta = c2(dDesc * f.diario), sueldo = c2(Number(e.salario_mensual) / 2 * diasTrab / 15);
   const bruto = e.salario_es_bruto !== false;
-  const base = Math.max(sueldo - descFalta + bono + primaGrav, 0);
+  const base = Math.max(sueldo - descFalta + bono + primaGrav + primaDomGrav, 0);
   const isr = bruto ? nomIsrQ(base) : 0;
   const imssDet = bruto ? nomImss(f.sdi, diasTrab) : {};
   const imss = Object.values(imssDet).reduce((a, v) => a + v, 0);
-  const perc = c2(sueldo + bono + prima);
+  const perc = c2(sueldo + bono + prima + primaDom);
   const ded = c2(isr + imss + descFalta + otros);
-  return { f, e, novs, dVac, dFalta, dInc, dDesc, dJust, diasTrab, bono, otros, prima, descFalta, sueldo, perc, isr, imss, imssDet, ded, neto: c2(perc - ded), bruto, subsidio: bruto && base <= NOM_SUBS_LIM * 15 / NOM_DQ };
+  return { f, e, novs, dVac, dFalta, dInc, dPrimaDom, dDesc, dJust, diasTrab, bono, otros, prima, primaDom, descFalta, sueldo, perc, isr, imss, imssDet, ded, neto: c2(perc - ded), bruto, subsidio: bruto && base <= NOM_SUBS_LIM * 15 / NOM_DQ };
 }
 function nomMesDefault(){ const h = new Date(); return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-Q' + (h.getDate() <= 15 ? 1 : 2); }
 
@@ -10781,6 +10800,7 @@ function nomChips(c){
   const ch = [];
   const suma = (t, j) => c.novs.filter(n => n.tipo === t && !!n.justificada === j).reduce((a, n) => a + Number(n.dias || 0), 0);
   if(c.dVac) ch.push(`<span class="nom-pill info">🏖 ${c.dVac} d</span>`);
+  if(c.dPrimaDom) ch.push(`<span class="nom-pill info">☀️ ${c.dPrimaDom} dom.</span>`);
   if(suma('falta', false)) ch.push(`<span class="nom-pill bad" title="Se descuenta">✗ ${suma('falta', false)} falta</span>`);
   if(suma('incapacidad', false)) ch.push(`<span class="nom-pill bad" title="Se descuenta">🩺 ${suma('incapacidad', false)} d incap.</span>`);
   const dj = suma('falta', true) + suma('incapacidad', true);
@@ -10795,10 +10815,10 @@ function nomRenderMes(){
   const T = k => calcs.reduce((a, c) => a + c[k], 0);
   const N = v => v ? Number(v).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '<span class="mut">—</span>';
   const filas = calcs.map(c => `<tr><td class="nm"><b>${esc(c.e.nombre)}</b><div class="sub">${esc(c.e.puesto || '')}</div></td>
-    <td class="nv">${nomChips(c)} <button type="button" class="nom-btn sm ic" data-nov-add="${esc(c.e.id)}" title="Agregar novedad" aria-label="Agregar novedad">＋</button></td>
-    <td class="r">${N(c.sueldo)}${c.diasTrab < 15 ? `<div class="sub">${c.diasTrab} d (ingreso)</div>` : ''}</td><td class="r">${N(c.bono + c.prima)}</td><td class="r b">${N(c.perc)}</td>
-    <td class="r sep">${c.bruto ? N(c.isr) : '<span class="mut">—</span>'}</td><td class="r">${c.bruto ? N(c.imss) : '<span class="mut">—</span>'}</td>
-    <td class="r sep">${N(c.descFalta)}</td><td class="r">${N(c.otros)}</td><td class="r sep nt">${N(c.neto)}</td></tr>`).join('');
+    <td class="nv" data-th="Novedades">${nomChips(c)} <button type="button" class="nom-btn sm ic" data-nov-add="${esc(c.e.id)}" title="Agregar novedad" aria-label="Agregar novedad">＋</button></td>
+    <td class="r" data-th="Sueldo quinc.">${N(c.sueldo)}${c.diasTrab < 15 ? `<div class="sub">${c.diasTrab} d (ingreso)</div>` : ''}</td><td class="r" data-th="Bono / primas">${N(c.bono + c.prima + c.primaDom)}</td><td class="r b" data-th="Total">${N(c.perc)}</td>
+    <td class="r sep" data-th="ISR">${c.bruto ? N(c.isr) : '<span class="mut">—</span>'}</td><td class="r" data-th="IMSS obrero">${c.bruto ? N(c.imss) : '<span class="mut">—</span>'}</td>
+    <td class="r sep" data-th="Faltas">${N(c.descFalta)}</td><td class="r" data-th="Otros">${N(c.otros)}</td><td class="r sep nt" data-th="A pagar">${N(c.neto)}</td></tr>`).join('');
   const sub = calcs.filter(c => c.subsidio).map(c => `<div class="nom-al warn">ℹ <b>${esc(c.e.nombre)}</b> gana ≤ ${money(NOM_SUBS_LIM)}: puede aplicar subsidio al empleo (no lo calculo; lo define el contador).</div>`).join('');
   const neto = calcs.filter(c => !c.bruto).map(c => `<div class="nom-al warn">ℹ <b>${esc(c.e.nombre)}</b> está capturada con sueldo <b>neto</b>: no calculo ISR/IMSS (falta el bruto).</div>`).join('');
   const sf = calcs.filter(c => c.f.sinFecha).map(c => `<div class="nom-al warn">⚠ <b>${esc(c.e.nombre)}</b> sin fecha de ingreso: el SDI usa el mínimo de ley (12 días de vacaciones).</div>`).join('');
@@ -10806,13 +10826,13 @@ function nomRenderMes(){
     return `<tr><td>${esc(e?.nombre || '—')}</td><td>${t[0]} ${t[1]}${n.tipo === 'falta' || n.tipo === 'incapacidad' ? (n.justificada ? ' <span class="nom-pill ok">justificada</span>' : ' <span class="nom-pill bad">se descuenta</span>') : ''}</td><td>${n.fecha ? nomFechaTxt(n.fecha) : '—'}</td><td class="r">${n.dias != null && n.dias !== '' ? Number(n.dias) + ' d' : '—'}</td><td class="r">${n.monto != null && n.monto !== '' ? money(n.monto) : '—'}</td><td>${esc(n.nota || '')}</td>
       <td class="r"><button type="button" class="nom-btn sm" data-nov-edit="${esc(n.id)}">Editar</button> <button type="button" class="nom-btn sm bad" data-nov-del="${esc(n.id)}">Quitar</button></td></tr>`; }).join('');
   document.getElementById('nom-p-mes').innerHTML = `${sf}${neto}${sub}
-    <div class="nom-wrap"><table class="nom-t"><thead><tr class="g"><th colspan="2"></th><th colspan="3" class="gp">Percepciones</th><th colspan="2" class="gr">Retenciones</th><th colspan="2" class="gd">Descuentos</th><th class="gn">Neto</th></tr>
-      <tr><th>Persona</th><th>Novedades</th><th class="r">Sueldo quinc.</th><th class="r">Bono / prima</th><th class="r">Total</th><th class="r sep">ISR</th><th class="r">IMSS obrero</th><th class="r sep">Faltas</th><th class="r">Otros</th><th class="r sep">A pagar</th></tr></thead>
-      <tbody>${filas}<tr class="tot dark"><td colspan="2">Totales · ${calcs.length} persona(s) · ${esc(nomLabelPer(NOM_PERIODO))}</td><td class="r">${N(T('sueldo'))}</td><td class="r">${N(T('bono') + T('prima'))}</td><td class="r">${N(T('perc'))}</td><td class="r">${N(T('isr'))}</td><td class="r">${N(T('imss'))}</td><td class="r">${N(T('descFalta'))}</td><td class="r">${N(T('otros'))}</td><td class="r nt">${N(T('neto'))}</td></tr></tbody></table></div>
+    <div class="nom-wrap"><table class="nom-t nom-t-mes"><thead><tr class="g"><th colspan="2"></th><th colspan="3" class="gp">Percepciones</th><th colspan="2" class="gr">Retenciones</th><th colspan="2" class="gd">Descuentos</th><th class="gn">Neto</th></tr>
+      <tr><th>Persona</th><th>Novedades</th><th class="r">Sueldo quinc.</th><th class="r">Bono / primas</th><th class="r">Total</th><th class="r sep">ISR</th><th class="r">IMSS obrero</th><th class="r sep">Faltas</th><th class="r">Otros</th><th class="r sep">A pagar</th></tr></thead>
+      <tbody>${filas}<tr class="tot dark"><td colspan="2">Totales · ${calcs.length} persona(s) · ${esc(nomLabelPer(NOM_PERIODO))}</td><td class="r" data-th="Sueldo quinc.">${N(T('sueldo'))}</td><td class="r" data-th="Bono / primas">${N(T('bono') + T('prima') + T('primaDom'))}</td><td class="r" data-th="Total">${N(T('perc'))}</td><td class="r" data-th="ISR">${N(T('isr'))}</td><td class="r" data-th="IMSS obrero">${N(T('imss'))}</td><td class="r" data-th="Faltas">${N(T('descFalta'))}</td><td class="r" data-th="Otros">${N(T('otros'))}</td><td class="r nt" data-th="A pagar">${N(T('neto'))}</td></tr></tbody></table></div>
     <div style="margin:-6px 2px 4px;font-size:11px;color:var(--g6)">Importes en pesos (MXN). Rojo = se descuenta; verde = justificada, sin descuento.</div>
     <h3 class="nom-h">Novedades registradas (${NOM_NOV.length})</h3>
     <div class="nom-wrap"><table class="nom-t"><thead><tr><th>Persona</th><th>Tipo</th><th>Fecha</th><th class="r">Días</th><th class="r">Monto</th><th>Nota</th><th></th></tr></thead><tbody>${nov || '<tr><td colspan="7" class="empty-note">Sin novedades en esta quincena. Usa “＋” en la persona.</td></tr>'}</tbody></table></div>
-    <div class="nom-fund"><b>Cómo se calcula (nómina quincenal, 15 días):</b> sueldo = mensual ÷ 2; ISR con la tarifa del art. 96 LISR (Anexo 8 RMF 2026) prorrateada a 15 días, sobre sueldo − faltas + bonos + prima vacacional gravada; IMSS cuota obrera sobre el SDI × 15 días (0.40% excedente 3 UMA, 0.25%, 0.375%, 0.625%, 1.125%); prima vacacional 25% de los días tomados (exenta hasta 15 UMA = ${money(15 * NOM_UMA)}). Faltas e incapacidades: si están <b>justificadas</b> no se descuentan; si no, se descuenta el día (sueldo ÷ 30). Es un cálculo de apoyo: el contador valida antes de pagar o timbrar.</div>`;
+    <div class="nom-fund"><b>Cómo se calcula (nómina quincenal, 15 días):</b> sueldo = mensual ÷ 2; ISR con la tarifa del art. 96 LISR (Anexo 8 RMF 2026) prorrateada a 15 días, sobre sueldo − faltas + bonos + prima vacacional gravada + prima dominical gravada; IMSS cuota obrera sobre el SDI × 15 días (0.40% excedente 3 UMA, 0.25%, 0.375%, 0.625%, 1.125%); prima vacacional 25% de los días tomados (exenta hasta 15 UMA = ${money(15 * NOM_UMA)}); prima dominical (art. 71 LFT) 25% del salario diario por cada domingo trabajado, capturado como novedad “☀️ Prima dominical” (exenta hasta 1 UMA = ${money(NOM_UMA)} por domingo, art. 93-XIV LISR). Faltas e incapacidades: si están <b>justificadas</b> no se descuentan; si no, se descuenta el día (sueldo ÷ 30). Es un cálculo de apoyo: el contador valida antes de pagar o timbrar.</div>`;
 }
 
 // ── Novedades (alta / edición) ──
@@ -11100,12 +11120,13 @@ function nomReporteHtml(per){
   const D = nomReporteDatos(per), m = money, T = D.T;
   const dedTot = T('isr') + T('imss') + T('descFalta') + T('otros');
   const ahora = nomFechaTxt(new Date());
-  const resumenF = D.calcs.map(c => `<tr><td>${esc(c.e.nombre)}<div class="mut">${esc(c.e.puesto || '')}</div></td><td class="r">${m(c.sueldo)}</td><td class="r">${c.bono + c.prima ? m(c.bono + c.prima) : '—'}</td><td class="r b">${m(c.perc)}</td><td class="r">${c.bruto ? m(c.isr) : '—'}</td><td class="r">${c.bruto ? m(c.imss) : '—'}</td><td class="r">${c.descFalta + c.otros ? m(c.descFalta + c.otros) : '—'}</td><td class="r b">${m(c.neto)}</td></tr>`);
+  const resumenF = D.calcs.map(c => `<tr><td>${esc(c.e.nombre)}<div class="mut">${esc(c.e.puesto || '')}</div></td><td class="r">${m(c.sueldo)}</td><td class="r">${c.bono + c.prima + c.primaDom ? m(c.bono + c.prima + c.primaDom) : '—'}</td><td class="r b">${m(c.perc)}</td><td class="r">${c.bruto ? m(c.isr) : '—'}</td><td class="r">${c.bruto ? m(c.imss) : '—'}</td><td class="r">${c.descFalta + c.otros ? m(c.descFalta + c.otros) : '—'}</td><td class="r b">${m(c.neto)}</td></tr>`);
   const cols = '<colgroup><col style="width:25%"><col style="width:11.5%"><col style="width:10.5%"><col style="width:11.5%"><col style="width:10.5%"><col style="width:10.5%"><col style="width:9.5%"><col style="width:11%"></colgroup>';
   const novFilas = D.nov.map(n => { const e = NOM_EMP.find(x => x.id === n.empleado_id), t = NOM_TIPOS[n.tipo]; let det = '';
     if(n.tipo === 'vacaciones'){ const c = D.calcs.find(x => x.e.id === n.empleado_id); det = `${Number(n.dias)} día(s) · prima vacacional ${c ? m(Number(n.dias) * c.f.diario * 0.25) : ''}`; }
     else if(n.tipo === 'falta') { const c = D.calcs.find(x => x.e.id === n.empleado_id); det = n.justificada ? `${Number(n.dias)} día(s) · justificada, sin descuento` : `${Number(n.dias)} día(s) · injustificada, descuento ${c ? m(Number(n.dias) * c.f.diario) : ''}`; }
     else if(n.tipo === 'incapacidad') { const c = D.calcs.find(x => x.e.id === n.empleado_id); det = n.justificada ? `${Number(n.dias)} día(s) · justificada, sin descuento · subsidio del IMSS desde el día 4` : `${Number(n.dias)} día(s) · no justificada, descuento ${c ? m(Number(n.dias) * c.f.diario) : ''}`; }
+    else if(n.tipo === 'prima_dom') { const c = D.calcs.find(x => x.e.id === n.empleado_id); det = `${Number(n.dias)} domingo(s) · prima dominical ${c ? m(Number(n.dias) * c.f.diario * 0.25) : ''}`; }
     else if(n.tipo === 'bono') det = `${m(n.monto)} · integra al SDI variable`;
     else if(n.tipo === 'descuento') det = m(n.monto);
     return `<tr><td>${esc(e?.nombre || '—')}</td><td>${esc(t[1])}</td><td>${n.fecha ? esc(nomFechaTxt(n.fecha)) : '—'}</td><td>${esc([det, n.nota].filter(Boolean).join(' · '))}</td></tr>`; });
@@ -11117,7 +11138,7 @@ function nomReporteHtml(per){
   const novH = n => (n.length > 64 ? 40 : 28);
   const piezas = [
     { h: 86, html: `<div class="nk"><div class="dk"><small>Percepciones</small><b>${m(T('perc'))}</b></div><div><small>ISR + IMSS obrero</small><b>${m(T('isr') + T('imss'))}</b></div><div><small>Faltas y otros descuentos</small><b>${m(T('descFalta') + T('otros'))}</b></div><div><small>Neto a pagar</small><b>${m(T('neto'))}</b></div></div>` },
-    bloqueTabla('1 · Resumen por persona', cols, '<tr><th>Persona</th><th class="r">Sueldo quincenal</th><th class="r">Bono / prima vac.</th><th class="r">Percepciones</th><th class="r">ISR</th><th class="r">IMSS obrero</th><th class="r">Otros desc.</th><th class="r">Neto</th></tr>', D.calcs.map((c, i) => ({ h: 40, html: resumenF[i] })), `<tr class="trs"><td>Totales</td><td class="r">${m(T('sueldo'))}</td><td class="r">${m(T('bono') + T('prima'))}</td><td class="r">${m(T('perc'))}</td><td class="r">${m(T('isr'))}</td><td class="r">${m(T('imss'))}</td><td class="r">${m(T('descFalta') + T('otros'))}</td><td class="r">${m(T('neto'))}</td></tr>`),
+    bloqueTabla('1 · Resumen por persona', cols, '<tr><th>Persona</th><th class="r">Sueldo quincenal</th><th class="r">Bono / primas</th><th class="r">Percepciones</th><th class="r">ISR</th><th class="r">IMSS obrero</th><th class="r">Otros desc.</th><th class="r">Neto</th></tr>', D.calcs.map((c, i) => ({ h: 40, html: resumenF[i] })), `<tr class="trs"><td>Totales</td><td class="r">${m(T('sueldo'))}</td><td class="r">${m(T('bono') + T('prima') + T('primaDom'))}</td><td class="r">${m(T('perc'))}</td><td class="r">${m(T('isr'))}</td><td class="r">${m(T('imss'))}</td><td class="r">${m(T('descFalta') + T('otros'))}</td><td class="r">${m(T('neto'))}</td></tr>`),
     bloqueTabla('2 · Novedades e incidencias de la quincena', '<colgroup><col style="width:27%"><col style="width:19%"><col style="width:13%"><col style="width:41%"></colgroup>', '<tr><th>Persona</th><th>Tipo</th><th>Fecha</th><th>Detalle</th></tr>', novFilas.map(f => ({ h: novH(f), html: f })), ''),
     { h: 36 + 3 * 28, html: `<h2>3 · Provisiones (para pólizas contables)</h2><table class="nt"><tbody><tr><td>Aguinaldo (15 días) acumulado a ${esc(NOM_MESES[nomPeriodoRef(per).getMonth()])}</td><td class="r">${m(D.prov.aguinaldo)}</td></tr><tr><td>Prima vacacional del año (25%)</td><td class="r">${m(D.prov.primaVac)}</td></tr><tr><td>Vacaciones devengadas y no disfrutadas</td><td class="r">${m(D.prov.vacPend)}</td></tr></tbody></table>` },
     { h: 36 + 2 * 28, html: `<h2>4 · Descuentos de la quincena</h2><table class="nt"><tbody><tr><td>Faltas e incapacidades no justificadas</td><td class="r">${m(T('descFalta'))}</td></tr><tr><td>Préstamos y otros descuentos</td><td class="r">${m(T('otros'))}</td></tr></tbody></table>` },
@@ -11167,7 +11188,7 @@ function nomReporteExcelPlano(){
   if(typeof XLSX === 'undefined'){ toast('No se pudo exportar.'); return; }
   const D = nomReporteDatos(NOM_PERIODO), r2 = v => Math.round(v * 100) / 100;
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(D.calcs.map(c => ({ Persona: c.e.nombre, Puesto: c.e.puesto || '', 'Inicio de contrato': c.e.fecha_ingreso || '', 'Sueldo quincenal': r2(c.sueldo), Bono: r2(c.bono), 'Prima vacacional': r2(c.prima), Percepciones: r2(c.perc), ISR: r2(c.isr), 'IMSS obrero': r2(c.imss), 'Descuento por faltas': r2(c.descFalta), 'Otros descuentos': r2(c.otros), 'Neto a pagar': r2(c.neto), 'Salario diario': r2(c.f.diario), SDI: r2(c.f.sdi) }))), 'Resumen');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(D.calcs.map(c => ({ Persona: c.e.nombre, Puesto: c.e.puesto || '', 'Inicio de contrato': c.e.fecha_ingreso || '', 'Sueldo quincenal': r2(c.sueldo), Bono: r2(c.bono), 'Prima vacacional': r2(c.prima), 'Prima dominical': r2(c.primaDom), Percepciones: r2(c.perc), ISR: r2(c.isr), 'IMSS obrero': r2(c.imss), 'Descuento por faltas': r2(c.descFalta), 'Otros descuentos': r2(c.otros), 'Neto a pagar': r2(c.neto), 'Salario diario': r2(c.f.diario), SDI: r2(c.f.sdi) }))), 'Resumen');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(NOM_NOV.map(n => ({ Persona: NOM_EMP.find(e => e.id === n.empleado_id)?.nombre || '', Tipo: NOM_TIPOS[n.tipo][1], Fecha: n.fecha || '', Días: n.dias ?? '', Monto: n.monto ?? '', Justificada: (n.tipo === 'falta' || n.tipo === 'incapacidad') ? (n.justificada ? 'Sí' : 'No') : '', Nota: n.nota || '' }))), 'Novedades');
   const hoy = nomPeriodoRef(NOM_PERIODO);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(D.calcs.filter(c => !c.f.sinFecha).map(c => { const tom = nomVacTomados(c.e, hoy); return { Persona: c.e.nombre, 'Inicio de contrato': c.e.fecha_ingreso, 'Años cumplidos': c.f.ac, 'Días de ley / devengados': nomVacDev(c.f, hoy), Tomados: tom, Pendientes: Math.max(Math.round((nomVacDev(c.f, hoy) - tom) * 100) / 100, 0) }; })), 'Vacaciones');
@@ -11199,12 +11220,12 @@ async function nomReporteExcel(){
     ws.mergeCells(4, 1, 5, 2); enc(ws.getCell(4, 1), AZUL, 'PERSONA');
     ws.mergeCells(4, 3, 4, 5); enc(ws.getCell(4, 3), AZUL, 'PERCEPCIONES'); ws.mergeCells(4, 6, 4, 7); enc(ws.getCell(4, 6), AMB, 'RETENCIONES'); ws.mergeCells(4, 8, 4, 9); enc(ws.getCell(4, 8), ROJO, 'DESCUENTOS');
     ws.mergeCells(4, 10, 5, 10); enc(ws.getCell(4, 10), TEAL, 'NETO A PAGAR');
-    [['Sueldo quincenal', AZUL2], ['Bono / prima vac.', AZUL2], ['Total', AZUL2], ['ISR', AMB2], ['IMSS obrero', AMB2], ['Faltas', ROJO2], ['Otros', ROJO2]].forEach(([t, col], i) => enc(ws.getCell(5, 3 + i), col, t));
+    [['Sueldo quincenal', AZUL2], ['Bono / primas', AZUL2], ['Total', AZUL2], ['ISR', AMB2], ['IMSS obrero', AMB2], ['Faltas', ROJO2], ['Otros', ROJO2]].forEach(([t, col], i) => enc(ws.getCell(5, 3 + i), col, t));
     ws.getRow(4).height = 22; ws.getRow(5).height = 22;
     D.calcs.forEach((c, i) => { const r = 6 + i, z = i % 2 ? ZEBRA : null;
       celda(ws.getCell(r, 1), c.e.nombre, { fill:z, b:true }); celda(ws.getCell(r, 2), c.e.puesto || '', { fill:z, color:'FF64748B' });
-      celda(ws.getCell(r, 3), r2(c.sueldo), { fill:z, num:NUM }); celda(ws.getCell(r, 4), r2(c.bono + c.prima), { fill:z, num:NUM });
-      celda(ws.getCell(r, 5), { formula:`C${r}+D${r}`, result:r2(c.sueldo) + r2(c.bono + c.prima) }, { fill:z, num:NUM, b:true });
+      celda(ws.getCell(r, 3), r2(c.sueldo), { fill:z, num:NUM }); celda(ws.getCell(r, 4), r2(c.bono + c.prima + c.primaDom), { fill:z, num:NUM });
+      celda(ws.getCell(r, 5), { formula:`C${r}+D${r}`, result:r2(c.sueldo) + r2(c.bono + c.prima + c.primaDom) }, { fill:z, num:NUM, b:true });
       celda(ws.getCell(r, 6), r2(c.isr), { fill:z, num:NUM }); celda(ws.getCell(r, 7), r2(c.imss), { fill:z, num:NUM });
       celda(ws.getCell(r, 8), r2(c.descFalta), { fill:z, num:NUM }); celda(ws.getCell(r, 9), r2(c.otros), { fill:z, num:NUM });
       celda(ws.getCell(r, 10), { formula:`E${r}-F${r}-G${r}-H${r}-I${r}`, result:r2(c.neto) }, { fill:z, num:NUM, b:true, color:TEAL }); });
