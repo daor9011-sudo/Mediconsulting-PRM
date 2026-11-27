@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="app-version" content="2026-10-05-178">
+<meta name="app-version" content="2026-10-05-179">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -1002,23 +1002,22 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .nom-tab-btn{background:#fff;border:1px solid var(--g2);padding:8px 14px;border-radius:999px;font:700 12.5px inherit;color:var(--g6);cursor:pointer}
 .nom-tab-btn.act{background:var(--navy);border-color:var(--navy);color:#fff}
 @media(max-width:800px){.nom-3,.nom-2{grid-template-columns:1fr}.nom-add{grid-template-columns:1fr 1fr}}
-@media(max-width:640px){
-  /* Nómina quincenal: la tabla se vuelve tarjetas apiladas, sin scroll lateral */
-  .nom-wrap:has(.nom-t-mes){overflow-x:visible;border:0;background:none;}
-  .nom-t-mes{min-width:0;width:100%;}
-  .nom-t-mes thead{display:none;}
-  .nom-t-mes, .nom-t-mes tbody, .nom-t-mes tr{display:block;width:100%;}
-  .nom-t-mes tr{border:1px solid var(--g2);border-radius:12px;margin-bottom:10px;padding:4px 12px;background:#fff;}
-  .nom-t-mes td{display:flex;align-items:baseline;justify-content:space-between;gap:10px;border:0;border-bottom:1px dashed var(--g2);padding:7px 0;text-align:right;white-space:normal;}
-  .nom-t-mes td:last-child{border-bottom:0;}
-  .nom-t-mes td.nm{display:block;text-align:left;border-bottom:2px solid var(--navy);padding-bottom:9px;margin-bottom:2px;}
-  .nom-t-mes td.nv{display:block;text-align:left;}
-  .nom-t-mes td[data-th]::before{content:attr(data-th);font-weight:700;color:var(--g6);font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;flex:none;}
-  .nom-t-mes tr.tot.dark{background:var(--navy);border-color:var(--navy);padding:4px 12px;}
-  .nom-t-mes tr.tot.dark td{border-bottom:1px dashed rgba(255,255,255,.2);color:#fff;}
-  .nom-t-mes tr.tot.dark td[data-th]::before{color:rgba(255,255,255,.65);}
-  .nom-t-mes tr.tot.dark td:first-child{display:block;text-align:left;font-weight:800;border-bottom:1px solid rgba(255,255,255,.3);padding-bottom:9px;margin-bottom:2px;}
-}
+/* Nómina quincenal: SIEMPRE en tarjetas apiladas (nunca tabla ancha) — cero scroll lateral, en cualquier pantalla */
+.nom-wrap:has(.nom-t-mes){overflow-x:visible;border:0;background:none;}
+.nom-t-mes{min-width:0;width:100%;}
+.nom-t-mes thead{display:none;}
+.nom-t-mes, .nom-t-mes tbody, .nom-t-mes tr{display:block;width:100%;}
+.nom-t-mes tr{border:1px solid var(--g2);border-radius:12px;margin-bottom:10px;padding:4px 14px;background:#fff;}
+.nom-t-mes td{display:flex;align-items:baseline;justify-content:space-between;gap:14px;border:0;border-bottom:1px dashed var(--g2);padding:8px 0;text-align:right;white-space:normal;}
+.nom-t-mes td:last-child{border-bottom:0;}
+.nom-t-mes td.nm{display:block;text-align:left;border-bottom:2px solid var(--navy);padding-bottom:10px;margin-bottom:2px;}
+.nom-t-mes td.nv{display:block;text-align:left;}
+.nom-t-mes td[data-th]::before{content:attr(data-th);font-weight:700;color:var(--g6);font-size:11px;text-transform:uppercase;letter-spacing:.3px;flex:none;}
+.nom-t-mes tr.tot.dark{background:var(--navy);border-color:var(--navy);padding:4px 14px;}
+.nom-t-mes tr.tot.dark td{border-bottom:1px dashed rgba(255,255,255,.2);color:#fff;}
+.nom-t-mes tr.tot.dark td[data-th]::before{color:rgba(255,255,255,.65);}
+.nom-t-mes tr.tot.dark td:first-child{display:block;text-align:left;font-weight:800;border-bottom:1px solid rgba(255,255,255,.3);padding-bottom:10px;margin-bottom:2px;}
+.nom-t-mes{max-width:560px;margin:0 auto;}
 </style>
 </head>
 <body>
@@ -2164,7 +2163,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 // Se cambia cada vez que se sube una versión nueva del archivo — es lo que
 // permite detectar cuándo hay una actualización disponible (ver más abajo,
 // revisarVersionNueva).
-const APP_VERSION = '2026-10-05-178';
+const APP_VERSION = '2026-10-05-179';
 // La etiqueta de versión va sin fondo: blanca mientras se ve el login (azul) y gris sobre el fondo claro de la app.
 function ajustarColorVersion(){
   const vf = document.getElementById('version-footer'), lg = document.getElementById('login-screen');
